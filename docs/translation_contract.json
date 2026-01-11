@@ -1,0 +1,19 @@
+{
+  "document_language": "auto",
+  "target_language": "zh-TW",
+  "blocks": [
+    {
+      "id": "p1",
+      "type": "paragraph",
+      "source_text": "",
+      "translated_text": "",
+      "bilingual_layout": "append",
+      "corrections": [
+        {
+          "type": "color",
+          "range": [0, 10]
+        }
+      ]
+    }
+  ]
+}

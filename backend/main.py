@@ -26,7 +26,11 @@ from backend.services.translation_memory import (
     upsert_glossary,
     upsert_tm,
 )
-from backend.services.pptx_apply import apply_bilingual, apply_chinese_corrections
+from backend.services.pptx_apply import (
+    apply_bilingual,
+    apply_chinese_corrections,
+    apply_translations,
+)
 from backend.services.pptx_extract import extract_blocks as extract_pptx_blocks
 from backend.services.translate_llm import translate_blocks as translate_pptx_blocks
 from backend.translation_service import translate_document
@@ -108,10 +112,39 @@ async def translate(file: UploadFile = File(...)) -> dict:
     return translate_document(blocks)
 
 
+SUPPORTED_EXTENSIONS = {".pptx", ".docx"}
+IMAGE_EXTENSIONS = {".png", ".jpg", ".jpeg", ".gif", ".bmp", ".webp"}
+
+
+def _get_file_extension(filename: str | None) -> str:
+    """取得檔案副檔名"""
+    if not filename or "." not in filename:
+        return ""
+    return "." + filename.lower().split(".")[-1]
+
+
+def _validate_file_type(filename: str | None) -> tuple[bool, str]:
+    """驗證檔案類型，回傳 (是否有效, 錯誤訊息)"""
+    if not filename:
+        return False, "請選擇檔案"
+    
+    ext = _get_file_extension(filename)
+    
+    if ext in IMAGE_EXTENSIONS:
+        return False, f"不支援圖片檔案 ({filename})。此工具僅支援翻譯 PPTX 和 DOCX 文件中的文字內容。如需翻譯圖片中的文字，請使用支援視覺模型的 LLM API（如 GPT-4o）。"
+    
+    if ext not in SUPPORTED_EXTENSIONS:
+        return False, f"不支援的檔案格式 ({ext})。僅支援 .pptx 和 .docx 檔案"
+    
+    return True, ""
+
+
 @app.post("/api/pptx/extract")
 async def pptx_extract(file: UploadFile = File(...)) -> dict:
-    if not file.filename or not file.filename.lower().endswith(".pptx"):
-        raise HTTPException(status_code=400, detail="Only .pptx files are supported")
+    valid, error_msg = _validate_file_type(file.filename)
+    if not valid:
+        raise HTTPException(status_code=400, detail=error_msg)
+    
     try:
         pptx_bytes = await file.read()
     except Exception as exc:
@@ -239,8 +272,9 @@ async def tm_memory_export() -> Response:
 
 @app.post("/api/pptx/languages")
 async def pptx_languages(file: UploadFile = File(...)) -> dict:
-    if not file.filename or not file.filename.lower().endswith(".pptx"):
-        raise HTTPException(status_code=400, detail="Only .pptx files are supported")
+    valid, error_msg = _validate_file_type(file.filename)
+    if not valid:
+        raise HTTPException(status_code=400, detail=error_msg)
     try:
         pptx_bytes = await file.read()
     except Exception as exc:
@@ -261,13 +295,15 @@ async def pptx_apply(
     file: UploadFile = File(...),
     blocks: str = Form(...),
     mode: str = Form("bilingual"),
+    bilingual_layout: str = Form("inline"),
     fill_color: str | None = Form(None),
     text_color: str | None = Form(None),
     line_color: str | None = Form(None),
     line_dash: str | None = Form(None),
 ) -> Response:
-    if not file.filename or not file.filename.lower().endswith(".pptx"):
-        raise HTTPException(status_code=400, detail="Only .pptx files are supported")
+    valid, error_msg = _validate_file_type(file.filename)
+    if not valid:
+        raise HTTPException(status_code=400, detail=error_msg)
     try:
         pptx_bytes = await file.read()
     except Exception as exc:
@@ -280,8 +316,10 @@ async def pptx_apply(
     except Exception as exc:
         raise HTTPException(status_code=400, detail="Invalid blocks data") from exc
 
-    if mode not in {"bilingual", "correction"}:
+    if mode not in {"bilingual", "correction", "translated"}:
         raise HTTPException(status_code=400, detail="Unsupported mode")
+    if mode == "bilingual" and bilingual_layout not in {"inline", "auto", "new_slide"}:
+        raise HTTPException(status_code=400, detail="Unsupported bilingual layout")
 
     with tempfile.TemporaryDirectory() as temp_dir:
         input_path = os.path.join(temp_dir, "input.pptx")
@@ -290,7 +328,9 @@ async def pptx_apply(
             handle.write(pptx_bytes)
 
         if mode == "bilingual":
-            apply_bilingual(input_path, output_path, blocks_data)
+            apply_bilingual(input_path, output_path, blocks_data, layout=bilingual_layout)
+        elif mode == "translated":
+            apply_translations(input_path, output_path, blocks_data, mode="direct")
         else:
             apply_chinese_corrections(
                 input_path,

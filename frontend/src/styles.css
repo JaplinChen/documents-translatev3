@@ -300,6 +300,18 @@ body {
   display: none;
 }
 
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  border: 0;
+  white-space: nowrap;
+}
+
 .flow-panel {
   display: grid;
   gap: 12px;
@@ -459,6 +471,12 @@ body {
 }
 
 .modal-body {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.form-stack {
   display: flex;
   flex-direction: column;
   gap: 14px;

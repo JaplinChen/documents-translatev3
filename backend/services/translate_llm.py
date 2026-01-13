@@ -5,9 +5,12 @@ import os
 import csv
 import time
 import re
+import logging
+import random
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Iterable
+from urllib.error import HTTPError
 from urllib.request import Request, urlopen
 
 from backend.services.translation_memory import (
@@ -22,6 +25,8 @@ from backend.services.translation_memory import (
 CONTRACT_PATH = (
     Path(__file__).resolve().parents[2] / "docs" / "translation_contract_pptx.json"
 )
+
+LOGGER = logging.getLogger(__name__)
 
 
 def _load_contract_example() -> dict:
@@ -95,7 +100,8 @@ class OpenAITranslator:
             },
             method="POST",
         )
-        with urlopen(request, timeout=60) as response:
+        timeout = float(os.getenv("OPENAI_TIMEOUT", "60"))
+        with urlopen(request, timeout=timeout) as response:
             response_data = json.loads(response.read().decode("utf-8"))
         content = response_data["choices"][0]["message"]["content"]
         result = json.loads(content)
@@ -137,7 +143,8 @@ class GeminiTranslator:
             headers={"Content-Type": "application/json"},
             method="POST",
         )
-        with urlopen(request, timeout=60) as response:
+        timeout = float(os.getenv("GEMINI_TIMEOUT", "60"))
+        with urlopen(request, timeout=timeout) as response:
             response_data = json.loads(response.read().decode("utf-8"))
         candidates = response_data.get("candidates", [])
         if not candidates:
@@ -453,7 +460,7 @@ def translate_blocks(
 
     if mode == "mock" and provider is None:
         translator = MockTranslator()
-    elif resolved_provider in {"openai", "chatgpt"}:
+    elif resolved_provider in {"openai", "chatgpt", "gpt-4o"}:
         resolved_key = api_key or os.getenv("OPENAI_API_KEY", "")
         if not resolved_key:
             if fallback_on_error:
@@ -461,8 +468,11 @@ def translate_blocks(
             else:
                 raise EnvironmentError("OPENAI_API_KEY is required for OpenAI translation")
         else:
+            model_name = model or os.getenv("OPENAI_MODEL", "gpt-4o-mini")
+            if resolved_provider == "gpt-4o" and not model:
+                model_name = "gpt-4o"
             config = TranslationConfig(
-                model=model or os.getenv("OPENAI_MODEL", "gpt-4o-mini"),
+                model=model_name,
                 api_key=resolved_key,
                 base_url=base_url or os.getenv("OPENAI_BASE_URL", "https://api.openai.com/v1"),
             )
@@ -534,18 +544,43 @@ def translate_blocks(
                     continue
         pending.append((index, block))
 
+    single_request = os.getenv("LLM_SINGLE_REQUEST", "1").lower() in {"1", "true", "yes"}
     chunk_size = int(os.getenv("LLM_CHUNK_SIZE", "40"))
     if resolved_provider == "ollama" and "LLM_CHUNK_SIZE" not in os.environ:
+        chunk_size = 4
+    if resolved_provider == "gemini" and "LLM_CHUNK_SIZE" not in os.environ:
         chunk_size = 4
     max_retries = int(os.getenv("LLM_MAX_RETRIES", "2"))
     if resolved_provider == "ollama" and "LLM_MAX_RETRIES" not in os.environ:
         max_retries = 1
+    if resolved_provider == "gemini" and "LLM_MAX_RETRIES" not in os.environ:
+        max_retries = 2
     backoff = float(os.getenv("LLM_RETRY_BACKOFF", "0.8"))
+    max_backoff = float(os.getenv("LLM_RETRY_MAX_BACKOFF", "8"))
     context_strategy = os.getenv("LLM_CONTEXT_STRATEGY", "none").lower()
     glossary_path = os.getenv("LLM_GLOSSARY_PATH", "")
     glossary = _load_glossary(glossary_path)
+    chunk_delay = float(os.getenv("LLM_CHUNK_DELAY", "0"))
+    if resolved_provider == "gemini" and "LLM_CHUNK_DELAY" not in os.environ:
+        chunk_delay = 1.0
+    if single_request:
+        chunk_size = len(pending) if pending else chunk_size
+        chunk_delay = 0.0
 
-    for chunk in _chunked(pending, chunk_size):
+    LOGGER.info(
+        "LLM translate start provider=%s model=%s blocks=%s chunk=%s retries=%s backoff=%.2f placeholders=%s single=%s",
+        resolved_provider,
+        model or "",
+        len(blocks_list),
+        chunk_size,
+        max_retries,
+        backoff,
+        use_placeholders,
+        single_request,
+    )
+
+    for chunk_index, chunk in enumerate(_chunked(pending, chunk_size), start=1):
+        chunk_started = time.perf_counter()
         chunk_blocks = []
         placeholder_maps: list[dict[str, str]] = []
         placeholder_tokens: list[str] = []
@@ -567,6 +602,15 @@ def translate_blocks(
         attempt = 0
         while True:
             try:
+                attempt += 1
+                attempt_started = time.perf_counter()
+                LOGGER.info(
+                    "LLM chunk %s attempt %s size=%s context=%s",
+                    chunk_index,
+                    attempt,
+                    len(chunk_blocks),
+                    context_strategy,
+                )
                 result = translator.translate(
                     chunk_blocks,
                     target_language,
@@ -595,10 +639,22 @@ def translate_blocks(
                             translated=translated_text,
                         )
                 break
-            except Exception:
-                attempt += 1
+            except Exception as exc:
+                duration = time.perf_counter() - attempt_started
+                LOGGER.warning(
+                    "LLM chunk %s attempt %s failed in %.2fs: %s",
+                    chunk_index,
+                    attempt,
+                    duration,
+                    exc,
+                )
                 if attempt > max_retries:
                     if fallback_on_error and mode != "mock":
+                        LOGGER.warning(
+                            "LLM chunk %s fallback to mock after %s attempts",
+                            chunk_index,
+                            attempt,
+                        )
                         result = MockTranslator().translate(
                             chunk_blocks,
                             target_language,
@@ -628,7 +684,22 @@ def translate_blocks(
                                 )
                         break
                     raise
-                time.sleep(backoff * attempt)
+                retry_after = None
+                if isinstance(exc, HTTPError):
+                    if exc.code in {429, 503}:
+                        retry_after = exc.headers.get("Retry-After")
+                if retry_after:
+                    try:
+                        sleep_for = max(float(retry_after), 0)
+                    except ValueError:
+                        sleep_for = backoff * attempt
+                else:
+                    sleep_for = min(backoff * attempt, max_backoff) + random.uniform(0, 0.5)
+                time.sleep(sleep_for)
+        chunk_duration = time.perf_counter() - chunk_started
+        LOGGER.info("LLM chunk %s completed in %.2fs", chunk_index, chunk_duration)
+        if chunk_delay:
+            time.sleep(chunk_delay)
 
     final_texts = [text if text is not None else "" for text in translated_texts]
     return _build_contract(

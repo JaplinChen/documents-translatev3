@@ -69,6 +69,7 @@ function App() {
   const [file, setFile] = useState(null);
   const [blocks, setBlocks] = useState([]);
   const [mode, setMode] = useState("bilingual");
+  const [bilingualLayout, setBilingualLayout] = useState("inline");
   const [sourceLang, setSourceLang] = useState("");
   const [secondaryLang, setSecondaryLang] = useState("");
   const [targetLang, setTargetLang] = useState("zh-TW");
@@ -99,7 +100,6 @@ function App() {
   const [filterSlide, setFilterSlide] = useState("");
   const [status, setStatus] = useState("待命中");
   const [busy, setBusy] = useState(false);
-  const jsonInputRef = useRef(null);
   const leftPanelRef = useRef(null);
   const editorRefs = useRef({});
 
@@ -110,6 +110,9 @@ function App() {
   const modeDescription = useMemo(() => {
     if (mode === "correction") {
       return "中文校正會套用黃色底、紅字與紫色虛線框。";
+    }
+    if (mode === "translated") {
+      return "翻譯檔案會以譯文覆蓋原文，不保留原文內容。";
     }
     return "雙語模式會用原文與譯文合併輸出。";
   }, [mode]);
@@ -130,6 +133,7 @@ function App() {
   const providerOptions = useMemo(
     () => [
       { code: "chatgpt", label: "ChatGPT (OpenAI)" },
+      { code: "gpt-4o", label: "GPT-4o (支援圖片)" },
       { code: "gemini", label: "Gemini" },
       { code: "ollama", label: "Ollama" }
     ],
@@ -179,20 +183,56 @@ function App() {
     return "https://api.openai.com/v1";
   }, [llmProvider]);
 
-  useEffect(() => {
+  const readLlmSettings = () => {
+    const empty = {
+      provider: "chatgpt",
+      providers: {
+        chatgpt: { apiKey: "", baseUrl: "", model: "" },
+        gemini: { apiKey: "", baseUrl: "", model: "" },
+        ollama: { apiKey: "", baseUrl: "", model: "" }
+      }
+    };
     const saved = window.localStorage.getItem("llmSettings");
     if (!saved) {
-      return;
+      return empty;
     }
     try {
       const parsed = JSON.parse(saved);
-      setLlmProvider(parsed.provider || "chatgpt");
-      setLlmApiKey(parsed.apiKey || "");
-      setLlmBaseUrl(parsed.baseUrl || "");
-      setLlmModel(parsed.model || "");
+      if (parsed && parsed.providers) {
+        return {
+          ...empty,
+          ...parsed,
+          providers: {
+            ...empty.providers,
+            ...parsed.providers
+          }
+        };
+      }
+      const provider = parsed?.provider || "chatgpt";
+      return {
+        provider,
+        providers: {
+          ...empty.providers,
+          [provider]: {
+            apiKey: parsed?.apiKey || "",
+            baseUrl: parsed?.baseUrl || "",
+            model: parsed?.model || ""
+          }
+        }
+      };
     } catch (error) {
-      setLlmStatus("LLM 設定讀取失敗");
+      return empty;
     }
+  };
+
+  useEffect(() => {
+    const settings = readLlmSettings();
+    const provider = settings.provider || "chatgpt";
+    const providerSettings = settings.providers?.[provider] || {};
+    setLlmProvider(provider);
+    setLlmApiKey(providerSettings.apiKey || "");
+    setLlmBaseUrl(providerSettings.baseUrl || "");
+    setLlmModel(providerSettings.model || "");
   }, []);
 
   useEffect(() => {
@@ -221,6 +261,11 @@ function App() {
   }, [llmOpen, llmProvider, llmApiKey]);
 
   useEffect(() => {
+    const settings = readLlmSettings();
+    const providerSettings = settings.providers?.[llmProvider] || {};
+    setLlmApiKey(providerSettings.apiKey || "");
+    setLlmBaseUrl(providerSettings.baseUrl || "");
+    setLlmModel(providerSettings.model || "");
     setLlmModels([]);
     setLlmStatus("");
   }, [llmProvider]);
@@ -323,6 +368,11 @@ function App() {
       setStatus("請先選擇 PPTX 檔案");
       return;
     }
+    const fileName = file.name.toLowerCase();
+    if (!fileName.endsWith(".pptx")) {
+      setStatus("只支援 .pptx 檔案，請重新選擇");
+      return;
+    }
     setBusy(true);
     setStatus("抽取中...");
     try {
@@ -333,7 +383,15 @@ function App() {
         body: formData
       });
       if (!response.ok) {
-        throw new Error("抽取失敗");
+        const errorText = await response.text();
+        let errorMsg = "抽取失敗";
+        try {
+          const errorData = JSON.parse(errorText);
+          errorMsg = errorData.detail || errorMsg;
+        } catch {
+          errorMsg = errorText || errorMsg;
+        }
+        throw new Error(errorMsg);
       }
       const data = await response.json();
       const nextBlocks = (data.blocks || []).map((block, idx) => {
@@ -531,14 +589,21 @@ function App() {
   };
 
   const handleSaveLlm = () => {
-    const payload = {
+    const stored = readLlmSettings();
+    const next = {
+      ...stored,
       provider: llmProvider,
-      apiKey: llmApiKey,
-      baseUrl: llmBaseUrl,
-      model: llmModel
+      providers: {
+        ...stored.providers,
+        [llmProvider]: {
+          apiKey: llmApiKey,
+          baseUrl: llmBaseUrl,
+          model: llmModel
+        }
+      }
     };
-    window.localStorage.setItem("llmSettings", JSON.stringify(payload));
-    setLlmStatus("已保存設定");
+    window.localStorage.setItem("llmSettings", JSON.stringify(next));
+    setLlmStatus("?????");
     setLlmOpen(false);
   };
 
@@ -641,15 +706,23 @@ function App() {
                 ? { ...block, apply: false }
                 : block
             )
-          : blocks;
+          : mode === "translated"
+            ? blocks.map((block) => ({
+                ...block,
+                translated_text: block.translated_text || block.source_text || ""
+              }))
+            : blocks;
       formData.append("blocks", JSON.stringify(applyBlocks));
       formData.append("mode", mode);
-      if (mode === "correction") {
-        formData.append("fill_color", fillColor);
-        formData.append("text_color", textColor);
-        formData.append("line_color", lineColor);
-        formData.append("line_dash", lineDash);
-      }
+        if (mode === "correction") {
+          formData.append("fill_color", fillColor);
+          formData.append("text_color", textColor);
+          formData.append("line_color", lineColor);
+          formData.append("line_dash", lineDash);
+        }
+        if (mode === "bilingual") {
+          formData.append("bilingual_layout", bilingualLayout);
+        }
       const response = await fetch(`${API_BASE}/api/pptx/apply`, {
         method: "POST",
         body: formData
@@ -672,62 +745,6 @@ function App() {
     } finally {
       setBusy(false);
     }
-  };
-
-  const handleExportJson = () => {
-    if (blocks.length === 0) {
-      setStatus("沒有可匯出的區塊");
-      return;
-    }
-    const payload = JSON.stringify(blocks, null, 2);
-    const blob = new Blob([payload], { type: "application/json" });
-    const url = URL.createObjectURL(blob);
-    const anchor = document.createElement("a");
-    anchor.href = url;
-    anchor.download = "blocks.json";
-    document.body.appendChild(anchor);
-    anchor.click();
-    anchor.remove();
-    URL.revokeObjectURL(url);
-    setStatus("已匯出 blocks.json");
-  };
-
-  const handleImportClick = () => {
-    jsonInputRef.current?.click();
-  };
-
-  const handleImportJson = (event) => {
-    const inputFile = event.target.files?.[0];
-    if (!inputFile) {
-      return;
-    }
-    const reader = new FileReader();
-    reader.onload = () => {
-      try {
-        const parsed = JSON.parse(reader.result);
-        if (!Array.isArray(parsed)) {
-          throw new Error("invalid");
-        }
-        const nextBlocks = parsed.map((block, idx) => {
-          const translatedText = (block.translated_text || "").trim();
-          const outputMode = block.output_mode || (translatedText ? "translated" : "source");
-          const uid = buildBlockUid(block, idx);
-          return {
-            ...block,
-            _uid: uid,
-            client_id: block.client_id || uid,
-            selected: block.selected !== false,
-            output_mode: outputMode
-          };
-        });
-        setBlocks(nextBlocks);
-        setStatus(`已匯入 ${nextBlocks.length} 筆`);
-      } catch (error) {
-        setStatus("JSON 格式錯誤，無法匯入");
-      }
-    };
-    reader.readAsText(inputFile);
-    event.target.value = "";
   };
 
   const handleBlockChange = (index, value) => {
@@ -880,10 +897,31 @@ function App() {
               onChange={(event) => setMode(event.target.value)}
             >
               <option value="bilingual">雙語輸出</option>
+              <option value="translated">翻譯檔案</option>
               <option value="correction">校正</option>
             </select>
             <p className="field-hint">{modeDescription}</p>
           </div>
+          {mode === "bilingual" ? (
+            <div className="form-group">
+              <label className="field-label" htmlFor="bilingual-layout">
+                雙語輸出方式
+              </label>
+              <select
+                id="bilingual-layout"
+                className="select-input"
+                value={bilingualLayout}
+                onChange={(event) => setBilingualLayout(event.target.value)}
+              >
+                <option value="inline">原文 + 譯文同框</option>
+                <option value="auto">自動排版</option>
+                <option value="new_slide">新增譯文的 slide</option>
+              </select>
+              <p className="field-hint">
+                自動排版會嘗試縮字與分段，必要時拆成多個文字框。
+              </p>
+            </div>
+          ) : null}
 
           <div className="form-group">
             <label className="field-label">語言設定</label>
@@ -975,22 +1013,6 @@ function App() {
             >
               套用並輸出
             </button>
-          </div>
-
-          <div className="action-row">
-            <button className="btn" type="button" onClick={handleExportJson} disabled={busy}>
-              匯出 JSON
-            </button>
-            <button className="btn ghost" type="button" onClick={handleImportClick} disabled={busy}>
-              匯入 JSON
-            </button>
-            <input
-              ref={jsonInputRef}
-              className="hidden-input"
-              type="file"
-              accept="application/json"
-              onChange={handleImportJson}
-            />
           </div>
 
           <div className="flow-panel">
@@ -1309,6 +1331,21 @@ function LlmModal({
   setLineDash
 }) {
   const { modalRef, position, onMouseDown } = useDraggableModal(open);
+  const [customModel, setCustomModel] = useState("");
+  const modelOptions = useMemo(() => {
+    const options = [...llmModels];
+    if (llmModel && !options.includes(llmModel)) {
+      options.unshift(llmModel);
+    }
+    return options;
+  }, [llmModels, llmModel]);
+
+  useEffect(() => {
+    if (!open) {
+      return;
+    }
+    setCustomModel(llmModel || "");
+  }, [open, llmModel]);
   if (!open) {
     return null;
   }
@@ -1350,7 +1387,19 @@ function LlmModal({
         </div>
         <div className="modal-body">
           {tab === "llm" ? (
-            <>
+            <form
+              className="form-stack"
+              onSubmit={(event) => event.preventDefault()}
+              autoComplete="on"
+            >
+              <input
+                className="visually-hidden"
+                type="text"
+                name="username"
+                autoComplete="username"
+                tabIndex={-1}
+                aria-hidden="true"
+              />
               <div className="form-group">
                 <label className="field-label">供應商</label>
                 <select
@@ -1371,10 +1420,12 @@ function LlmModal({
                   <label className="field-label">API Key</label>
                   <input
                     className="select-input"
-                    type="password"
+                    type="text"
                     value={llmApiKey}
                     onChange={(event) => setLlmApiKey(event.target.value)}
                     placeholder="輸入 API Key"
+                    autoComplete="off"
+                    name="llm-api-key"
                   />
                 </div>
               )}
@@ -1391,17 +1442,17 @@ function LlmModal({
               </div>
 
               <div className="form-group">
-                <label className="field-label">模型</label>
+                <label className="field-label">??</label>
                 <div className="inline-row">
                   <select
                     className="select-input"
                     value={llmModel}
                     onChange={(event) => setLlmModel(event.target.value)}
                   >
-                    {llmModels.length === 0 ? (
-                      <option value="">尚未偵測</option>
+                    {modelOptions.length === 0 ? (
+                      <option value="">????</option>
                     ) : (
-                      llmModels.map((model) => (
+                      modelOptions.map((model) => (
                         <option key={model} value={model}>
                           {model}
                         </option>
@@ -1409,12 +1460,33 @@ function LlmModal({
                     )}
                   </select>
                   <button className="btn ghost" type="button" onClick={onDetect}>
-                    偵測模型
+                    ????
                   </button>
                 </div>
-                <p className="field-hint">{llmStatus || "可手動選擇模型"}</p>
+                <div className="inline-row">
+                  <input
+                    className="select-input"
+                    type="text"
+                    value={customModel}
+                    onChange={(event) => setCustomModel(event.target.value)}
+                    placeholder="????????"
+                  />
+                  <button
+                    className="btn ghost"
+                    type="button"
+                    onClick={() => {
+                      const value = customModel.trim();
+                      if (value) {
+                        setLlmModel(value);
+                      }
+                    }}
+                  >
+                    ??
+                  </button>
+                </div>
+                <p className="field-hint">{llmStatus || "????????????"}</p>
               </div>
-            </>
+            </form>
           ) : (
             <>
               <div className="color-grid">
@@ -1532,6 +1604,21 @@ function ManageModal({
     `${item.source_lang || ""}|${item.target_lang || ""}|${item.source_text || ""}`;
 
   const { modalRef, position, onMouseDown } = useDraggableModal(open);
+  const [customModel, setCustomModel] = useState("");
+  const modelOptions = useMemo(() => {
+    const options = [...llmModels];
+    if (llmModel && !options.includes(llmModel)) {
+      options.unshift(llmModel);
+    }
+    return options;
+  }, [llmModels, llmModel]);
+
+  useEffect(() => {
+    if (!open) {
+      return;
+    }
+    setCustomModel(llmModel || "");
+  }, [open, llmModel]);
   if (!open) {
     return null;
   }

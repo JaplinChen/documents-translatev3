@@ -9,7 +9,7 @@ REM ========================================
 set "PROJECT_ROOT=%~dp0"
 set "BACKEND_DIR=%PROJECT_ROOT%backend"
 set "FRONTEND_DIR=%PROJECT_ROOT%frontend"
-set "BACKEND_PORT=8000"
+set "BACKEND_PORT=8090"
 set "FRONTEND_PORT=5193"
 
 :MAIN_MENU

@@ -1,85 +1,81 @@
-# PPTX Translation – MVP Specification (Internal Tool)
+﻿# PPTX 翻譯 MVP 規格（內部工具）
 
-## 1. Goal
-Build an internal tool to translate PPTX files while preserving layout as much as possible.
+## 1. 目標
+建立內部工具，用於翻譯 PPTX，並盡可能保留版面配置。
 
-Initial focus:
-- Existing PPTX input
-- Text extraction → translation → apply back to the same PPTX
-- Internal usage only
+初期重點：
+- 既有 PPTX 輸入
+- 文字抽取 → 翻譯 → 套回同一份 PPTX
+- 僅供內部使用
 
-## 2. In Scope (MVP)
+## 2. 範圍內（MVP）
 
-### 2.1 Supported Text Types
-- Text boxes (including placeholders)
-- Table cell text
-- Speaker notes (optional but recommended)
+### 2.1 支援文字類型
+- Text box（包含 placeholder）
+- Table cell 文字
+- Speaker notes（建議支援）
 
-### 2.2 Translation Modes
-- Direct translation:
-  - Replace original text with translated text
-- Bilingual:
-  - Output format:
-    source_text
-    (blank line)
-    translated_text
+### 2.2 翻譯模式
+- 直接翻譯：以翻譯文字取代原文
+- 雙語：輸出格式
+  - source_text
+  - （空白行）
+  - translated_text
 
-### 2.3 Correction Style (MVP)
-- Color highlight only
-  - Entire translated text may use a different font color
-  - Fine-grained diff is out of scope for MVP
+### 2.3 校正樣式（MVP）
+- 僅支援色彩標示
+- 可對整段翻譯文字套用不同字色
+- 逐句差異標示不在 MVP 範圍
 
-### 2.4 Language Handling
-- Auto-detect source language
-- User specifies target language (e.g. en, zh-TW, ja)
+### 2.4 語言處理
+- 自動偵測來源語言
+- 使用者指定目標語言（例如 en、zh-TW、ja）
 
-## 3. Explicitly Out of Scope (MVP)
+## 3. 明確不在範圍（MVP）
 - SmartArt
-- Charts (including embedded Excel)
-- WordArt / artistic text
-- Text inside images (OCR)
-- Animations and transitions
-- Public access, billing, multi-tenant support
+- 圖表（含嵌入式 Excel）
+- WordArt / Artistic text
+- 圖片中的文字（OCR）
+- 動畫與轉場
+- 公開對外、計費、多租戶
 
-## 4. Data Model (Extraction Result)
+## 4. 資料模型（抽取結果）
 
-Each extracted block MUST include:
+每個抽取區塊必須包含：
+- slide_index：整數（0-based）
+- shape_id：整數（python-pptx 的 shape.shape_id）
+- block_type：textbox | table_cell | notes
+- source_text：字串
+- translated_text：字串（翻譯前為空字串）
+- mode：direct | bilingual
 
-- slide_index: integer (0-based)
-- shape_id: integer (shape.shape_id from python-pptx)
-- block_type: textbox | table_cell | notes
-- source_text: string
-- translated_text: string (empty before translation)
-- mode: direct | bilingual
+文字格式規則：
+- 保留換行符號為 `\n`
+- 忽略空白或只含空白的文字區塊
 
-Text formatting rules:
-- Preserve line breaks as '\n'
-- Ignore empty or whitespace-only text blocks
+## 5. 處理流程
+1. 使用者上傳 PPTX
+2. 系統抽取文字區塊
+3. 區塊送入 LLM 進行翻譯
+4. LLM 回傳符合 `translation_contract_pptx.json` 的 JSON
+5. 系統將翻譯內容套回 PPTX
+6. 產出輸出 PPTX
 
-## 5. Processing Flow
+## 6. 品質要求
+- 投影片數量必須維持不變
+- 形狀不可被重新定位或縮放
+- 僅替換原本形狀內的文字內容
+- 遇到不支援的形狀需安全略過，避免崩潰
 
-1. User uploads PPTX
-2. System extracts text blocks
-3. Blocks are sent to LLM for translation
-4. LLM returns JSON following translation_contract_pptx.json
-5. System applies translated text back to the PPTX
-6. Output PPTX is generated
+## 7. 已知限制（必須文件化）
+- 文字格式（混合字型、runs）可能被簡化
+- 色彩標示可能套用於整段文字而非逐句
+- 部分複雜版面可能略有重新流動
+- 雙語模式下，翻譯色彩可能套用於整個文字區塊
+- 校正樣式以形狀或表格為單位，python-pptx 可能無法精準到每一格或每一段
 
-## 6. Quality Requirements
-- Slides count must remain unchanged
-- Shapes must not be repositioned or resized
-- Text content must be replaced only inside the original shape
-- No crashes on unsupported shapes (skip safely)
-
-## 7. Known Limitations (Must Be Documented)
-- Formatting (mixed fonts, runs) may be simplified
-- Color highlighting may apply to entire text instead of per-sentence
-- Some complex layouts may slightly reflow text
-- When applying bilingual text, translated color may apply to the entire text block if per-paragraph coloring is not supported by the shape/runs.
-- Correction styling applies at the shape or table level; per-cell borders and per-run background fills may not be available in python-pptx.
-
-## 8. Definition of Done (for each work package)
-- Code compiles and runs locally
-- At least one automated test
-- A runnable example command is documented
-- Limitations are clearly stated in code comments or docs
+## 8. 完成定義（每個工作包）
+- 程式碼可在本地執行
+- 至少一個自動化測試
+- 文件中提供可執行的範例指令
+- 限制需在文件或註解中明確說明

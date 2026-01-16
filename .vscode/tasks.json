@@ -1,0 +1,23 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "AI: Route + Fix (Web+Python, zoned, Windows native)",
+      "type": "shell",
+      "command": "python",
+      "args": [
+        "codex_router.py",
+        "${input:aiTask}"
+      ],
+      "problemMatcher": []
+    }
+  ],
+  "inputs": [
+    {
+      "id": "aiTask",
+      "type": "promptString",
+      "description": "Describe the task (fix/implement/refactor/migrate/optimize...)",
+      "default": "Fix: ..."
+    }
+  ]
+}

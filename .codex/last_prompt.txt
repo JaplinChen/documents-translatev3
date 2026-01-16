@@ -1,0 +1,1 @@
+fix 使用 Gemini 翻譯的錯誤。[DOM] Password field is not contained in a form: (More info: https://goo.gl/9p2vKq) <input type=​password placeholder=​輸入 API Key value=​AIzaSyCL8-MTOo261mucafXZitGpO40--UusjJg>​ App.jsx:582 POST http://localhost:8000/api/pptx/translate 400 (Bad Request)

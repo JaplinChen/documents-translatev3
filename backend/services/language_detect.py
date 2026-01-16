@@ -53,10 +53,22 @@ def _detect_zh_variant(text: str) -> str:
 
 
 def detect_language(text: str) -> str | None:
+    """偵測文字的語言。
+
+    判斷順序：
+    1. 越南語專屬字元（需至少 2 個特徵字元避免誤判）
+    2. CJK 字元（中文/日文/韓文）
+    3. langdetect 函式庫判斷
+    """
     if not text or not text.strip():
         return None
-    if _VI_DIACRITIC_RE.search(text.lower()):
+
+    # 越南語專屬字元：需要至少 2 個特徵字元，避免將 café（法語）誤判為越南語
+    # 越南語特有字母：đ, ơ, ư, ă, ê, ô, â 以及帶聲調的組合
+    vi_matches = _VI_DIACRITIC_RE.findall(text)
+    if len(vi_matches) >= 2:
         return "vi"
+
     if _CJK_RE.search(text):
         return _detect_zh_variant(text)
     try:
@@ -99,3 +111,11 @@ def detect_document_languages(blocks: Iterable[dict]) -> dict:
             primary = first_lang
             secondary = second_lang
     return {"primary": primary, "secondary": secondary, "counts": dict(counts)}
+
+
+def resolve_source_language(blocks: Iterable[dict], source_language: str | None) -> str | None:
+    if source_language and source_language != "auto":
+        return source_language
+    summary = detect_document_languages(blocks)
+    primary = summary.get("primary")
+    return primary or None

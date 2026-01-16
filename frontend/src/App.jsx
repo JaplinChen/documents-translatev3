@@ -1,4 +1,5 @@
 import React, { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import SettingsModal from "./components/SettingsModal";
 
 const API_BASE = import.meta.env.VITE_API_BASE || "http://localhost:8000";
 
@@ -81,6 +82,7 @@ function App() {
   const [llmApiKey, setLlmApiKey] = useState("");
   const [llmBaseUrl, setLlmBaseUrl] = useState("");
   const [llmModel, setLlmModel] = useState("");
+  const [llmFastMode, setLlmFastMode] = useState(false);
   const [llmModels, setLlmModels] = useState([]);
   const [llmStatus, setLlmStatus] = useState("");
   const [llmTab, setLlmTab] = useState("llm");
@@ -112,7 +114,7 @@ function App() {
       return "中文校正會套用黃色底、紅字與紫色虛線框。";
     }
     if (mode === "translated") {
-      return "翻譯檔案會以譯文覆蓋原文，不保留原文內容。";
+      return "翻譯文件會以譯文覆蓋原文，不保留原文內容。";
     }
     return "雙語模式會用原文與譯文合併輸出。";
   }, [mode]);
@@ -133,7 +135,6 @@ function App() {
   const providerOptions = useMemo(
     () => [
       { code: "chatgpt", label: "ChatGPT (OpenAI)" },
-      { code: "gpt-4o", label: "GPT-4o (支援圖片)" },
       { code: "gemini", label: "Gemini" },
       { code: "ollama", label: "Ollama" }
     ],
@@ -159,6 +160,26 @@ function App() {
   };
 
   const normalizeText = (text) => (text || "").replace(/\s+/g, "").trim();
+  const isConnectionRefused = (message) =>
+    /WinError 10061|ECONNREFUSED|Connection refused|Errno 111/i.test(message || "");
+  const formatModelDetectHint = (message) => {
+    if (isConnectionRefused(message) || (message || "").includes("Ollama")) {
+      return "請檢查：\n1. Ollama 服務是否啟動\n2. Base URL 是否正確\n3. 模型是否已下載";
+    }
+    return "請檢查：\n1. API Key 是否正確\n2. 模型名稱是否存在\n3. 網路連線是否正常";
+  };
+  const readErrorDetail = async (response, fallback) => {
+    const errorText = await response.text();
+    if (!errorText) {
+      return fallback;
+    }
+    try {
+      const errorData = JSON.parse(errorText);
+      return errorData.detail || errorText;
+    } catch {
+      return errorText;
+    }
+  };
   const buildBlockKey = (block) =>
     [block.slide_index ?? "", block.shape_id ?? "", block.block_type ?? ""].join("|");
   const buildBlockUid = (block, fallbackIndex) =>
@@ -187,9 +208,9 @@ function App() {
     const empty = {
       provider: "chatgpt",
       providers: {
-        chatgpt: { apiKey: "", baseUrl: "", model: "" },
-        gemini: { apiKey: "", baseUrl: "", model: "" },
-        ollama: { apiKey: "", baseUrl: "", model: "" }
+        chatgpt: { apiKey: "", baseUrl: "", model: "", fastMode: false },
+        gemini: { apiKey: "", baseUrl: "", model: "", fastMode: false },
+        ollama: { apiKey: "", baseUrl: "", model: "", fastMode: false }
       }
     };
     const saved = window.localStorage.getItem("llmSettings");
@@ -216,7 +237,8 @@ function App() {
           [provider]: {
             apiKey: parsed?.apiKey || "",
             baseUrl: parsed?.baseUrl || "",
-            model: parsed?.model || ""
+            model: parsed?.model || "",
+            fastMode: parsed?.fastMode || false
           }
         }
       };
@@ -233,6 +255,7 @@ function App() {
     setLlmApiKey(providerSettings.apiKey || "");
     setLlmBaseUrl(providerSettings.baseUrl || "");
     setLlmModel(providerSettings.model || "");
+    setLlmFastMode(Boolean(providerSettings.fastMode));
   }, []);
 
   useEffect(() => {
@@ -255,7 +278,7 @@ function App() {
     if (!llmOpen) {
       return;
     }
-    if (llmProvider === "ollama" || llmApiKey) {
+    if (llmProvider === "ollama") {
       handleDetectModels();
     }
   }, [llmOpen, llmProvider, llmApiKey]);
@@ -266,6 +289,7 @@ function App() {
     setLlmApiKey(providerSettings.apiKey || "");
     setLlmBaseUrl(providerSettings.baseUrl || "");
     setLlmModel(providerSettings.model || "");
+    setLlmFastMode(Boolean(providerSettings.fastMode));
     setLlmModels([]);
     setLlmStatus("");
   }, [llmProvider]);
@@ -374,6 +398,7 @@ function App() {
       return;
     }
     setBusy(true);
+    let mockWarning = "";
     setStatus("抽取中...");
     try {
       const formData = new FormData();
@@ -383,7 +408,7 @@ function App() {
         body: formData
       });
       if (!response.ok) {
-        const errorText = await response.text();
+        const errorText = await readErrorDetail(response, "????");
         let errorMsg = "抽取失敗";
         try {
           const errorData = JSON.parse(errorText);
@@ -418,32 +443,47 @@ function App() {
     }
   };
 
+  const inferFallbackLanguage = (primaryLang) => {
+    if (!primaryLang) {
+      return "zh-TW";
+    }
+    if (primaryLang.startsWith("zh")) {
+      return "vi";
+    }
+    return "zh-TW";
+  };
+
   const applyDetectedLanguages = (summary) => {
     const primary = summary?.primary || "";
     const secondary = summary?.secondary || "";
-    const fallbackSecondary = targetLang || "zh-TW";
+    const fallbackSecondary = inferFallbackLanguage(primary);
+    const supportedCodes = new Set(languageOptions.map((opt) => opt.code));
 
     if (!sourceLocked && primary) {
       setSourceLang(primary);
     }
     if (!secondaryLocked) {
-      if (secondary) {
+      if (secondary && supportedCodes.has(secondary)) {
         setSecondaryLang(secondary);
       } else if (!secondaryLang) {
         setSecondaryLang(fallbackSecondary);
       }
     }
-    if (!targetLocked && !targetLang) {
-      if (mode === "correction" && secondary) {
-        setTargetLang(secondary);
-      } else if (primary) {
-        if (secondary) {
+    if (!targetLocked) {
+      if (mode === "correction") {
+        if (secondary && supportedCodes.has(secondary)) {
           setTargetLang(secondary);
-        } else if (primary.startsWith("zh")) {
-          setTargetLang("vi");
+        } else if (primary && supportedCodes.has(primary)) {
+          setTargetLang(primary);
         } else {
           setTargetLang("zh-TW");
         }
+      } else if (secondary && supportedCodes.has(secondary)) {
+        setTargetLang(secondary);
+      } else if (primary) {
+        setTargetLang(inferFallbackLanguage(primary));
+      } else {
+        setTargetLang("zh-TW");
       }
     }
   };
@@ -486,76 +526,134 @@ function App() {
       return;
     }
     setBusy(true);
+    let mockWarning = "";
     const providerLabel =
       providerOptions.find((option) => option.code === llmProvider)?.label || llmProvider;
-    setStatus(`翻譯中...（${providerLabel} / ${llmModel || "未選擇"}）`);
+    const totalCount = blocks.length;
+    const chunkSize =
+      llmProvider === "ollama" ? (llmFastMode ? 3 : 6) : totalCount;
+    setStatus(`翻譯中...（0/${totalCount}）`);
     try {
-      const formData = new FormData();
-      formData.append("blocks", JSON.stringify(blocks));
-      formData.append("source_language", sourceLang || "auto");
-      formData.append("secondary_language", secondaryLang || "auto");
-      formData.append("target_language", targetLang);
-      formData.append("mode", mode);
-      formData.append("use_tm", useTm ? "true" : "false");
-      formData.append("provider", llmProvider);
-      if (llmModel) {
-        formData.append("model", llmModel);
-      }
-      if (llmApiKey) {
-        formData.append("api_key", llmApiKey);
-      }
-      if (llmBaseUrl) {
-        formData.append("base_url", llmBaseUrl);
-      }
-      const response = await fetch(`${API_BASE}/api/pptx/translate`, {
-        method: "POST",
-        body: formData
-      });
-      if (!response.ok) {
-        const errorText = await response.text();
-        throw new Error(errorText || "翻譯失敗");
-      }
-      const data = await response.json();
-      const translated = data.blocks || [];
-      if (!translated.length) {
-        setStatus("翻譯回傳空結果，請檢查 LLM 設定或 API 配額");
-        return;
-      }
-      const translatedMap = new Map();
-      translated.forEach((item) => {
-        const key = item.client_id || buildBlockKey(item);
-        if (!translatedMap.has(key)) {
-          translatedMap.set(key, []);
+      let translatedCount = 0;
+      const updatedBlocks = blocks.map((block) => ({
+        ...block,
+        isTranslating: false
+      }));
+      setBlocks(updatedBlocks);
+
+      for (let start = 0; start < blocks.length; start += chunkSize) {
+        const chunkIndices = Array.from(
+          { length: Math.min(chunkSize, blocks.length - start) },
+          (_, idx) => start + idx
+        );
+        chunkIndices.forEach((blockIndex) => {
+          updatedBlocks[blockIndex] = {
+            ...updatedBlocks[blockIndex],
+            isTranslating: true
+          };
+        });
+        setBlocks([...updatedBlocks]);
+
+        const chunkBlocks = chunkIndices.map((index) => updatedBlocks[index]);
+        setStatus(
+          `翻譯中...（${translatedCount}/${totalCount}）${providerLabel ? ` ${providerLabel}` : ""}`
+        );
+
+        const formData = new FormData();
+        formData.append("blocks", JSON.stringify(chunkBlocks));
+        formData.append("source_language", sourceLang || "auto");
+        formData.append("secondary_language", secondaryLang || "auto");
+        formData.append("target_language", targetLang);
+        formData.append("mode", mode);
+        formData.append("use_tm", useTm ? "true" : "false");
+        formData.append("provider", llmProvider);
+        if (llmProvider === "ollama" && llmFastMode) {
+          formData.append("ollama_fast_mode", "true");
         }
-        translatedMap.get(key).push(item);
-      });
-      const merged = blocks.map((block, index) => {
-        const key = block.client_id || buildBlockKey(block);
-        const bucket = translatedMap.get(key);
-        const matched = bucket && bucket.length ? bucket.shift() : translated[index];
-        const translatedText = matched?.translated_text || block.translated_text || "";
-        const sourceText = (block.source_text || "").trim();
-        const normalizedTranslated = translatedText.trim();
-        const outputMode =
-          block.output_mode ||
-          (!normalizedTranslated || normalizedTranslated === sourceText ? "source" : "translated");
-        return {
-          ...block,
-          client_id: block.client_id || matched?.client_id || buildBlockUid(block, index),
-          translated_text: translatedText,
-          output_mode: outputMode
-        };
-      });
-      setBlocks(merged);
-      const changed = merged.some(
+        if (llmModel) {
+          formData.append("model", llmModel);
+        }
+        if (llmApiKey) {
+          formData.append("api_key", llmApiKey);
+        }
+        if (llmBaseUrl) {
+          formData.append("base_url", llmBaseUrl);
+        }
+
+        const response = await fetch(`${API_BASE}/api/pptx/translate`, {
+          method: "POST",
+          body: formData
+        });
+        if (!response.ok) {
+          const errorText = await readErrorDetail(response, "????");
+          throw new Error(errorText || "????");
+        }
+        const data = await response.json();
+        if (data.warning) {
+          mockWarning = data.warning;
+        }
+        const translated = data.blocks || [];
+        if (!translated.length) {
+          throw new Error("翻譯回傳空結果，請檢查 LLM 設定或 API 配額");
+        }
+
+        const translatedMap = new Map();
+        translated.forEach((item) => {
+          const key = item.client_id || buildBlockKey(item);
+          if (!translatedMap.has(key)) {
+            translatedMap.set(key, []);
+          }
+          translatedMap.get(key).push(item);
+        });
+
+        const updatedAt = new Date().toLocaleTimeString("zh-TW", {
+          hour12: false
+        });
+        chunkIndices.forEach((blockIndex, localIndex) => {
+          const block = updatedBlocks[blockIndex];
+          const key = block.client_id || buildBlockKey(block);
+          const bucket = translatedMap.get(key);
+          const matched = bucket && bucket.length ? bucket.shift() : translated[localIndex];
+          if (!matched) {
+            return;
+          }
+          const translatedText = matched.translated_text || block.translated_text || "";
+          const sourceText = (block.source_text || "").trim();
+          const normalizedTranslated = translatedText.trim();
+          const outputMode =
+            block.output_mode ||
+            (!normalizedTranslated || normalizedTranslated === sourceText ? "source" : "translated");
+          updatedBlocks[blockIndex] = {
+            ...block,
+            client_id: block.client_id || matched.client_id || buildBlockUid(block, blockIndex),
+            translated_text: translatedText,
+            output_mode: outputMode,
+            isTranslating: false,
+            updatedAt
+          };
+        });
+
+        translatedCount += chunkBlocks.length;
+        setBlocks([...updatedBlocks]);
+        setStatus(
+          `翻譯中...（${translatedCount}/${totalCount}）${providerLabel ? ` ${providerLabel}` : ""}`
+        );
+      }
+
+      setBlocks(updatedBlocks);
+      const changed = updatedBlocks.some(
         (block, idx) => block.translated_text !== blocks[idx]?.translated_text
       );
-      setStatus(changed ? "翻譯完成" : "翻譯回傳無變更，請確認語言與模型");
+      if (mockWarning) {
+        setStatus(`?????${mockWarning}?`);
+      } else {
+        setStatus(changed ? "翻譯完成" : "翻譯回傳無變更，請確認語言與模型");
+      }
     } catch (error) {
       const errorMsg = error?.message || "";
       if (errorMsg.toLowerCase().includes("image") || errorMsg.includes("圖片")) {
         setStatus(`翻譯失敗：${errorMsg}`);
-        alert(`翻譯失敗：\n\n${errorMsg}\n\n解決方案：\n請在 LLM 設定中選擇「GPT-4o (支援圖片)」或「Gemini」等支援多模態的模型。`);
+        alert(`翻譯失敗：\n\n${errorMsg}\n\n解決方案：\n請改用支援圖片的模型（例如 Gemini）。`);
       } else {
         setStatus(errorMsg ? `翻譯失敗：${errorMsg}` : "翻譯失敗，請稍後再試");
       }
@@ -565,6 +663,10 @@ function App() {
   };
 
   const handleDetectModels = async () => {
+    if (llmProvider !== "ollama" && !llmApiKey) {
+      setLlmStatus("請先輸入 API Key");
+      return;
+    }
     setLlmStatus("模型偵測中...");
     try {
       const formData = new FormData();
@@ -580,17 +682,28 @@ function App() {
         body: formData
       });
       if (!response.ok) {
-        throw new Error("偵測失敗");
+        const errorText = await response.text();
+        throw new Error(errorText || "????");
       }
       const data = await response.json();
       const models = data.models || [];
       setLlmModels(models);
-      if (models.length && (!llmModel || !models.includes(llmModel))) {
-        setLlmModel(models[0]);
+
+      // 如果當前模型不在清單中，選擇一個有效的預設模型
+      if (models.length) {
+        const validModel = models.includes(llmModel) ? llmModel : models[0];
+        setLlmModel(validModel);
+
+        // 如果用戶輸入的模型無效，給出提示
+        if (llmModel && !models.includes(llmModel)) {
+          alert(`模型 "${llmModel}" 不存在或無效。\n已自動切換為 "${validModel}"。\n\n有效的模型：\n${models.slice(0, 10).join("\n")}${models.length > 10 ? "\n..." : ""}`);
+        }
       }
       setLlmStatus(models.length ? `已偵測 ${models.length} 個模型` : "未偵測到模型");
     } catch (error) {
+      const message = error?.message || "";
       setLlmStatus("模型偵測失敗");
+      alert(`模型偵測失敗：${message}\n\n${formatModelDetectHint(message)}`);
     }
   };
 
@@ -604,12 +717,13 @@ function App() {
         [llmProvider]: {
           apiKey: llmApiKey,
           baseUrl: llmBaseUrl,
-          model: llmModel
+          model: llmModel,
+          fastMode: llmFastMode
         }
       }
     };
     window.localStorage.setItem("llmSettings", JSON.stringify(next));
-    setLlmStatus("?????");
+    setLlmStatus("已儲存設定");
     setLlmOpen(false);
   };
 
@@ -673,6 +787,15 @@ function App() {
     await loadMemory();
   };
 
+  const clearMemory = async () => {
+    const ok = window.confirm("確定要清除全部翻譯記憶嗎？此動作無法復原。");
+    if (!ok) {
+      return;
+    }
+    await fetch(`${API_BASE}/api/tm/memory/clear`, { method: "DELETE" });
+    await loadMemory();
+  };
+
   const convertMemoryToGlossary = async (item) => {
     if (!item?.source_text || !item?.target_text) {
       return;
@@ -701,6 +824,7 @@ function App() {
       return;
     }
     setBusy(true);
+    let mockWarning = "";
     setStatus("套用中...");
     try {
       const formData = new FormData();
@@ -708,27 +832,27 @@ function App() {
       const applyBlocks =
         mode === "correction"
           ? blocks.map((block) =>
-              resolveOutputMode(block) === "source"
-                ? { ...block, apply: false }
-                : block
-            )
+            resolveOutputMode(block) === "source"
+              ? { ...block, apply: false }
+              : block
+          )
           : mode === "translated"
             ? blocks.map((block) => ({
-                ...block,
-                translated_text: block.translated_text || block.source_text || ""
-              }))
+              ...block,
+              translated_text: block.translated_text || block.source_text || ""
+            }))
             : blocks;
       formData.append("blocks", JSON.stringify(applyBlocks));
       formData.append("mode", mode);
-        if (mode === "correction") {
-          formData.append("fill_color", fillColor);
-          formData.append("text_color", textColor);
-          formData.append("line_color", lineColor);
-          formData.append("line_dash", lineDash);
-        }
-        if (mode === "bilingual") {
-          formData.append("bilingual_layout", bilingualLayout);
-        }
+      if (mode === "correction") {
+        formData.append("fill_color", fillColor);
+        formData.append("text_color", textColor);
+        formData.append("line_color", lineColor);
+        formData.append("line_dash", lineDash);
+      }
+      if (mode === "bilingual") {
+        formData.append("bilingual_layout", bilingualLayout);
+      }
       const response = await fetch(`${API_BASE}/api/pptx/apply`, {
         method: "POST",
         body: formData
@@ -903,7 +1027,7 @@ function App() {
               onChange={(event) => setMode(event.target.value)}
             >
               <option value="bilingual">雙語輸出</option>
-              <option value="translated">翻譯檔案</option>
+              <option value="translated">翻譯文件</option>
               <option value="correction">校正</option>
             </select>
             <p className="field-hint">{modeDescription}</p>
@@ -949,23 +1073,25 @@ function App() {
                   ))}
                 </select>
               </div>
-              <div className="language-item">
-                <span>第二語言</span>
-                <select
-                  className="select-input"
-                  value={secondaryLang || "auto"}
-                  onChange={(event) => {
-                    setSecondaryLang(event.target.value);
-                    setSecondaryLocked(true);
-                  }}
-                >
-                  {languageOptions.map((option) => (
-                    <option key={option.code} value={option.code}>
-                      {option.label}
-                    </option>
-                  ))}
-                </select>
-              </div>
+              {mode !== "translated" ? (
+                <div className="language-item">
+                  <span>第二語言</span>
+                  <select
+                    className="select-input"
+                    value={secondaryLang || "auto"}
+                    onChange={(event) => {
+                      setSecondaryLang(event.target.value);
+                      setSecondaryLocked(true);
+                    }}
+                  >
+                    {languageOptions.map((option) => (
+                      <option key={option.code} value={option.code}>
+                        {option.label}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              ) : null}
               <div className="language-item">
                 <span>{mode === "correction" ? "校正語言" : "翻譯語言"}</span>
                 <select
@@ -995,7 +1121,9 @@ function App() {
               使用翻譯記憶（TM）
             </label>
             <p className="field-hint">
-              已選擇檔案會自動偵測來源與第二語言，可手動覆寫。
+              {mode === "translated"
+                ? "已選擇檔案會自動偵測來源語言，可手動覆寫。"
+                : "已選擇檔案會自動偵測來源與第二語言，可手動覆寫。"}
             </p>
           </div>
 
@@ -1144,6 +1272,11 @@ function App() {
                         <span>Slide {block.slide_index}</span>
                         <span>Shape {block.shape_id}</span>
                         <span className="pill">{block.block_type}</span>
+                        {block.isTranslating ? (
+                          <span className="status-pill is-running">正在翻譯</span>
+                        ) : block.updatedAt ? (
+                          <span className="status-pill">更新 {block.updatedAt}</span>
+                        ) : null}
                       </div>
                       <div className="block-body">
                         <div>
@@ -1176,50 +1309,50 @@ function App() {
                               </label>
                             ) : null}
                           </div>
-                      {mode === "correction" ? (
-                        <div className="correction-stack">
-                          <div className="correction-preview">
-                            {(() => {
-                              const sourceLines = extractLanguageLines(
-                                block.source_text,
-                                sourceLang || "auto"
-                              );
-                              const secondaryLines = extractLanguageLines(
-                                block.source_text,
-                                secondaryLang || "auto"
-                              );
-                              const sourceText = sourceLines.join("\n");
-                              const secondaryText = secondaryLines.join("\n");
-                              const translatedText = block.translated_text || "";
-                              const showTranslation =
-                                normalizeText(translatedText) &&
-                                normalizeText(translatedText) !== normalizeText(secondaryText);
+                          {mode === "correction" ? (
+                            <div className="correction-stack">
+                              <div className="correction-preview">
+                                {(() => {
+                                  const sourceLines = extractLanguageLines(
+                                    block.source_text,
+                                    sourceLang || "auto"
+                                  );
+                                  const secondaryLines = extractLanguageLines(
+                                    block.source_text,
+                                    secondaryLang || "auto"
+                                  );
+                                  const sourceText = sourceLines.join("\n");
+                                  const secondaryText = secondaryLines.join("\n");
+                                  const translatedText = block.translated_text || "";
+                                  const showTranslation =
+                                    normalizeText(translatedText) &&
+                                    normalizeText(translatedText) !== normalizeText(secondaryText);
 
-                              if (!showTranslation) {
-                                return null;
-                              }
-                              return (
-                                <>
-                                  <div className="correction-source">{sourceText}</div>
-                                  <div
-                                    className="correction-editor"
-                                    contentEditable
-                                    role="textbox"
-                                    aria-multiline="true"
-                                    suppressContentEditableWarning
-                                    ref={(node) => {
-                                      editorRefs.current[index] = node;
-                                    }}
-                                    onInput={(event) => handleEditorInput(index, event)}
-                                  >
-                                    {translatedText}
-                                  </div>
-                                </>
-                              );
-                            })()}
-                          </div>
-                        </div>
-                      ) : (
+                                  if (!showTranslation) {
+                                    return null;
+                                  }
+                                  return (
+                                    <>
+                                      <div className="correction-source">{sourceText}</div>
+                                      <div
+                                        className="correction-editor"
+                                        contentEditable
+                                        role="textbox"
+                                        aria-multiline="true"
+                                        suppressContentEditableWarning
+                                        ref={(node) => {
+                                          editorRefs.current[index] = node;
+                                        }}
+                                        onInput={(event) => handleEditorInput(index, event)}
+                                      >
+                                        {translatedText}
+                                      </div>
+                                    </>
+                                  );
+                                })()}
+                              </div>
+                            </div>
+                          ) : (
                             <textarea
                               className="textarea"
                               rows={3}
@@ -1257,12 +1390,11 @@ function App() {
           )}
         </section>
       </main>
-      <LlmModal
+      <SettingsModal
         open={llmOpen}
         onClose={() => setLlmOpen(false)}
         tab={llmTab}
         setTab={setLlmTab}
-        providerOptions={providerOptions}
         llmProvider={llmProvider}
         setLlmProvider={setLlmProvider}
         llmApiKey={llmApiKey}
@@ -1271,6 +1403,8 @@ function App() {
         setLlmBaseUrl={setLlmBaseUrl}
         llmModel={llmModel}
         setLlmModel={setLlmModel}
+        llmFastMode={llmFastMode}
+        setLlmFastMode={setLlmFastMode}
         llmModels={llmModels}
         llmStatus={llmStatus}
         onDetect={handleDetectModels}
@@ -1285,12 +1419,15 @@ function App() {
         setLineColor={setLineColor}
         lineDash={lineDash}
         setLineDash={setLineDash}
+        apiBase={API_BASE}
       />
       <ManageModal
         open={manageOpen}
         onClose={() => setManageOpen(false)}
         tab={manageTab}
         setTab={setManageTab}
+        llmModels={llmModels}
+        llmModel={llmModel}
         languageOptions={languageOptions}
         defaultSourceLang={sourceLang || "vi"}
         defaultTargetLang={targetLang || "zh-TW"}
@@ -1301,261 +1438,9 @@ function App() {
         onDeleteGlossary={deleteGlossary}
         onUpsertMemory={upsertMemory}
         onDeleteMemory={deleteMemory}
+        onClearMemory={clearMemory}
         onConvertToGlossary={convertMemoryToGlossary}
       />
-    </div>
-  );
-}
-
-function LlmModal({
-  open,
-  onClose,
-  tab,
-  setTab,
-  providerOptions,
-  llmProvider,
-  setLlmProvider,
-  llmApiKey,
-  setLlmApiKey,
-  llmBaseUrl,
-  setLlmBaseUrl,
-  llmModel,
-  setLlmModel,
-  llmModels,
-  llmStatus,
-  onDetect,
-  onSave,
-  onSaveCorrection,
-  defaultBaseUrl,
-  fillColor,
-  setFillColor,
-  textColor,
-  setTextColor,
-  lineColor,
-  setLineColor,
-  lineDash,
-  setLineDash
-}) {
-  const { modalRef, position, onMouseDown } = useDraggableModal(open);
-  const [customModel, setCustomModel] = useState("");
-  const modelOptions = useMemo(() => {
-    const options = [...llmModels];
-    if (llmModel && !options.includes(llmModel)) {
-      options.unshift(llmModel);
-    }
-    return options;
-  }, [llmModels, llmModel]);
-
-  useEffect(() => {
-    if (!open) {
-      return;
-    }
-    setCustomModel(llmModel || "");
-  }, [open, llmModel]);
-  if (!open) {
-    return null;
-  }
-
-  return (
-    <div className="modal-backdrop">
-      <div
-        className="modal modal-wide is-draggable"
-        ref={modalRef}
-        style={{ top: position.top, left: position.left }}
-      >
-        <div className="modal-header draggable-handle" onMouseDown={onMouseDown}>
-          <h3>設定</h3>
-          <button
-            className="icon-btn ghost"
-            type="button"
-            onClick={onClose}
-            aria-label="關閉"
-            title="關閉"
-          >
-            ×
-          </button>
-        </div>
-        <div className="modal-tabs">
-          <button
-            className={`tab-btn ${tab === "llm" ? "is-active" : ""}`}
-            type="button"
-            onClick={() => setTab("llm")}
-          >
-            LLM
-          </button>
-          <button
-            className={`tab-btn ${tab === "correction" ? "is-active" : ""}`}
-            type="button"
-            onClick={() => setTab("correction")}
-          >
-            校正
-          </button>
-        </div>
-        <div className="modal-body">
-          {tab === "llm" ? (
-            <form
-              className="form-stack"
-              onSubmit={(event) => event.preventDefault()}
-              autoComplete="on"
-            >
-              <input
-                className="visually-hidden"
-                type="text"
-                name="username"
-                autoComplete="username"
-                tabIndex={-1}
-                aria-hidden="true"
-              />
-              <div className="form-group">
-                <label className="field-label">供應商</label>
-                <select
-                  className="select-input"
-                  value={llmProvider}
-                  onChange={(event) => setLlmProvider(event.target.value)}
-                >
-                  {providerOptions.map((option) => (
-                    <option key={option.code} value={option.code}>
-                      {option.label}
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              {llmProvider !== "ollama" && (
-                <div className="form-group">
-                  <label className="field-label">API Key</label>
-                  <input
-                    className="select-input"
-                    type="text"
-                    value={llmApiKey}
-                    onChange={(event) => setLlmApiKey(event.target.value)}
-                    placeholder="輸入 API Key"
-                    autoComplete="off"
-                    name="llm-api-key"
-                  />
-                </div>
-              )}
-
-              <div className="form-group">
-                <label className="field-label">Base URL</label>
-                <input
-                  className="select-input"
-                  type="text"
-                  value={llmBaseUrl}
-                  onChange={(event) => setLlmBaseUrl(event.target.value)}
-                  placeholder={defaultBaseUrl}
-                />
-              </div>
-
-              <div className="form-group">
-                <label className="field-label">??</label>
-                <div className="inline-row">
-                  <select
-                    className="select-input"
-                    value={llmModel}
-                    onChange={(event) => setLlmModel(event.target.value)}
-                  >
-                    {modelOptions.length === 0 ? (
-                      <option value="">????</option>
-                    ) : (
-                      modelOptions.map((model) => (
-                        <option key={model} value={model}>
-                          {model}
-                        </option>
-                      ))
-                    )}
-                  </select>
-                  <button className="btn ghost" type="button" onClick={onDetect}>
-                    ????
-                  </button>
-                </div>
-                <div className="inline-row">
-                  <input
-                    className="select-input"
-                    type="text"
-                    value={customModel}
-                    onChange={(event) => setCustomModel(event.target.value)}
-                    placeholder="????????"
-                  />
-                  <button
-                    className="btn ghost"
-                    type="button"
-                    onClick={() => {
-                      const value = customModel.trim();
-                      if (value) {
-                        setLlmModel(value);
-                      }
-                    }}
-                  >
-                    ??
-                  </button>
-                </div>
-                <p className="field-hint">{llmStatus || "????????????"}</p>
-              </div>
-            </form>
-          ) : (
-            <>
-              <div className="color-grid">
-                <div className="color-item">
-                  <span>底色</span>
-                  <input
-                    className="color-input"
-                    type="color"
-                    value={fillColor}
-                    onChange={(event) => setFillColor(event.target.value)}
-                  />
-                </div>
-                <div className="color-item">
-                  <span>文字</span>
-                  <input
-                    className="color-input"
-                    type="color"
-                    value={textColor}
-                    onChange={(event) => setTextColor(event.target.value)}
-                  />
-                </div>
-                <div className="color-item">
-                  <span>外框</span>
-                  <input
-                    className="color-input"
-                    type="color"
-                    value={lineColor}
-                    onChange={(event) => setLineColor(event.target.value)}
-                  />
-                </div>
-              </div>
-              <div className="form-group">
-                <label className="field-label" htmlFor="line-dash-modal">
-                  外框線型
-                </label>
-                <select
-                  id="line-dash-modal"
-                  className="select-input"
-                  value={lineDash}
-                  onChange={(event) => setLineDash(event.target.value)}
-                >
-                  <option value="dash">虛線</option>
-                  <option value="dot">點線</option>
-                  <option value="dashdot">點虛線</option>
-                  <option value="solid">實線</option>
-                </select>
-              </div>
-            </>
-          )}
-        </div>
-        <div className="modal-footer">
-          <button className="btn ghost" type="button" onClick={onClose}>
-            取消
-          </button>
-          <button
-            className="btn primary"
-            type="button"
-            onClick={tab === "llm" ? onSave : onSaveCorrection}
-          >
-            保存
-          </button>
-        </div>
-      </div>
     </div>
   );
 }
@@ -1565,6 +1450,8 @@ function ManageModal({
   onClose,
   tab,
   setTab,
+  llmModels,
+  llmModel,
   languageOptions,
   defaultSourceLang,
   defaultTargetLang,
@@ -1575,6 +1462,7 @@ function ManageModal({
   onDeleteGlossary,
   onUpsertMemory,
   onDeleteMemory,
+  onClearMemory,
   onConvertToGlossary
 }) {
   const [editingKey, setEditingKey] = useState(null);
@@ -1685,9 +1573,9 @@ function ManageModal({
     setSaving(true);
     const payload = isGlossary
       ? {
-          ...draft,
-          priority: Number.isNaN(Number(draft.priority)) ? 0 : Number(draft.priority)
-        }
+        ...draft,
+        priority: Number.isNaN(Number(draft.priority)) ? 0 : Number(draft.priority)
+      }
       : { ...draft };
     const originalKey = editingOriginal ? makeKey(editingOriginal) : editingKey;
     const nextKey = makeKey(payload);
@@ -1808,6 +1696,9 @@ function ManageModal({
                     }
                   />
                 </label>
+                <button className="btn danger" type="button" onClick={onClearMemory}>
+                  全部清除
+                </button>
               </>
             )}
           </div>

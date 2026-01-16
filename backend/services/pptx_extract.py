@@ -3,6 +3,7 @@ from __future__ import annotations
 from typing import Iterable
 
 from pptx import Presentation
+from pptx.enum.shapes import MSO_SHAPE_TYPE
 from pptx.slide import Slide
 from pptx.table import _Cell
 from pptx.text.text import TextFrame
@@ -14,8 +15,18 @@ def _text_frame_to_text(text_frame: TextFrame) -> str:
     return "\n".join(paragraphs).strip()
 
 
+def _iter_shapes(shapes) -> Iterable:
+    for shape in shapes:
+        yield shape
+        try:
+            if shape.shape_type == MSO_SHAPE_TYPE.GROUP:
+                yield from _iter_shapes(shape.shapes)
+        except Exception:
+            continue
+
+
 def _iter_textbox_blocks(slide: Slide, slide_index: int) -> Iterable[dict]:
-    for shape in slide.shapes:
+    for shape in _iter_shapes(slide.shapes):
         try:
             if not shape.has_text_frame or shape.has_table:
                 continue
@@ -32,7 +43,7 @@ def _cell_to_text(cell: _Cell) -> str:
 
 
 def _iter_table_blocks(slide: Slide, slide_index: int) -> Iterable[dict]:
-    for shape in slide.shapes:
+    for shape in _iter_shapes(slide.shapes):
         if not shape.has_table:
             continue
         for row in shape.table.rows:
@@ -46,7 +57,7 @@ def _iter_table_blocks(slide: Slide, slide_index: int) -> Iterable[dict]:
 def _iter_notes_blocks(slide: Slide, slide_index: int) -> Iterable[dict]:
     if not slide.has_notes_slide:
         return
-    for shape in slide.notes_slide.shapes:
+    for shape in _iter_shapes(slide.notes_slide.shapes):
         try:
             if not shape.has_text_frame:
                 continue

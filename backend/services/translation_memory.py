@@ -270,3 +270,11 @@ def delete_tm(entry_id: int) -> int:
         )
         conn.commit()
         return cur.rowcount
+
+
+def clear_tm() -> int:
+    _ensure_db()
+    with sqlite3.connect(DB_PATH) as conn:
+        cur = conn.execute("DELETE FROM tm")
+        conn.commit()
+        return cur.rowcount

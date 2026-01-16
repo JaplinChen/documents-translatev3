@@ -1,0 +1,219 @@
+version: 1
+rules:
+  # =========================
+  # Frontend (Next.js / Vite)
+  # =========================
+  - name: "eslint"
+    action: "retry_same_tier"
+    patterns:
+      - "\\bESLint\\b"
+      - "\\beslint\\b"
+      - "Parsing error:"
+      - "✖ \\d+ problems? \\(\\d+ errors?, \\d+ warnings?\\)"
+      - "@typescript-eslint"
+      - "react-hooks"
+      - "jsx-a11y"
+
+  - name: "prettier"
+    action: "retry_same_tier"
+    patterns:
+      - "\\bprettier\\b"
+      - "Code style issues found"
+      - "Please run Prettier"
+
+  - name: "next_app_router_client_server_mismatch"
+    action: "escalate_to"
+    tier: 3
+    patterns:
+      - "You're importing a component that needs \"use client\""
+      - "This is a Server Component.*\"use client\""
+      - "Only Client Components can use (useState|useEffect|useLayoutEffect|useRef|useRouter)"
+      - "next/navigation"
+      - "useSearchParams\\(\\) should be wrapped in a suspense boundary"
+
+  - name: "next_module_not_found"
+    action: "escalate_to"
+    tier: 3
+    patterns:
+      - "Module not found: Can't resolve"
+      - "Can't resolve 'next/"
+      - "Cannot find module 'next/"
+      - "ERR_MODULE_NOT_FOUND"
+
+  - name: "next_image_font"
+    action: "escalate_to"
+    tier: 3
+    patterns:
+      - "next/image"
+      - "Image Optimization using the default loader is not compatible"
+      - "next/font"
+      - "Failed to load font"
+
+  - name: "next_swc_rust_panic"
+    action: "escalate_to"
+    tier: 3
+    patterns:
+      - "SWC"
+      - "thread '.*' panicked at"
+      - "panic"
+      - "next-swc"
+      - "Rust panic"
+
+  - name: "next_edge_runtime"
+    action: "escalate_to"
+    tier: 3
+    patterns:
+      - "Edge Runtime"
+      - "The edge runtime does not support Node\\.js"
+      - "process is not defined"
+      - "Buffer is not defined"
+      - "crypto is not defined"
+
+  - name: "next_build_failed"
+    action: "escalate_to"
+    tier: 3
+    patterns:
+      - "\\bnext build\\b"
+      - "Failed to compile"
+      - "webpack compilation failed"
+      - "Error occurred prerendering page"
+      - "Export encountered errors on following paths"
+      - "getStaticProps|getServerSideProps"
+      - "Hydration failed because the initial UI does not match"
+      - "Text content does not match server-rendered HTML"
+
+  - name: "vite_rollup_build_failed"
+    action: "escalate_to"
+    tier: 3
+    patterns:
+      - "\\bvite\\b"
+      - "build failed"
+      - "RollupError"
+      - "\\[vite\\]: Rollup failed"
+      - "Failed to resolve import"
+      - "Cannot resolve dependency"
+
+  - name: "typescript_errors"
+    action: "escalate_to"
+    tier: 3
+    patterns:
+      - "TS\\d{4}:"
+      - "Type error:"
+      - "Cannot find module .* or its corresponding type declarations"
+      - "Property .* does not exist on type"
+      - "Argument of type .* is not assignable to parameter of type"
+
+  - name: "vitest_failed"
+    action: "escalate_to"
+    tier: 2
+    patterns:
+      - "\\bvitest\\b"
+      - "\\bFAIL\\b"
+      - "Test Files\\s+\\d+ failed"
+      - "Tests\\s+\\d+ failed"
+      - "Snapshot\\s+\\d+ failed"
+
+  - name: "jest_failed"
+    action: "escalate_to"
+    tier: 2
+    patterns:
+      - "\\bJest\\b"
+      - "Test Suites: \\d+ failed"
+      - "Tests: \\d+ failed"
+      - "FAIL\\s+"
+
+  - name: "node_install_failed"
+    action: "escalate_by"
+    by: 1
+    patterns:
+      - "npm ERR!"
+      - "pnpm ERR!"
+      - "yarn error"
+      - "ERR_PNPM"
+      - "ELIFECYCLE"
+      - "Cannot find module"
+      - "ERR_MODULE_NOT_FOUND"
+      - "EAI_AGAIN|ENOTFOUND|ETIMEDOUT"
+
+  # =========================
+  # Backend (Python: uv/poetry/ruff/pytest)
+  # =========================
+  - name: "ruff_check_or_format"
+    action: "retry_same_tier"
+    patterns:
+      - "\\bruff\\b"
+      - "Found \\d+ errors?"
+      - "would reformat"
+      - "\\bE\\d{3}\\b|\\bF\\d{3}\\b|\\bI\\d{3}\\b"
+
+  - name: "pytest_failed"
+    action: "escalate_to"
+    tier: 2
+    patterns:
+      - "\\bFAILED\\b"
+      - "\\bFAILURES\\b"
+      - "AssertionError"
+      - "short test summary info"
+      - "E\\s+AssertionError"
+
+  - name: "python_import_error"
+    action: "escalate_to"
+    tier: 3
+    patterns:
+      - "ModuleNotFoundError"
+      - "ImportError"
+      - "cannot import name"
+      - "AttributeError: module .* has no attribute"
+
+  - name: "uv_lock_sync_failed"
+    action: "escalate_by"
+    by: 1
+    patterns:
+      - "\\buv\\b"
+      - "\\buv sync\\b"
+      - "\\buv lock\\b"
+      - "failed to resolve"
+      - "No solution found"
+      - "resolution failed"
+      - "lockfile"
+      - "\\buv\\.lock\\b"
+
+  - name: "uv_python_version_marker"
+    action: "escalate_by"
+    by: 1
+    patterns:
+      - "requires Python"
+      - "Python version .* is not supported"
+      - "marker 'python_version"
+
+  - name: "poetry_lock_solver_failed"
+    action: "escalate_by"
+    by: 1
+    patterns:
+      - "\\bpoetry\\b"
+      - "poetry lock"
+      - "poetry install"
+      - "SolverProblemError"
+      - "Because .* depends on .*"
+      - "Version solving failed"
+      - "\\bpoetry\\.lock\\b"
+      - "Lock file does not exist"
+      - "The lock file is not compatible"
+
+  - name: "python_build_wheel_failed"
+    action: "escalate_to"
+    tier: 3
+    patterns:
+      - "Failed building wheel for"
+      - "error: subprocess-exited-with-error"
+      - "Could not build wheels for"
+      - "Rust compiler .* not found"
+      - "Microsoft Visual C\\+\\+ .* is required"
+
+  - name: "python_dependency_resolution"
+    action: "escalate_by"
+    by: 1
+    patterns:
+      - "ResolutionImpossible"
+      - "No matching distribution found"
+      - "Could not find a version that satisfies the requirement"

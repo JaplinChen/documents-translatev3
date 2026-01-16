@@ -1,0 +1,50 @@
+version: 1
+
+defaults:
+  models:
+    tier1: "gpt-5-codex-mini"
+    tier2: "gpt-5-codex"
+    tier3: "gpt-5.2"
+  effort:
+    tier1: "low"
+    tier2: "medium"
+    tier3: "high"
+  approval_mode:
+    tier1: "chat"
+    tier2: "agent"
+    tier3: "chat"
+  max_attempts: 5
+  log_max_chars: 12000
+  changed_files_escalate_to_tier2: 5
+  changed_files_escalate_to_tier3: 15
+
+zones:
+  - name: "high-risk"
+    match_paths:
+      - "infra/"
+      - "terraform/"
+      - "k8s/"
+      - ".github/workflows/"
+      - "auth/"
+      - "iam/"
+      - "payments/"
+      - "security/"
+    force_tier: 3
+    approval_mode_override: "chat"
+    verify:
+      windows: "pwsh -NoProfile -ExecutionPolicy Bypass -File verify-all.ps1"
+      unix: "bash verify-all.sh"
+
+  - name: "frontend"
+    match_paths: ["web/", "frontend/", "ui/"]
+    start_tier_by_intent: { fix: 1, implement: 2, refactor: 2, migrate: 3, optimize: 3 }
+    verify:
+      windows: "pwsh -NoProfile -ExecutionPolicy Bypass -File verify-frontend.ps1"
+      unix: "bash verify-frontend.sh"
+
+  - name: "backend"
+    match_paths: ["backend/", "api/", "server/"]
+    start_tier_by_intent: { fix: 1, implement: 2, refactor: 2, migrate: 3, optimize: 3 }
+    verify:
+      windows: "pwsh -NoProfile -ExecutionPolicy Bypass -File verify-backend.ps1"
+      unix: "bash verify-backend.sh"

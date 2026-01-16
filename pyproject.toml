@@ -1,0 +1,13 @@
+[tool.ruff]
+line-length = 100
+extend-exclude = [
+  ".git",
+  ".pytest_cache",
+  "data",
+  "docs",
+  "frontend",
+  "tmp",
+]
+
+[tool.ruff.lint]
+select = ["F"]

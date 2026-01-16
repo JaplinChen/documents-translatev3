@@ -1,3 +1,16 @@
 {
-    "network_access": "enabled"
-}
+    "network_access": "enabled",
+  
+    "terminal.integrated.defaultProfile.windows": "PowerShell 7",
+    "terminal.integrated.profiles.windows": {
+      "PowerShell": {
+        "source": "PowerShell",
+        "icon": "terminal-powershell"
+      },
+      "PowerShell 7": {
+        "path": "C:\\Program Files\\PowerShell\\7\\pwsh.exe",
+        "icon": "terminal-powershell"
+      }
+    }
+  }
+  

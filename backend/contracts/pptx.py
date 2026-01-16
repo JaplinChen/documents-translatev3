@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Any, Iterable, Literal
+from typing import Iterable, Literal
 
 from pydantic import BaseModel
 

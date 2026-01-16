@@ -193,9 +193,23 @@ def _matches_target_language(text: str, target_language: str) -> bool:
 
 
 def _has_language_mismatch(texts: list[str], target_language: str) -> bool:
+    """Check if translated texts have language mismatch.
+    
+    Returns False (no mismatch) if:
+    - No target language specified
+    - Target language is 'auto'
+    - ALL texts match the target language (even if they weren't translated)
+    
+    The key insight: if source was already in target language, 
+    the LLM correctly keeps it unchanged - this is NOT a mismatch.
+    """
     if not target_language or target_language == "auto":
         return False
-    return any(not _matches_target_language(text, target_language) for text in texts)
+    # Only consider it a mismatch if NONE of the texts match target language
+    # This handles bilingual documents where some content is already in target language
+    matching_count = sum(1 for text in texts if _matches_target_language(text, target_language))
+    # If majority matches, it's fine (allows for some edge cases like numbers/punctuation)
+    return matching_count < len(texts) * 0.5
 
 
 def _build_language_retry_context(

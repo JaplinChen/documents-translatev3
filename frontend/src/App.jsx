@@ -1,7 +1,9 @@
 import React, { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import SettingsModal from "./components/SettingsModal";
 
-const API_BASE = import.meta.env.VITE_API_BASE || "http://localhost:8000";
+const API_BASE = (typeof import.meta.env.VITE_API_BASE === "string" && import.meta.env.VITE_API_BASE !== "")
+  ? import.meta.env.VITE_API_BASE
+  : (import.meta.env.VITE_API_BASE === "" ? "" : "http://localhost:8000");
 
 function useDraggableModal(open) {
   const modalRef = useRef(null);
@@ -199,7 +201,7 @@ function App() {
       return "https://generativelanguage.googleapis.com/v1beta";
     }
     if (llmProvider === "ollama") {
-      return "http://localhost:11434";
+      return "http://127.0.0.1:11434";
     }
     return "https://api.openai.com/v1";
   }, [llmProvider]);
@@ -218,27 +220,35 @@ function App() {
       return empty;
     }
     try {
-      const parsed = JSON.parse(saved);
-      if (parsed && parsed.providers) {
-        return {
-          ...empty,
-          ...parsed,
-          providers: {
-            ...empty.providers,
-            ...parsed.providers
-          }
-        };
+      let savedSettings = JSON.parse(saved);
+      if (!savedSettings || typeof savedSettings !== "object") {
+        return empty;
       }
-      const provider = parsed?.provider || "chatgpt";
+
+      // Auto-migrate localhost to 127.0.0.1 for Ollama
+      if (
+        savedSettings.providers &&
+        savedSettings.providers.ollama &&
+        savedSettings.providers.ollama.baseUrl &&
+        savedSettings.providers.ollama.baseUrl.includes("localhost")
+      ) {
+        savedSettings.providers.ollama.baseUrl = savedSettings.providers.ollama.baseUrl.replace(
+          "localhost",
+          "127.0.0.1"
+        );
+      }
+
+      const provider = savedSettings.provider || "chatgpt";
       return {
         provider,
         providers: {
           ...empty.providers,
+          ...(savedSettings.providers || {}),
           [provider]: {
-            apiKey: parsed?.apiKey || "",
-            baseUrl: parsed?.baseUrl || "",
-            model: parsed?.model || "",
-            fastMode: parsed?.fastMode || false
+            apiKey: savedSettings?.apiKey || savedSettings.providers?.[provider]?.apiKey || "",
+            baseUrl: savedSettings?.baseUrl || savedSettings.providers?.[provider]?.baseUrl || "",
+            model: savedSettings?.model || savedSettings.providers?.[provider]?.model || "",
+            fastMode: savedSettings?.fastMode || savedSettings.providers?.[provider]?.fastMode || false
           }
         }
       };
@@ -283,16 +293,8 @@ function App() {
     }
   }, [llmOpen, llmProvider, llmApiKey]);
 
-  useEffect(() => {
-    const settings = readLlmSettings();
-    const providerSettings = settings.providers?.[llmProvider] || {};
-    setLlmApiKey(providerSettings.apiKey || "");
-    setLlmBaseUrl(providerSettings.baseUrl || "");
-    setLlmModel(providerSettings.model || "");
-    setLlmFastMode(Boolean(providerSettings.fastMode));
-    setLlmModels([]);
-    setLlmStatus("");
-  }, [llmProvider]);
+  // Removed conflicting useEffect that reset LLM settings based on provider change.
+  // This logic is now handled atomically in handleProviderChange to prevent race conditions.
 
   useEffect(() => {
     document.documentElement.style.setProperty("--correction-fill", fillColor);
@@ -737,6 +739,25 @@ function App() {
     window.localStorage.setItem("correctionSettings", JSON.stringify(payload));
     setStatus("已保存校正設定");
     setLlmOpen(false);
+  };
+
+  const handleProviderChange = (newProvider) => {
+    // 1. Update Provider State
+    setLlmProvider(newProvider);
+
+    // 2. Load Settings for New Provider
+    const settings = readLlmSettings();
+    const providerSettings = settings.providers?.[newProvider] || {};
+
+    // 3. Update all related states atomically
+    setLlmApiKey(providerSettings.apiKey || "");
+    setLlmBaseUrl(providerSettings.baseUrl || "");
+    setLlmModel(providerSettings.model || "");
+    setLlmFastMode(Boolean(providerSettings.fastMode));
+
+    // 4. Reset status and models list
+    setLlmModels([]);
+    setLlmStatus("");
   };
 
   const loadGlossary = async () => {
@@ -1396,7 +1417,7 @@ function App() {
         tab={llmTab}
         setTab={setLlmTab}
         llmProvider={llmProvider}
-        setLlmProvider={setLlmProvider}
+        setLlmProvider={handleProviderChange}
         llmApiKey={llmApiKey}
         setLlmApiKey={setLlmApiKey}
         llmBaseUrl={llmBaseUrl}

@@ -1,0 +1,41 @@
+# ================================
+# Exclude everything by default
+# ================================
+*
+
+# ================================
+# Backend - Include only essentials
+# ================================
+!backend/
+!backend/**/*.py
+!requirements.txt
+!data/
+!docs/
+
+# Exclude Python cache from backend
+backend/__pycache__
+backend/**/__pycache__
+backend/*.pyc
+
+# ================================
+# Frontend - Include only essentials
+# ================================
+!frontend/
+!frontend/src/
+!frontend/public/
+!frontend/package.json
+!frontend/package-lock.json
+!frontend/vite.config.js
+!frontend/index.html
+
+# Exclude frontend dev files
+frontend/node_modules
+frontend/dist
+
+# ================================
+# Docker config files
+# ================================
+!nginx.conf
+!Dockerfile.backend
+!Dockerfile.frontend
+!docker-compose.yml

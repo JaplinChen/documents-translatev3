@@ -6,3 +6,4 @@ python-pptx
 pydantic
 langdetect
 ruff
+python-dotenv

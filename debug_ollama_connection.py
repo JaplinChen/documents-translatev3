@@ -12,7 +12,7 @@ OLLAMA_MODEL = os.getenv("OLLAMA_MODEL", "translategemma:4b")
 
 print(f"DEBUG: URL={OLLAMA_BASE_URL}, MODEL={OLLAMA_MODEL}")
 
-async def test_generate():
+async def run_debug_test():
     url = f"{OLLAMA_BASE_URL}/api/generate"
     payload = {
         "model": OLLAMA_MODEL,
@@ -35,4 +35,4 @@ async def test_generate():
         print(f"Generation Failed: {type(e).__name__}: {e}")
 
 if __name__ == "__main__":
-    asyncio.run(test_generate())
+    asyncio.run(run_debug_test())

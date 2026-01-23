@@ -20,18 +20,20 @@ describe('useSettingsStore', () => {
             },
             llmModels: [],
             llmStatus: '',
+            useTm: false,
             fontMapping: {},
             correction: {
                 fillColor: "#FFF16A",
                 textColor: "#D90000",
-                lineColor: "#7B2CB9",
-                lineDash: "dash"
+                borderColor: "#7B2CB9",
+                borderStyle: "dash"
             },
             ai: {
                 tone: "professional",
                 useVision: true,
                 useSmartLayout: true
-            }
+            },
+            similarityThreshold: 0.85
         });
         vi.resetAllMocks();
     });
@@ -114,7 +116,7 @@ describe('useSettingsStore', () => {
 
             // Other settings should remain unchanged
             expect(useSettingsStore.getState().correction.textColor).toBe('#D90000');
-            expect(useSettingsStore.getState().correction.lineDash).toBe('dash');
+            expect(useSettingsStore.getState().correction.borderStyle).toBe('dash');
         });
     });
 

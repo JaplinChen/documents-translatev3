@@ -3,8 +3,8 @@ from __future__ import annotations
 import unittest
 from pptx import Presentation
 from pptx.util import Inches
-from backend.services.pptx_extract import extract_blocks, emu_to_points
-from backend.services.pptx_apply_layout import capture_font_spec
+from backend.services.pptx.extract import extract_blocks, emu_to_points
+from backend.services.pptx.apply_layout import capture_font_spec
 from backend.contracts.pptx import make_block
 import io
 

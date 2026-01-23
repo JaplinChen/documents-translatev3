@@ -12,3 +12,6 @@ pre-commit
 pytest
 pytest-asyncio
 python-dotenv
+reportlab
+openpyxl
+pymupdf

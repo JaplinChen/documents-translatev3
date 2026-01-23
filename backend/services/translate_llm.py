@@ -20,6 +20,7 @@ from backend.services.llm_context import build_context
 from backend.services.llm_contract import build_contract
 from backend.services.llm_glossary import load_glossary
 from backend.services.llm_utils import chunked
+from backend.services.bilingual_alignment import align_bilingual_blocks
 from backend.services.translate_chunk import (
     prepare_chunk,
     translate_chunk,
@@ -63,6 +64,11 @@ def translate_blocks(
 
     blocks_list = list(blocks)
     source_lang = source_language or settings.source_language
+
+    # Apply alignment
+    if settings.translate_llm_mode.lower() != "mock":
+        blocks_list = align_bilingual_blocks(blocks_list, source_lang, target_language)
+
     preferred_terms = load_preferred_terms(source_lang, target_language, use_tm)
     use_placeholders = resolved_provider != "ollama"
 
@@ -133,6 +139,13 @@ def translate_blocks(
             time.sleep(params["chunk_delay"])
 
     final_texts = [text if text is not None else "" for text in translated_texts]
+
+    # Result Migration Pass (Bilingual Alignment)
+    for i, block in enumerate(blocks_list):
+        if block.get("alignment_role") == "source":
+            # For Source blocks in a pair, we show original text to prevent redundant output items
+            final_texts[i] = block.get("source_text", "")
+
     return build_contract(
         blocks=blocks_list,
         translated_texts=final_texts,
@@ -169,6 +182,10 @@ async def translate_blocks_async(
 
     blocks_list = list(blocks)
     source_lang = source_language or settings.source_language
+
+    # Apply alignment
+    blocks_list = align_bilingual_blocks(blocks_list, source_lang, target_language)
+
     preferred_terms = load_preferred_terms(source_lang, target_language, use_tm)
     use_placeholders = resolved_provider != "ollama"
 
@@ -244,6 +261,13 @@ async def translate_blocks_async(
             await asyncio.gather(*final_tasks)
 
     final_texts = [text if text is not None else "" for text in translated_texts]
+
+    # Result Migration Pass (Bilingual Alignment)
+    for i, block in enumerate(blocks_list):
+        if block.get("alignment_role") == "source":
+            # For Source blocks in a pair, we show original text to prevent redundant output items
+            final_texts[i] = block.get("source_text", "")
+
     return build_contract(
         blocks=blocks_list,
         translated_texts=final_texts,

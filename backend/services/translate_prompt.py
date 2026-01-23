@@ -44,7 +44,11 @@ def build_ollama_batch_prompt(
     blocks_lines: list[str] = []
     for idx, block in enumerate(blocks):
         blocks_lines.append(f"<<<BLOCK:{idx}>>>")
-        blocks_lines.append(block.get("source_text", ""))
+        if block.get("alignment_source"):
+            blocks_lines.append(f"[SOURCE_TEXT: {block.get('alignment_source')}]")
+            blocks_lines.append(f"[EXISTING_TRANSLATION: {block.get('source_text')}]")
+        else:
+            blocks_lines.append(block.get("source_text", ""))
         blocks_lines.append("<<<END>>>")
         blocks_lines.append("")
     blocks_text = "\n".join(blocks_lines).strip()

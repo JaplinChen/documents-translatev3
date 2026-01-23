@@ -3,8 +3,8 @@ import unittest
 
 from pptx import Presentation
 
-from backend.services.pptx_apply import apply_bilingual
-from backend.services.pptx_extract import extract_blocks
+from backend.services.pptx import apply_bilingual
+from backend.services.pptx import extract_blocks
 
 
 class TestPptxApplyBilingual(unittest.TestCase):

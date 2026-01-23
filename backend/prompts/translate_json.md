@@ -14,6 +14,11 @@
 - 同一文件中相同術語必須維持一致的翻譯
 - 若術語表中的翻譯與上下文不完全相符，請以術語表為準
 
+【雙語對齊校正規則】：
+- 若區塊中含 `alignment_source`，表示目前的 `source_text` 是既有的譯文，而 `alignment_source` 是其原文。
+- 請將 `alignment_source` 作為語意基準，校正並優化 `source_text` 的翻譯品質。
+- 修正語法錯誤、優化在地化用詞，並確保語意與原文完全一致。
+
 目標語言：{target_language_label}
 目標語言代碼：{target_language_code}
 {language_hint}

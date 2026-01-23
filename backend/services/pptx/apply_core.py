@@ -3,22 +3,22 @@ from collections.abc import Iterable
 from pptx.dml.color import RGBColor
 from pptx.enum.text import MSO_AUTO_SIZE
 
-from backend.services.pptx_apply_layout import (
+from .apply_layout import (
     add_overflow_textboxes,
     capture_font_spec,
     find_shape_in_shapes,
     find_shape_with_id,
     iter_table_cells,
+    fix_title_overlap,
 )
 
 from backend.services.font_manager import estimate_scale
-from backend.services.pptx_text_utils import split_text_chunks
-from backend.services.pptx_apply_text import (
+from .text_utils import split_text_chunks
+from .apply_text import (
     set_bilingual_text,
     set_text_preserve_format,
 )
-from backend.services.pptx_xml_core import get_pptx_theme_summary
-from backend.services.pptx_apply_layout import fix_title_overlap
+from .xml_core import get_pptx_theme_summary
 
 def _apply_translations_to_presentation(
     presentation,
@@ -41,7 +41,6 @@ def _apply_translations_to_presentation(
             try: accent_color = RGBColor.from_string(accent1)
             except Exception: pass
 
-    # Track slides that need layout optimization (only "new_slide" mode)
     slides_to_optimize = set()
 
     for block in blocks:
@@ -56,7 +55,6 @@ def _apply_translations_to_presentation(
         scale = estimate_scale(source_text, translated_text)
         is_auto_layout = block.get("layout", "auto") in ("auto", "new_slide")
 
-        # Track slides that need layout optimization (only "new_slide" mode)
         if block.get("layout") == "new_slide":
             slides_to_optimize.add(slide_index)
 
@@ -115,8 +113,6 @@ def _apply_translations_to_presentation(
         try: shape.left, shape.top, shape.width, shape.height = orig_geom
         except Exception: pass
 
-    # ... (After loop)
-    # Only run layout optimization on specific slides
     for slide_idx in slides_to_optimize:
         if slide_idx < len(presentation.slides):
             fix_title_overlap(presentation.slides[slide_idx])

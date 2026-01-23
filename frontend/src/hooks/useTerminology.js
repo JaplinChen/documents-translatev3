@@ -2,6 +2,7 @@ import { useState } from "react";
 import { API_BASE } from "../constants";
 import { useUIStore } from "../store/useUIStore";
 import { useSettingsStore } from "../store/useSettingsStore";
+import { useFileStore } from "../store/useFileStore";
 
 export function useTerminology() {
     const [glossaryItems, setGlossaryItems] = useState([]);
@@ -149,7 +150,10 @@ export function useTerminology() {
             if (llmApiKey) formData.append("api_key", llmApiKey);
             if (llmBaseUrl) formData.append("base_url", llmBaseUrl);
 
-            const response = await fetch(`${API_BASE}/api/pptx/extract-glossary`, {
+            const file = useFileStore.getState().file;
+            const fileType = file?.name?.split('.').pop().toLowerCase() === 'docx' ? 'docx' : 'pptx';
+
+            const response = await fetch(`${API_BASE}/api/${fileType}/extract-glossary`, {
                 method: "POST",
                 body: formData
             });

@@ -4,10 +4,10 @@ export function Header({ status, onOpenSettings, onOpenManage }) {
     return (
         <header className="hero">
             <div className="hero-content">
-                <p className="kicker">PPTX Translate Console</p>
-                <h1>PPTX 翻譯與校正控制台</h1>
+                <p className="kicker">Document Translation Console</p>
+                <h1>文件翻譯與校正控制台</h1>
                 <p className="subtitle">
-                    上傳簡報、抽取文字、調整翻譯，再輸出具有校正樣式的 PPTX。
+                    上傳文件、抽取文字、調整翻譯，再輸出具有校正樣式的檔案。
                 </p>
             </div>
 

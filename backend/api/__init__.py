@@ -7,6 +7,8 @@ from backend.api.preserve_terms import router as preserve_terms_router
 from backend.api.prompts import router as prompt_router
 from backend.api.tm import router as tm_router
 from backend.api.token_stats import router as token_stats_router
+from backend.api.xlsx import router as xlsx_router
+from backend.api.pdf import router as pdf_router
 
 __all__ = [
     "docx_router",
@@ -18,4 +20,6 @@ __all__ = [
     "preserve_terms_router",
     "token_stats_router",
     "export_router",
+    "xlsx_router",
+    "pdf_router",
 ]

@@ -6,212 +6,6 @@
         @apply min-h-screen p-8 max-w-7xl mx-auto;
     }
 
-    /* Global Navbar (V3) */
-    .app-sticky-header {
-        @apply sticky top-0 z-50 bg-white border-b-2 border-blue-600/10 -mx-8 px-8 py-3 mb-6 shadow-md;
-    }
-
-    .navbar {
-        @apply flex items-center justify-between gap-6 max-w-7xl mx-auto;
-    }
-
-    .navbar-brand {
-        @apply flex items-center gap-2;
-    }
-
-    .brand-logo {
-        @apply text-xl;
-    }
-
-    .brand-name {
-        @apply text-lg font-black text-slate-950 tracking-tight;
-    }
-
-    /* Dot Stepper Nav */
-    .navbar-nav {
-        @apply flex-1 flex justify-center;
-    }
-
-    .dot-stepper {
-        @apply flex items-center gap-10 bg-slate-50 px-6 py-2 rounded-full border border-slate-100;
-    }
-
-    .dot-node {
-        @apply flex items-center gap-2 opacity-40 transition-all duration-300;
-    }
-
-    .dot-node.is-current {
-        @apply opacity-100;
-    }
-
-    .dot-node.is-done {
-        @apply opacity-70;
-    }
-
-    .dot-node .dot {
-        @apply w-2 h-2 rounded-full bg-slate-300 transition-all duration-300;
-    }
-
-    .dot-node.is-current .dot {
-        @apply w-3 h-3 bg-blue-600 shadow-lg shadow-blue-500/50 ring-4 ring-blue-500/20 scale-110;
-    }
-
-    .dot-node.is-done .dot {
-        @apply bg-blue-400;
-    }
-
-    .dot-label {
-        @apply text-xs font-bold text-slate-500;
-    }
-
-    /* === Sidebar Stepper (Compact & Premium) === */
-    .sidebar-stepper {
-        @apply w-full mb-1 mt-1;
-    }
-
-    .premium-stepper {
-        @apply flex items-center justify-between relative px-2;
-    }
-
-    .stepper-node {
-        @apply relative z-10 flex flex-col items-center gap-1;
-    }
-
-    .node-wrapper {
-        @apply flex flex-col items-center;
-    }
-
-    .node-dot {
-        @apply w-6 h-6 flex items-center justify-center rounded-full bg-slate-100 text-[10px] font-bold text-slate-400 border border-slate-200 transition-all duration-300;
-    }
-
-    .node-content {
-        @apply hidden;
-        /* Hide labels in compact sidebar stepper to save space or avoid clutter */
-    }
-
-    /* Active/Done States */
-    .stepper-node.is-done .node-dot {
-        @apply bg-blue-100 text-blue-600 border-blue-200;
-    }
-
-    .stepper-node.is-current .node-dot {
-        @apply bg-blue-600 text-white border-blue-600 shadow-lg shadow-blue-500/30 scale-110;
-    }
-
-    /* Connector Bars */
-    .stepper-connector {
-        @apply flex-1 h-[2px] bg-slate-100 mx-1 mb-0 self-center relative -top-[0px];
-    }
-
-    .stepper-connector.is-active .connector-bar {
-        @apply w-full h-full bg-blue-200;
-    }
-
-    /* Pulse Animation */
-    .node-pulse {
-        @apply absolute inset-0 rounded-full bg-blue-500 -z-10 opacity-75;
-        animation: pulse-ring 2s cubic-bezier(0.2, 0, 0, 1) infinite;
-    }
-
-    @keyframes pulse-ring {
-        0% {
-            transform: scale(0.8);
-            opacity: 0.5;
-        }
-
-        100% {
-            transform: scale(2);
-            opacity: 0;
-        }
-    }
-
-    /* Navbar Actions */
-    .navbar-actions {
-        @apply flex items-center gap-6;
-    }
-
-    .mini-status {
-        @apply flex items-center gap-2 px-3 py-1 bg-blue-50/50 rounded-lg text-[11px] font-bold text-blue-600;
-    }
-
-    .action-btns {
-        @apply flex gap-2;
-    }
-
-    .nav-btn {
-        @apply px-3 py-1.5 rounded-lg border border-slate-200 text-xs font-bold text-slate-600 hover:bg-slate-50 transition-all;
-    }
-
-    .nav-btn.primary {
-        @apply bg-slate-900 border-slate-900 text-white hover:bg-slate-800;
-    }
-
-    /* Language Selector Custom Dropdown */
-    .lang-btn,
-    .nav-icon-btn {
-        @apply w-10 h-10 flex items-center justify-center rounded-md border border-slate-200 bg-white hover:bg-slate-50 transition-all cursor-pointer;
-        @apply shadow-sm hover:shadow-md hover:border-blue-200 text-slate-600;
-    }
-
-    .lang-btn img {
-        @apply w-6 h-4 object-cover rounded-sm border border-slate-100 shadow-sm transition-transform duration-200;
-        @apply group-hover:scale-110;
-    }
-
-    .nav-icon-btn span {
-        @apply text-base transition-transform duration-200;
-        @apply group-hover:scale-110;
-    }
-
-    .lang-menu {
-        @apply absolute top-full right-0 mt-2 w-40 bg-white rounded-xl shadow-xl border border-slate-100 p-1.5 z-50 flex flex-col gap-1;
-        animation: menu-slide-in 0.2s cubic-bezier(0.16, 1, 0.3, 1);
-    }
-
-    .lang-item {
-        @apply flex items-center gap-3 px-3 py-2 rounded-lg text-slate-600 hover:bg-blue-50 hover:text-blue-600 transition-colors text-left w-full;
-    }
-
-    .lang-item.active {
-        @apply bg-blue-50 text-blue-700 font-bold;
-    }
-
-    @keyframes menu-slide-in {
-        from {
-            opacity: 0;
-            transform: translateY(-8px) scale(0.98);
-        }
-
-        to {
-            opacity: 1;
-            transform: translateY(0) scale(1);
-        }
-    }
-
-    /* Pulse Blue Anim */
-    .pulse-blue {
-        @apply w-1.5 h-1.5 rounded-full bg-blue-500;
-        animation: pulse-blue-dot 2s infinite;
-    }
-
-    @keyframes pulse-blue-dot {
-        0% {
-            transform: scale(0.95);
-            opacity: 0.8;
-        }
-
-        50% {
-            transform: scale(1.2);
-            opacity: 1;
-        }
-
-        100% {
-            transform: scale(0.95);
-            opacity: 0.8;
-        }
-    }
-
     /* Grid Layout */
     .main-grid {
         display: grid;
@@ -235,7 +29,7 @@
         height: calc(100vh - 12rem);
     }
 
-    /* Panel Header Titles (引導導航, 文字區塊) */
+    /* Panel Header Titles */
     .panel-header {
         @apply mb-0 pb-1 border-b border-slate-200;
     }
@@ -246,85 +40,6 @@
 
     .panel-header p {
         @apply text-xs text-slate-500 mt-1 font-medium;
-    }
-
-    .sidebar-scrollable-content {
-        @apply flex-1 overflow-y-auto flex flex-col gap-3 mt-4 pr-1;
-        scrollbar-width: thin;
-        scrollbar-color: rgba(0, 0, 0, 0.1) transparent;
-    }
-
-    .sidebar-scrollable-content::-webkit-scrollbar {
-        width: 4px;
-    }
-
-    .sidebar-scrollable-content::-webkit-scrollbar-track {
-        background: transparent;
-    }
-
-    .sidebar-scrollable-content::-webkit-scrollbar-thumb {
-        background-color: rgba(0, 0, 0, 0.1);
-        border-radius: 20px;
-    }
-
-    .sidebar-scrollable-content:hover::-webkit-scrollbar-thumb {
-        background-color: rgba(0, 0, 0, 0.2);
-    }
-
-    /* Accordion Styles */
-    .accordion-section {
-        @apply border border-transparent last:border-b-0 py-1 transition-all duration-300 rounded-xl mb-1 relative;
-        /* 移除 overflow-hidden 以免裁剪陰影與內容 */
-    }
-
-    /* 連貫導軌虛擬元素 */
-    .accordion-section::after {
-        content: "";
-        @apply absolute left-[27px] top-10 bottom-0 w-[1px] bg-slate-200 -z-10;
-        display: none;
-        /* 預設隱藏，僅在非最後一項顯示 */
-    }
-
-    .accordion-section:not(:last-child)::after {
-        display: block;
-    }
-
-    .accordion-section.is-open {
-        @apply bg-white shadow-xl shadow-slate-300/40 py-3 border-slate-100;
-        /* 活性導航軌 */
-        border-left: 3px solid theme('colors.blue.500');
-    }
-
-    .accordion-section.is-done:not(.is-open) {
-        @apply border-transparent;
-    }
-
-    .accordion-header {
-        @apply flex items-center justify-between w-full px-4 py-2.5 text-left font-bold text-slate-500 hover:bg-white/40 hover:text-blue-600 transition-all cursor-pointer rounded-lg;
-    }
-
-    .is-open .accordion-header {
-        @apply text-slate-900 text-sm tracking-tight;
-    }
-
-    .is-done .accordion-header {
-        @apply text-blue-600/80;
-    }
-
-    .accordion-content {
-        @apply overflow-hidden transition-all duration-300 ease-in-out px-4;
-    }
-
-    .accordion-indicator {
-        @apply text-slate-300 transition-transform duration-300;
-    }
-
-    .is-open .accordion-indicator {
-        @apply transform rotate-180 text-blue-500;
-    }
-
-    .ai-settings-panel {
-        @apply bg-blue-50/40 border border-blue-100/50 rounded-2xl p-4 mt-1 transition-all duration-300;
     }
 
     /* Pills */
@@ -350,9 +65,32 @@
         @apply text-xs font-medium truncate whitespace-nowrap overflow-hidden;
     }
 
+    /* Pulse Blue Anim */
+    .pulse-blue {
+        @apply w-1.5 h-1.5 rounded-full bg-blue-500;
+        animation: pulse-blue-dot 2s infinite;
+    }
+
+    @keyframes pulse-blue-dot {
+        0% {
+            transform: scale(0.95);
+            opacity: 0.8;
+        }
+
+        50% {
+            transform: scale(1.2);
+            opacity: 1;
+        }
+
+        100% {
+            transform: scale(0.95);
+            opacity: 0.8;
+        }
+    }
+
+    /* Block Meta */
     .block-meta {
         @apply flex items-center gap-2 border-b border-slate-200 bg-slate-50/50 text-[11px] text-slate-500 font-medium;
-        /* 移除 px-3，改由外層 block-card 的 p-3 統一控制寬度 */
         @apply p-0 pb-1.5 mb-2;
     }
 
@@ -390,10 +128,6 @@
         @apply opacity-50;
     }
 
-    .block-meta {
-        /* 此處原本有重複定義，已合併至上方 */
-    }
-
     .block-actions {
         @apply flex gap-2 pt-3 border-t border-slate-100;
     }
@@ -415,89 +149,9 @@
         @apply m-0 text-xs text-slate-400 whitespace-nowrap;
     }
 
-    /* Data Table */
-    .data-table {
-        @apply border border-slate-200 rounded-xl overflow-hidden;
-    }
-
-    .data-table.is-glossary .data-row {
-        grid-template-columns: 100px 100px minmax(120px, 1.5fr) minmax(120px, 1.5fr) 80px 120px;
-    }
-
-    .data-table.is-tm .data-row {
-        grid-template-columns: 100px 100px minmax(120px, 1fr) minmax(120px, 1fr) 120px;
-    }
-
-    .data-header {
-        @apply bg-slate-50 border-b border-slate-200 font-bold text-xs uppercase tracking-wider text-slate-500;
-    }
-
-    .data-header .data-cell {
-        @apply py-4 whitespace-nowrap;
-    }
-
-    .data-row {
-        @apply grid border-b border-slate-200 last:border-b-0 transition-colors duration-150;
-    }
-
-    .data-row:hover {
-        @apply bg-slate-50/50;
-    }
-
-    .data-cell {
-        @apply px-4 py-4 flex items-center text-sm text-slate-700 overflow-hidden min-h-[56px];
-        word-break: break-word;
-    }
-
-    .data-cell.data-actions {
-        @apply flex gap-1 items-center justify-end px-2;
-    }
-
-    .action-btn-sm {
-        @apply w-8 h-8 rounded-lg flex items-center justify-center text-lg transition-all duration-200 hover:bg-slate-100;
-    }
-
-    .action-btn-sm.primary {
-        @apply text-blue-600 hover:bg-blue-50;
-    }
-
-    .action-btn-sm.danger {
-        @apply text-rose-500 hover:bg-rose-50;
-    }
-
-    .action-btn-sm.success {
-        @apply text-emerald-600 hover:bg-emerald-50;
-    }
-
-    .action-btn-sm.ghost {
-        @apply text-slate-400 hover:bg-slate-100 hover:text-slate-600;
-    }
-
-    .data-input {
-        @apply w-full h-8 px-2 rounded border border-slate-200 text-sm focus:outline-none focus:border-blue-500;
-    }
-
-    .data-empty {
-        @apply text-center py-8 text-slate-400 text-sm;
-    }
-
     /* Action Row */
     .action-row {
         @apply flex gap-3 flex-wrap items-center py-1 mb-1;
-    }
-
-    /* Create Row */
-    .create-row {
-        @apply flex gap-4 items-end py-2 border-b border-slate-200;
-    }
-
-    .create-fields {
-        @apply w-full;
-    }
-
-    .create-fields .select-input,
-    .create-fields .text-input {
-        @apply w-full h-9 py-1 px-2 text-sm;
     }
 
     /* Token Stats Component */
@@ -583,16 +237,6 @@
 
     .model-tag {
         @apply px-2 py-0.5 bg-slate-100 text-slate-600 text-xs rounded-full;
-    }
-
-    /* --- Progress Bar --- */
-    .navbar-progress-bar {
-        @apply absolute bottom-0 left-0 w-full h-[3px] bg-slate-100/50 overflow-hidden;
-    }
-
-    .navbar-progress-inner {
-        @apply h-full bg-blue-500 transition-all duration-500 ease-out;
-        box-shadow: 0 0 8px rgba(59, 130, 246, 0.5);
     }
 
     /* --- Block Card Animations --- */

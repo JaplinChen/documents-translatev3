@@ -84,6 +84,8 @@ def build_prompt(
         return f"""請將每個區塊翻譯為 target_language。若提供 preferred_terms，必須優先使用。
   若提供 placeholder_tokens，必須完整保留，不可改動。
   若 payload 中含 context，必須遵守其規則。
+  若區塊中含 alignment_source，表示目前的 source_text 是既有的譯文，而 alignment_source 是其原文。
+  請將 alignment_source 作為語意基準，校正並優化 source_text 的翻譯品質。
   輸出需符合 contract_schema_example 的 JSON，且只輸出 JSON。
 
   【重要】表格翻譯規則：

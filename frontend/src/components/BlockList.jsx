@@ -62,7 +62,7 @@ export default function BlockList({
                 {filteredBlocks.length === 0 ? (
                     <div className="empty-state">
                         <p>尚未抽取任何文字區塊</p>
-                        <span>請先上傳 PPTX 並按下「抽取區塊」</span>
+                        <span>請先上傳文件並按下「提取術語」</span>
                     </div>
                 ) : (
                     filteredBlocks.map((block, filteredIndex) => {

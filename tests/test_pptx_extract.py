@@ -3,7 +3,7 @@ import unittest
 
 from pptx import Presentation
 
-from backend.services.pptx_extract import extract_blocks
+from backend.services.pptx import extract_blocks
 
 
 class TestPptxExtract(unittest.TestCase):

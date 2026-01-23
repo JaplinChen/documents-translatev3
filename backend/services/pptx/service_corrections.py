@@ -2,9 +2,9 @@ from __future__ import annotations
 from pptx import Presentation
 from pptx.dml.color import RGBColor
 from pptx.enum.dml import MSO_LINE_DASH_STYLE
-from .pptx_apply_layout import find_shape_in_shapes, find_shape_with_id, iter_table_cells
-from .pptx_text_utils import parse_hex_color, parse_dash_style
-from .pptx_apply_text import build_corrected_lines, apply_shape_highlight, set_corrected_text, set_text_preserve_format
+from .apply_layout import find_shape_in_shapes, find_shape_with_id, iter_table_cells
+from .text_utils import parse_hex_color, parse_dash_style
+from .apply_text import build_corrected_lines, apply_shape_highlight, set_corrected_text, set_text_preserve_format
 
 def apply_chinese_corrections(
     pptx_in: str,

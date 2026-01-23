@@ -14,10 +14,8 @@ from fastapi.responses import StreamingResponse
 
 from backend.config import settings
 from backend.contracts import coerce_blocks
-from backend.services.language_detect import (
-    detect_language,
-    resolve_source_language,
-)
+from backend.services.language_detect import resolve_source_language
+from backend.services.correction_mode import apply_correction_mode, prepare_blocks_for_correction
 from backend.services.llm_errors import (
     build_connection_refused_message,
     is_connection_refused,
@@ -29,21 +27,9 @@ LOGGER = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/pptx")
 
 
-def _prepare_blocks_for_correction(items: list[dict], source_language: str | None) -> list[dict]:
-    """Prepare blocks for correction mode by filtering by source language."""
-    if not source_language or source_language == "auto":
-        return items
-    prepared = []
-    for block in items:
-        text = block.get("source_text", "")
-        if not text:
-            prepared.append(block)
-            continue
-        lines = [line for line in text.splitlines() if detect_language(line) == source_language]
-        prepared_block = dict(block)
-        prepared_block["source_text"] = "\n".join(lines)
-        prepared.append(prepared_block)
-    return prepared
+def _prepare_blocks_for_correction(items: list[dict], target_language: str | None) -> list[dict]:
+    """Prepare blocks for correction mode by skipping target language blocks."""
+    return prepare_blocks_for_correction(items, target_language)
 
 
 @router.post("/translate")
@@ -84,7 +70,7 @@ async def pptx_translate(
 
     try:
         translated = await translate_pptx_blocks_async(
-            _prepare_blocks_for_correction(blocks_data, source_language)
+            _prepare_blocks_for_correction(blocks_data, target_language)
             if mode == "correction"
             else blocks_data,
             target_language,
@@ -119,11 +105,16 @@ async def pptx_translate(
             ) from exc
         raise HTTPException(status_code=400, detail=error_msg) from exc
 
+    result_blocks = translated.get("blocks", [])
+    if mode == "correction":
+        translated_texts = [b.get("translated_text", "") for b in result_blocks]
+        result_blocks = apply_correction_mode(blocks_data, translated_texts, target_language)
+
     return {
         "mode": mode,
         "source_language": resolved_source_language or source_language,
         "target_language": target_language,
-        "blocks": translated.get("blocks", []),
+        "blocks": result_blocks,
         "llm_mode": llm_mode,
         "warning": "目前為 mock 模式，翻譯結果會回填原文。" if llm_mode == "mock" else None,
     }
@@ -206,7 +197,7 @@ async def pptx_translate_stream(
 
             task = asyncio.create_task(
                 translate_pptx_blocks_async(
-                    _prepare_blocks_for_correction(effective_blocks, source_language)
+                    _prepare_blocks_for_correction(effective_blocks, target_language)
                     if mode == "correction"
                     else effective_blocks,
                     target_language,
@@ -243,6 +234,13 @@ async def pptx_translate_stream(
                         yield f"event: {event['event']}\ndata: {event['data']}\n\n"
                         
                     result = await task
+                    if mode == "correction":
+                        translated_texts = [b.get("translated_text", "") for b in result.get("blocks", [])]
+                        result["blocks"] = apply_correction_mode(
+                            effective_blocks,
+                            translated_texts,
+                            target_language,
+                        )
                     yield f"event: complete\ndata: {json.dumps(result)}\n\n"
                     break
 

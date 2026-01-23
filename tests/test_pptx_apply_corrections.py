@@ -4,8 +4,8 @@ import unittest
 from pptx import Presentation
 from pptx.dml.color import RGBColor
 
-from backend.services.pptx_apply import apply_chinese_corrections
-from backend.services.pptx_extract import extract_blocks
+from backend.services.pptx import apply_chinese_corrections
+from backend.services.pptx import extract_blocks
 
 
 class TestPptxApplyCorrections(unittest.TestCase):

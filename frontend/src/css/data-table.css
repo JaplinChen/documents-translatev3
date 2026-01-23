@@ -1,0 +1,83 @@
+/* === Data Table Styles === */
+@layer components {
+
+    /* Data Table */
+    .data-table {
+        @apply border border-slate-200 rounded-xl overflow-hidden;
+    }
+
+    .data-table.is-glossary .data-row {
+        grid-template-columns: 100px 100px minmax(120px, 1.5fr) minmax(120px, 1.5fr) 80px 120px;
+    }
+
+    .data-table.is-tm .data-row {
+        grid-template-columns: 100px 100px minmax(120px, 1fr) minmax(120px, 1fr) 120px;
+    }
+
+    .data-header {
+        @apply bg-slate-50 border-b border-slate-200 font-bold text-xs uppercase tracking-wider text-slate-500;
+    }
+
+    .data-header .data-cell {
+        @apply py-4 whitespace-nowrap;
+    }
+
+    .data-row {
+        @apply grid border-b border-slate-200 last:border-b-0 transition-colors duration-150;
+    }
+
+    .data-row:hover {
+        @apply bg-slate-50/50;
+    }
+
+    .data-cell {
+        @apply px-4 py-4 flex items-center text-sm text-slate-700 overflow-hidden min-h-[56px];
+        word-break: break-word;
+    }
+
+    .data-cell.data-actions {
+        @apply flex gap-1 items-center justify-end px-2;
+    }
+
+    .action-btn-sm {
+        @apply w-8 h-8 rounded-lg flex items-center justify-center text-lg transition-all duration-200 hover:bg-slate-100;
+    }
+
+    .action-btn-sm.primary {
+        @apply text-blue-600 hover:bg-blue-50;
+    }
+
+    .action-btn-sm.danger {
+        @apply text-rose-500 hover:bg-rose-50;
+    }
+
+    .action-btn-sm.success {
+        @apply text-emerald-600 hover:bg-emerald-50;
+    }
+
+    .action-btn-sm.ghost {
+        @apply text-slate-400 hover:bg-slate-100 hover:text-slate-600;
+    }
+
+    .data-input {
+        @apply w-full h-8 px-2 rounded border border-slate-200 text-sm focus:outline-none focus:border-blue-500;
+    }
+
+    .data-empty {
+        @apply text-center py-8 text-slate-400 text-sm;
+    }
+
+    /* Create Row */
+    .create-row {
+        @apply flex gap-4 items-end py-2 border-b border-slate-200;
+    }
+
+    .create-fields {
+        @apply w-full;
+    }
+
+    .create-fields .select-input,
+    .create-fields .text-input {
+        @apply w-full h-9 py-1 px-2 text-sm;
+    }
+}

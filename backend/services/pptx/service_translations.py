@@ -1,7 +1,7 @@
 from __future__ import annotations
 from collections.abc import Iterable
 from pptx import Presentation
-from .pptx_apply_core import _apply_translations_to_presentation
+from .apply_core import _apply_translations_to_presentation
 
 def apply_translations(
     pptx_in: str,
@@ -12,7 +12,7 @@ def apply_translations(
     font_mapping: dict[str, list[str]] | None = None,
 ) -> None:
     presentation = Presentation(pptx_in)
-    presentation._pptx_path = pptx_in # For theme analysis
+    presentation._pptx_path = pptx_in
     _apply_translations_to_presentation(
         presentation,
         blocks,

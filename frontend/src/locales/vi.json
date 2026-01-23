@@ -1,6 +1,6 @@
 {
     "app": {
-        "title": "Bảng điều khiển dịch thuật"
+        "title": "Bảng điều khiển dịch thuật tài liệu"
     },
     "nav": {
         "title": "Hướng dẫn",
@@ -30,14 +30,14 @@
             "label": "Ngôn ngữ"
         },
         "upload": {
-            "placeholder": "Chọn hoặc kéo thả tập tin PPTX",
-            "limit": "Hỗ trợ Microsoft PowerPoint (.pptx)",
+            "placeholder": "Chọn hoặc kéo thả tập tin tài liệu",
+            "limit": "Hỗ trợ Microsoft Word (.docx) hoặc PowerPoint (.pptx)",
             "ready": "✓ Sẵn sàng"
         },
         "tm": "Sử dụng bộ nhớ dịch",
         "preprocess": "Tiền xử lý",
         "extract": {
-            "button": "📊 Trích xuất thuật ngữ cốt lõi",
+            "button": "📊 Trích xuất thuật ngữ",
             "hint": "Phân tích nội dung để thiết lập thuật ngữ nhằm đảm bảo tính nhất quán",
             "summary": "✓ Đã phân tích {{count}} khối"
         },
@@ -45,11 +45,11 @@
             "preparing": "Đang chuẩn bị...",
             "translating": "Đang dịch... ({{current}}/{{total}})",
             "completed": "Dịch hoàn tất",
-            "button": "🚀 Bắt đầu dịch AI",
+            "button": "🚀 Dịch tự động",
             "stop": "Dừng"
         },
         "apply": {
-            "button": "📊 Áp dụng bố cục và tải xuống PPTX",
+            "button": "📊 Áp dụng bố cục và tải xuống tài liệu",
             "applying": "Đang áp dụng...",
             "completed": "Đã xuất tập tin"
         },
@@ -66,16 +66,16 @@
         "summary": "Tổng {{total}}, Hiển thị {{filtered}}",
         "empty": {
             "title": "Chưa trích xuất khối văn bản nào",
-            "hint": "Vui lòng tải lên PPTX và nhấp vào 'Phân tích' trước"
+            "hint": "Vui lòng tải lên tài liệu và nhấp vào 'Phân tích' trước"
         },
         "filter": {
             "search": "Tìm kiếm",
             "type": "Loại",
-            "slide": "Slide"
+            "slide": "Trang / Slide"
         },
         "search_placeholder": "Tìm kiếm gốc/dịch",
         "filter_type": "Tất cả loại",
-        "filter_slide": "Slide {{index}}",
+        "filter_slide": "Trang {{index}}",
         "select_all": "Chọn tất cả",
         "clear_selection": "Xóa",
         "source_label": "Gốc",
@@ -105,9 +105,9 @@
             "review": "Cần xem lại"
         },
         "editor": {
-            "filter_textbox": "Hộp văn bản",
+            "filter_textbox": "Nội dung / Hộp văn bản",
             "filter_table": "Ô bảng",
-            "filter_notes": "Ghi chú"
+            "filter_notes": "Ghi chú / Chú thích"
         },
         "token_stats": {
             "title": "Thống kê Token",
@@ -122,8 +122,8 @@
         },
         "block_card": {
             "apply": "Áp dụng",
-            "slide": "Slide",
-            "shape": "Shape",
+            "slide": "Trang",
+            "shape": "ID",
             "translating": "Đang dịch...",
             "updated_at": "Cập nhật {{time}}",
             "glossary": "Thuật ngữ",
@@ -166,7 +166,7 @@
         },
         "fonts": {
             "title": "Cấu hình Phông chữ",
-            "description": "Thiết lập phông chữ ưu tiên cho các ngôn ngữ khi xuất PPTX (Phân cách bằng dấu phẩy, ưu tiên từ trái sang phải).",
+            "description": "Thiết lập phông chữ ưu tiên cho các ngôn ngữ khi xuất tài liệu (Phân cách bằng dấu phẩy, ưu tiên từ trái sang phải).",
             "lang_code": "Mã ngôn ngữ (ISO)",
             "font_list": "Danh sách phông chữ",
             "lang": "Ngôn ngữ",
@@ -196,7 +196,7 @@
             "tone_hint": "Ảnh hưởng lớn đến từ ngữ và độ dài câu.",
             "context_title": "Tính năng AI Nâng cao",
             "vision": "Hỗ trợ ngữ cảnh hình ảnh (Vision Context)",
-            "vision_hint": "Phân tích hình ảnh slide để dịch chính xác hơn (nếu mô hình hỗ trợ).",
+            "vision_hint": "Phân tích hình ảnh tài liệu để dịch chính xác hơn (nếu mô hình hỗ trợ).",
             "layout": "Điều chỉnh bố cục thông minh (Layout Adjust)",
             "layout_hint": "Tự động đề xuất giảm cỡ chữ hoặc ngắt dòng khi tràn văn bản."
         },
@@ -242,7 +242,7 @@
             "tm": "Bộ nhớ dịch"
         },
         "actions": {
-            "seed": "Nhập dữ liệu mẫu",
+            "seed": "Tải dữ liệu",
             "export_csv": "Xuất CSV",
             "import_csv": "Nhập CSV",
             "clear_all": "Xóa tất cả",
@@ -323,7 +323,7 @@
         "extracting": "Đang trích xuất...",
         "error": "Lỗi: {{message}}",
         "no_file": "Vui lòng chọn tập tin",
-        "format_error": "Chỉ hỗ trợ .pptx",
+        "format_error": "Chỉ hỗ trợ .pptx hoặc .docx",
         "no_blocks": "Chưa có khối văn bản",
         "api_key_missing": "Thiếu API Key trong cài đặt",
         "interrupted": "Kết nối bị gián đoạn",

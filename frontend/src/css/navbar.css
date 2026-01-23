@@ -1,0 +1,129 @@
+/* === Navbar Styles === */
+@layer components {
+
+    /* Global Navbar (V3) */
+    .app-sticky-header {
+        @apply sticky top-0 z-50 bg-white border-b-2 border-blue-600/10 -mx-8 px-8 py-3 mb-6 shadow-md;
+    }
+
+    .navbar {
+        @apply flex items-center justify-between gap-6 max-w-7xl mx-auto;
+    }
+
+    .navbar-brand {
+        @apply flex items-center gap-2;
+    }
+
+    .brand-logo {
+        @apply text-xl;
+    }
+
+    .brand-name {
+        @apply text-lg font-black text-slate-950 tracking-tight;
+    }
+
+    /* Dot Stepper Nav */
+    .navbar-nav {
+        @apply flex-1 flex justify-center;
+    }
+
+    .dot-stepper {
+        @apply flex items-center gap-10 bg-slate-50 px-6 py-2 rounded-full border border-slate-100;
+    }
+
+    .dot-node {
+        @apply flex items-center gap-2 opacity-40 transition-all duration-300;
+    }
+
+    .dot-node.is-current {
+        @apply opacity-100;
+    }
+
+    .dot-node.is-done {
+        @apply opacity-70;
+    }
+
+    .dot-node .dot {
+        @apply w-2 h-2 rounded-full bg-slate-300 transition-all duration-300;
+    }
+
+    .dot-node.is-current .dot {
+        @apply w-3 h-3 bg-blue-600 shadow-lg shadow-blue-500/50 ring-4 ring-blue-500/20 scale-110;
+    }
+
+    .dot-node.is-done .dot {
+        @apply bg-blue-400;
+    }
+
+    .dot-label {
+        @apply text-xs font-bold text-slate-500;
+    }
+
+    /* Navbar Actions */
+    .navbar-actions {
+        @apply flex items-center gap-6;
+    }
+
+    .action-btns {
+        @apply flex gap-2;
+    }
+
+    .nav-btn {
+        @apply px-3 py-1.5 rounded-lg border border-slate-200 text-xs font-bold text-slate-600 hover:bg-slate-50 transition-all;
+    }
+
+    .nav-btn.primary {
+        @apply bg-slate-900 border-slate-900 text-white hover:bg-slate-800;
+    }
+
+    /* Language Selector Custom Dropdown */
+    .lang-btn,
+    .nav-icon-btn {
+        @apply w-10 h-10 flex items-center justify-center rounded-md border border-slate-200 bg-white hover:bg-slate-50 transition-all cursor-pointer;
+        @apply shadow-sm hover:shadow-md hover:border-blue-200 text-slate-600;
+    }
+
+    .lang-btn img {
+        @apply w-6 h-4 object-cover rounded-sm border border-slate-100 shadow-sm transition-transform duration-200;
+        @apply group-hover:scale-110;
+    }
+
+    .nav-icon-btn span {
+        @apply text-base transition-transform duration-200;
+        @apply group-hover:scale-110;
+    }
+
+    .lang-menu {
+        @apply absolute top-full right-0 mt-2 w-40 bg-white rounded-xl shadow-xl border border-slate-100 p-1.5 z-50 flex flex-col gap-1;
+        animation: menu-slide-in 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+
+    .lang-item {
+        @apply flex items-center gap-3 px-3 py-2 rounded-lg text-slate-600 hover:bg-blue-50 hover:text-blue-600 transition-colors text-left w-full;
+    }
+
+    .lang-item.active {
+        @apply bg-blue-50 text-blue-700 font-bold;
+    }
+
+    @keyframes menu-slide-in {
+        from {
+            opacity: 0;
+            transform: translateY(-8px) scale(0.98);
+        }
+        to {
+            opacity: 1;
+            transform: translateY(0) scale(1);
+        }
+    }
+
+    /* --- Progress Bar --- */
+    .navbar-progress-bar {
+        @apply absolute bottom-0 left-0 w-full h-[3px] bg-slate-100/50 overflow-hidden;
+    }
+
+    .navbar-progress-inner {
+        @apply h-full bg-blue-500 transition-all duration-500 ease-out;
+        box-shadow: 0 0 8px rgba(59, 130, 246, 0.5);
+    }
+}

@@ -6,6 +6,7 @@ from fastapi import FastAPI, BackgroundTasks
 from fastapi.middleware.cors import CORSMiddleware
 
 from backend.api import (
+    docx_router,
     export_router,
     llm_router,
     pptx_router,
@@ -14,6 +15,8 @@ from backend.api import (
     prompt_router,
     tm_router,
     token_stats_router,
+    xlsx_router,
+    pdf_router,
 )
 
 from backend.tools.logging_middleware import StructuredLoggingMiddleware
@@ -28,6 +31,7 @@ app.add_middleware(
     expose_headers=["Content-Disposition", "X-Request-ID"],
 )
 
+app.include_router(docx_router)
 app.include_router(pptx_router)
 app.include_router(pptx_translate_router)
 app.include_router(tm_router)
@@ -35,6 +39,8 @@ app.include_router(llm_router)
 app.include_router(prompt_router)
 app.include_router(preserve_terms_router)
 app.include_router(token_stats_router)
+app.include_router(xlsx_router)
+app.include_router(pdf_router)
 app.include_router(export_router)
 
 

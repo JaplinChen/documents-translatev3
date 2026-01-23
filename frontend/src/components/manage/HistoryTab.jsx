@@ -29,7 +29,8 @@ export default function HistoryTab({ onLoadFile }) {
 
     const handleDownload = (filename) => {
         const encoded = encodeURIComponent(filename);
-        window.open(`${API_BASE}/api/pptx/download/${encoded}`, "_blank");
+        const fileType = filename.toLowerCase().endsWith(".docx") ? "docx" : "pptx";
+        window.open(`${API_BASE}/api/${fileType}/download/${encoded}`, "_blank");
     };
 
     const handleLoad = async (item) => {
@@ -37,11 +38,16 @@ export default function HistoryTab({ onLoadFile }) {
         setLoadingFile(item.filename);
         try {
             const encoded = encodeURIComponent(item.filename);
-            const res = await fetch(`${API_BASE}/api/pptx/download/${encoded}`);
+            const isDocx = item.filename.toLowerCase().endsWith(".docx");
+            const fileType = isDocx ? "docx" : "pptx";
+            const res = await fetch(`${API_BASE}/api/${fileType}/download/${encoded}`);
             if (!res.ok) throw new Error("Download failed");
 
             const blob = await res.blob();
-            const file = new File([blob], item.filename, { type: "application/vnd.openxmlformats-officedocument.presentationml.presentation" });
+            const mimeType = isDocx ?
+                "application/vnd.openxmlformats-officedocument.wordprocessingml.document" :
+                "application/vnd.openxmlformats-officedocument.presentationml.presentation";
+            const file = new File([blob], item.filename, { type: mimeType });
 
             await onLoadFile(file);
             // We assume the parent modal might close or show a success message if needed, 
@@ -60,7 +66,8 @@ export default function HistoryTab({ onLoadFile }) {
         if (!window.confirm(t("history.confirm_delete", "Delete this file?"))) return;
         try {
             const encoded = encodeURIComponent(item.filename);
-            const res = await fetch(`${API_BASE}/api/pptx/history/${encoded}`, { method: "DELETE" });
+            const fileType = item.filename.toLowerCase().endsWith(".docx") ? "docx" : "pptx";
+            const res = await fetch(`${API_BASE}/api/${fileType}/history/${encoded}`, { method: "DELETE" });
             if (res.ok) fetchHistory();
         } catch (e) {
             console.error(e);

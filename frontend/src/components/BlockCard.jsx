@@ -39,6 +39,9 @@ export default function BlockCard({
                 ) : block.updatedAt ? (
                     <span className="status-pill">{t("components.block_card.updated_at", { time: block.updatedAt })}</span>
                 ) : null}
+                {mode === "correction" && block.correction_temp ? (
+                    <span className="status-pill">暫存</span>
+                ) : null}
 
                 <div className="block-meta-tools ml-auto flex gap-1">
                     <button className="btn-tool" type="button" onClick={() => onAddGlossary(block)} title={t("components.block_card.tools_glossary_title")}>

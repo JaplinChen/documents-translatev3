@@ -3,7 +3,7 @@ import unittest
 
 from pptx import Presentation
 
-from backend.services.pptx_apply import apply_translations
+from backend.services.pptx import apply_translations
 
 
 class TestPptxApply(unittest.TestCase):

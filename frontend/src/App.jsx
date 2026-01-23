@@ -11,7 +11,7 @@ import { CJK_REGEX, VI_REGEX } from "./utils/regex";
 
 // Hooks
 import { useTerminology } from "./hooks/useTerminology";
-import { usePptxProcessor } from "./hooks/usePptxProcessor";
+import { useDocumentProcessor } from "./hooks/useDocumentProcessor";
 import { usePanelResize } from "./hooks/usePanelResize";
 
 // Stores
@@ -34,7 +34,7 @@ function App() {
 
   // --- Logic Hooks ---
   const tm = useTerminology();
-  const processor = usePptxProcessor();
+  const processor = useDocumentProcessor();
 
   usePanelResize(leftPanelRef, fileStore.blocks.length);
 

@@ -11,8 +11,9 @@ export function ExportMenu({ blocks, onClose, disabled = false }) {
 
     const formats = [
         { id: "pptx", label: "PowerPoint (.pptx)", icon: "📊", primary: true },
-        { id: "docx", label: "Word 對照表 (.docx)", icon: "📝" },
-        { id: "xlsx", label: "Excel 對照表 (.xlsx)", icon: "📈" },
+        { id: "docx", label: "Word (.docx)", icon: "📝" },
+        { id: "xlsx", label: "Excel (.xlsx)", icon: "📈" },
+        { id: "pdf", label: "PDF (.pdf)", icon: "🖨️" },
         { id: "txt", label: "純文字 (.txt)", icon: "📄" },
     ];
 

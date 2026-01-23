@@ -3,35 +3,29 @@ services:
     build:
       context: .
       dockerfile: Dockerfile.backend
-    container_name: ppt-translate-backend
+    container_name: document-translate-backend
     ports:
-      - "5001:5001"
+      - "5002:5002"
     extra_hosts:
-      # 讓容器可以連接到本機服務 (包括本機 Ollama)
       - "host.docker.internal:host-gateway"
     environment:
       - LLM_PROVIDER=${LLM_PROVIDER:-ollama}
       - TRANSLATE_LLM_MODE=${TRANSLATE_LLM_MODE:-real}
-      # 連接本機 Ollama (使用 host.docker.internal)
       - OLLAMA_BASE_URL=${OLLAMA_BASE_URL:-http://host.docker.internal:11434}
       - OLLAMA_MODEL=${OLLAMA_MODEL:-translategemma:4b}
       - OLLAMA_TIMEOUT=${OLLAMA_TIMEOUT:-180}
       - OLLAMA_NUM_CTX=${OLLAMA_NUM_CTX:-8192}
-      # Gemini Configuration
       - GEMINI_API_KEY=${GEMINI_API_KEY:-}
       - GEMINI_MODEL=${GEMINI_MODEL:-gemini-1.5-flash}
       - GEMINI_BASE_URL=${GEMINI_BASE_URL:-https://generativelanguage.googleapis.com/v1beta}
       - GEMINI_TIMEOUT=${GEMINI_TIMEOUT:-180}
-      # OpenAI Configuration
       - OPENAI_API_KEY=${OPENAI_API_KEY:-}
       - OPENAI_MODEL=${OPENAI_MODEL:-gpt-4o-mini}
       - OPENAI_BASE_URL=${OPENAI_BASE_URL:-https://api.openai.com/v1}
       - OPENAI_TIMEOUT=${OPENAI_TIMEOUT:-60}
-      # SiliconFlow Configuration
       - SILICONFLOW_API_KEY=${SILICONFLOW_API_KEY:-}
       - SILICONFLOW_MODEL=${SILICONFLOW_MODEL:-Qwen/Qwen2.5-7B-Instruct}
       - SILICONFLOW_BASE_URL=${SILICONFLOW_BASE_URL:-https://api.siliconflow.cn/v1}
-      # Translation Settings
       - SOURCE_LANGUAGE=${SOURCE_LANGUAGE:-auto}
       - LLM_CONTEXT_STRATEGY=${LLM_CONTEXT_STRATEGY:-none}
       - LLM_GLOSSARY_PATH=${LLM_GLOSSARY_PATH:-}
@@ -49,12 +43,12 @@ services:
       - ./docs:/app/docs
     restart: unless-stopped
     healthcheck:
-      test: [ "CMD", "curl", "-f", "http://localhost:5001/health" ]
+      test: [ "CMD", "curl", "-f", "http://localhost:5002/health" ]
       interval: 30s
       timeout: 10s
       retries: 5
       start_period: 30s
-    command: uvicorn backend.main:app --host 0.0.0.0 --port 5001 --reload
+    command: uvicorn backend.main:app --host 0.0.0.0 --port 5002 --reload
     develop:
       watch:
         - action: sync
@@ -68,9 +62,9 @@ services:
     build:
       context: .
       dockerfile: Dockerfile.frontend
-    container_name: ppt-translate-frontend
+    container_name: document-translate-frontend
     ports:
-      - "5193:80"
+      - "5194:80"
     depends_on:
       backend:
         condition: service_healthy
@@ -86,4 +80,4 @@ services:
 
 networks:
   default:
-    name: ppt-translate-network
+    name: document-translate-network

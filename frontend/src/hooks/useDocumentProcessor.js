@@ -6,7 +6,7 @@ import { useSettingsStore } from "../store/useSettingsStore";
 import { useUIStore } from "../store/useUIStore";
 
 
-export function usePptxProcessor() {
+export function useDocumentProcessor() {
     const { t } = useTranslation();
     const [progress, setProgress] = useState(0);
 
@@ -20,15 +20,15 @@ export function usePptxProcessor() {
         setStatus, setAppStatus, setBusy, setSlideDimensions
     } = useUIStore();
 
-
-    // Note: useTm boolean should be in store. Assuming passed or gathered.
-    // For now, let's assume useTm is a prop or we add it to store.
-    // Let's check useUIStore or useSettingsStore for 'useTm' boolean.
-    // It's not there yet. I will treat it as false default or add to store.
-    // I should add useTm to useSettingsStore.
     const useTm = useSettingsStore(s => s.useTm);
 
     const { fillColor, textColor, lineColor, lineDash } = correction;
+
+    const getFileType = () => {
+        if (!file) return null;
+        const ext = file.name.split('.').pop().toLowerCase();
+        return ext === 'pptx' ? 'pptx' : (ext === 'docx' ? 'docx' : null);
+    };
 
     const readErrorDetail = async (response, fallback) => {
         const errorText = await response.text();
@@ -66,8 +66,8 @@ export function usePptxProcessor() {
             setStatus(t("status.no_file"));
             return;
         }
-        const fileName = file.name.toLowerCase();
-        if (!fileName.endsWith(".pptx")) {
+        const fileType = getFileType();
+        if (!fileType) {
             setStatus(t("status.format_error"));
             return;
         }
@@ -77,7 +77,7 @@ export function usePptxProcessor() {
         try {
             const formData = new FormData();
             formData.append("file", file);
-            const response = await fetch(`${API_BASE}/api/pptx/extract`, {
+            const response = await fetch(`${API_BASE}/api/${fileType}/extract`, {
                 method: "POST",
                 body: formData
             });
@@ -118,6 +118,7 @@ export function usePptxProcessor() {
             setStatus(t("status.api_key_missing"));
             return;
         }
+        const fileType = getFileType();
         setBusy(true);
         setProgress(0);
         setStatus(t("sidebar.translate.preparing"));
@@ -145,30 +146,26 @@ export function usePptxProcessor() {
                 formData.append("ollama_fast_mode", llmFastMode ? "true" : "false");
                 formData.append("refresh", refresh ? "true" : "false");
 
-                // 斷線重連：傳遞已完成的 ID 名單
                 if (completedIds.length > 0) {
                     formData.append("completed_ids", JSON.stringify(completedIds));
                 }
 
-                const response = await fetch(`${API_BASE}/api/pptx/translate-stream`, {
+                const response = await fetch(`${API_BASE}/api/${fileType}/translate-stream`, {
                     method: "POST",
                     body: formData
                 });
 
                 if (!response.ok) {
-                    const detail = await readErrorDetail(response, t("status.translate_failed"));
-                    throw new Error(detail);
+                    throw new Error(await readErrorDetail(response, t("status.translate_failed")));
                 }
 
                 const reader = response.body.getReader();
                 const decoder = new TextDecoder();
                 let buffer = "";
-                let totalCompletedInContext = completedIds.length;
 
                 while (true) {
                     const { done, value } = await reader.read();
                     if (done) {
-                        // 如果讀取完成但緩衝區仍有資料，處理最後的 SSE 事件
                         if (buffer.trim()) {
                             const lines = buffer.split("\n\n");
                             for (const line of lines) {
@@ -187,8 +184,6 @@ export function usePptxProcessor() {
                                 }
                             }
                         }
-
-                        // 若未收到 complete 事件就結束，視為中斷，嘗試重連
                         if (completedIds.length < blocks.length && retryCount < maxRetries) {
                             retryCount++;
                             setStatus({ key: "status.retrying", params: { count: retryCount } });
@@ -212,21 +207,17 @@ export function usePptxProcessor() {
                         const eventData = JSON.parse(dataMatch[1]);
 
                         if (eventType === "progress") {
-                            const { completed_indices, completed_ids } = eventData;
-                            // 記錄已完成的 ID（後端需配合返回 ids）
-                            if (completed_ids) {
-                                completed_ids.forEach(id => {
+                            const { completed_indices, completed_ids: c_ids } = eventData;
+                            if (c_ids) {
+                                c_ids.forEach(id => {
                                     if (!completedIds.includes(id)) completedIds.push(id);
                                 });
-                            }
-                            // 退回舊版相容性：如果是索引式進度
-                            else if (completed_indices) {
+                            } else if (completed_indices) {
                                 completed_indices.forEach(idx => {
                                     const id = blocks[idx]?.client_id;
                                     if (id && !completedIds.includes(id)) completedIds.push(id);
                                 });
                             }
-
                             const pct = Math.round((completedIds.length / blocks.length) * 100);
                             setProgress(pct);
                             setStatus(t("sidebar.translate.translating", { current: completedIds.length, total: blocks.length }));
@@ -250,12 +241,22 @@ export function usePptxProcessor() {
         };
 
         const finalizeTranslation = (finalBlocks = []) => {
-            setBlocks(prev => prev.map((b, i) => ({
-                ...b,
-                translated_text: finalBlocks[i]?.translated_text || b.translated_text,
-                isTranslating: false,
-                updatedAt: finalBlocks[i]?.translated_text ? new Date().toLocaleTimeString("zh-TW", { hour12: false }) : b.updatedAt
-            })));
+            setBlocks(prev => prev.map((b, i) => {
+                const nextBlock = finalBlocks[i] || {};
+                const hasTranslated = Object.prototype.hasOwnProperty.call(nextBlock, "translated_text");
+                const hasTempFlag = Object.prototype.hasOwnProperty.call(nextBlock, "correction_temp");
+                const hasTempText = Object.prototype.hasOwnProperty.call(nextBlock, "temp_translated_text");
+                const nextTranslated = hasTranslated ? nextBlock.translated_text : b.translated_text;
+
+                return {
+                    ...b,
+                    translated_text: nextTranslated,
+                    correction_temp: hasTempFlag ? nextBlock.correction_temp : b.correction_temp,
+                    temp_translated_text: hasTempText ? nextBlock.temp_translated_text : b.temp_translated_text,
+                    isTranslating: false,
+                    updatedAt: hasTranslated && nextTranslated ? new Date().toLocaleTimeString("zh-TW", { hour12: false }) : b.updatedAt
+                };
+            }));
             setProgress(100);
             setStatus(t("sidebar.translate.completed"));
             setAppStatus(APP_STATUS.TRANSLATION_COMPLETED);
@@ -273,12 +274,12 @@ export function usePptxProcessor() {
 
     const handleApply = async () => {
         if (!file || blocks.length === 0) return;
+        const fileType = getFileType();
         setBusy(true);
         setStatus(t("sidebar.apply.applying"));
         setAppStatus(APP_STATUS.EXPORTING);
         try {
-            const isPdf = file.name.toLowerCase().endsWith(".pdf");
-            const endpoint = isPdf ? "/api/pdf/apply" : "/api/pptx/apply";
+            const endpoint = `/api/${fileType}/apply`;
             const formData = new FormData();
             formData.append("file", file);
 
@@ -309,10 +310,6 @@ export function usePptxProcessor() {
                 throw new Error("後端生成失敗");
             }
 
-            // --- V12 語義化重構：[原名]-[模式]-[版面]-日期-流水號.pptx ---
-            console.log("Core Processor Version: 20260120-V12-SEMANTIC-NAMING");
-
-            // 直接由瀏覽器處理下載，配合 Nginx 標頭透傳與 URL 路徑備援確保名稱。
             window.location.href = `${API_BASE}${result.download_url}`;
 
             setStatus(t("sidebar.apply.completed"));

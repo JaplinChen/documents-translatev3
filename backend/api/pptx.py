@@ -23,8 +23,8 @@ LOGGER = logging.getLogger(__name__)
 from backend.api.pptx_utils import validate_file_type
 from backend.contracts import coerce_blocks
 from backend.services.language_detect import detect_document_languages
-from backend.services.pptx_apply import apply_bilingual, apply_chinese_corrections, apply_translations
-from backend.services.pptx_extract import extract_blocks as extract_pptx_blocks
+from backend.services.pptx.apply import apply_bilingual, apply_chinese_corrections, apply_translations
+from backend.services.pptx.extract import extract_blocks as extract_pptx_blocks
 from backend.api.pptx_naming import generate_semantic_filename
 from backend.api.pptx_history import get_history_items, delete_history_file
 

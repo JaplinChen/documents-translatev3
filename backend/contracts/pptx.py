@@ -15,10 +15,10 @@ class PPTXBlock(BaseModel):
     client_id: str | None = None
     mode: Literal["direct", "bilingual", "correction"] = "direct"
     # Layout info (in Points)
-    x: float = 0.0
-    y: float = 0.0
-    width: float = 0.0
     height: float = 0.0
+    
+    class Config:
+        extra = "allow"
 
 
 

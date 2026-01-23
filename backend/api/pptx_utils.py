@@ -6,7 +6,7 @@ and shared constants for PPTX API endpoints.
 
 from __future__ import annotations
 
-SUPPORTED_EXTENSIONS = {".pptx", ".docx"}
+SUPPORTED_EXTENSIONS = {".pptx", ".docx", ".xlsx", ".pdf"}
 IMAGE_EXTENSIONS = {".png", ".jpg", ".jpeg", ".gif", ".bmp", ".webp"}
 
 
@@ -35,13 +35,14 @@ def validate_file_type(filename: str | None) -> tuple[bool, str]:
         return (
             False,
             (
-                f"不支援圖片檔案 ({filename})。此工具只支援翻譯 PPTX 或 DOCX "
-                "檔案中的文字內容。若需翻譯圖片文字，請改用支援視覺模型的 LLM API "
-                "(例如 GPT-4o)。"
+                f"不支援圖片檔案 ({filename})。此工具只支援翻譯 PPTX, DOCX, XLSX 或 PDF "
+                "檔案中的文字內容。"
             ),
         )
 
     if ext not in SUPPORTED_EXTENSIONS:
-        return False, f"不支援的檔案格式 ({ext})，僅支援 .pptx 或 .docx"
+        return False, f"不支援的檔案格式 ({ext})，支援 .pptx, .docx, .xlsx, .pdf"
+
+    return True, ""
 
     return True, ""

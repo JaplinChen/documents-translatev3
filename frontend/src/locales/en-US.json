@@ -1,6 +1,6 @@
 {
     "app": {
-        "title": "PPTX Translation Console"
+        "title": "Document Translation Console"
     },
     "nav": {
         "title": "Guide",
@@ -30,14 +30,14 @@
             "label": "Languages"
         },
         "upload": {
-            "placeholder": "Select or Drop PPTX File",
-            "limit": "Supports Microsoft PowerPoint (.pptx)",
+            "placeholder": "Select or Drop Document File",
+            "limit": "Supports Microsoft Word (.docx) or PowerPoint (.pptx)",
             "ready": "✓ Ready"
         },
         "tm": "Use Translation Memory",
         "preprocess": "Preprocessing",
         "extract": {
-            "button": "📊 Extract Glossary",
+            "button": "📊 Extract Terms",
             "hint": "Analyze content to set terms for consistency",
             "summary": "✓ Parsed {{count}} blocks"
         },
@@ -45,11 +45,11 @@
             "preparing": "Preparing...",
             "translating": "Translating... ({{current}}/{{total}})",
             "completed": "Translation Complete",
-            "button": "🚀 Start AI Translation",
+            "button": "🚀 Auto Translate",
             "stop": "Stop"
         },
         "apply": {
-            "button": "📊 Apply Layout & Download PPTX",
+            "button": "📊 Apply Layout & Download Document",
             "applying": "Applying...",
             "completed": "File Exported"
         },
@@ -66,16 +66,16 @@
         "summary": "Total {{total}}, Showing {{filtered}}",
         "empty": {
             "title": "No text blocks extracted",
-            "hint": "Please upload PPTX and click 'Analyze' first"
+            "hint": "Please upload a document and click 'Analyze' first"
         },
         "filter": {
             "search": "Search",
             "type": "Type",
-            "slide": "Slide"
+            "slide": "Page / Slide"
         },
         "search_placeholder": "Search source/target",
         "filter_type": "All Types",
-        "filter_slide": "Slide {{index}}",
+        "filter_slide": "Page/Slide {{index}}",
         "select_all": "Select All",
         "clear_selection": "Clear",
         "source_label": "Source",
@@ -105,9 +105,9 @@
             "review": "Needs Review"
         },
         "editor": {
-            "filter_textbox": "Textbox",
+            "filter_textbox": "Content / Textbox",
             "filter_table": "Table Cell",
-            "filter_notes": "Speaker Notes"
+            "filter_notes": "Notes / Speaker Notes"
         },
         "token_stats": {
             "title": "Token Usage Stats",
@@ -122,8 +122,8 @@
         },
         "block_card": {
             "apply": "Apply",
-            "slide": "Slide",
-            "shape": "Shape",
+            "slide": "Page",
+            "shape": "ID",
             "translating": "Translating...",
             "updated_at": "Updated {{time}}",
             "glossary": "Terms",
@@ -166,7 +166,7 @@
         },
         "fonts": {
             "title": "Font Mapping",
-            "description": "Set priority fonts for different languages in PPTX output (Comma separated, left-to-right priority).",
+            "description": "Set priority fonts for different languages in document output (Comma separated, left-to-right priority).",
             "lang_code": "Lang Code (ISO)",
             "font_list": "Font List",
             "lang": "Language",
@@ -196,7 +196,7 @@
             "tone_hint": "Significantly affects word choice and sentence length.",
             "context_title": "AI Enhancements",
             "vision": "Vision Context",
-            "vision_hint": "Analyzes slide images and layout for better context (if supported).",
+            "vision_hint": "Analyzes document images and layout for better context (if supported).",
             "layout": "Smart Layout Adjust",
             "layout_hint": "Detects overflow and suggests font resizing or line breaks."
         },
@@ -242,7 +242,7 @@
             "tm": "Translation Memory"
         },
         "actions": {
-            "seed": "Import Demo Data",
+            "seed": "Load Data",
             "export_csv": "Export CSV",
             "import_csv": "Import CSV",
             "clear_all": "Clear All",
@@ -323,7 +323,7 @@
         "extracting": "Extracting...",
         "error": "Error: {{message}}",
         "no_file": "Please select a file first",
-        "format_error": "Only .pptx currently supported",
+        "format_error": "Only .pptx or .docx files currently supported",
         "no_blocks": "No blocks extracted",
         "api_key_missing": "Missing API Key in settings",
         "interrupted": "Connection interrupted",

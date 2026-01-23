@@ -55,7 +55,7 @@ export function Sidebar({
                                     {!isFileSelected && <span className="text-sub">{t("sidebar.upload.limit")}</span>}
                                     {isFileSelected && <span className="text-sub text-blue-600">{t("sidebar.upload.ready")}</span>}
                                 </div>
-                                <input className="file-input-hidden" type="file" accept=".pptx" onChange={(e) => setFile(e.target.files?.[0] || null)} />
+                                <input className="file-input-hidden" type="file" accept=".pptx,.docx" onChange={(e) => setFile(e.target.files?.[0] || null)} />
                             </label>
                         </div></div>
                     </div>
@@ -113,6 +113,7 @@ export function Sidebar({
                                     <div className="flex gap-2 flex-wrap">
                                         <ExportButton format="docx" label="DOCX" blocks={blocks} disabled={!canApply} />
                                         <ExportButton format="xlsx" label="XLSX" blocks={blocks} disabled={!canApply} />
+                                        <ExportButton format="pdf" label="PDF" blocks={blocks} disabled={!canApply} />
                                         <ExportButton format="txt" label="TXT" blocks={blocks} disabled={!canApply} />
                                     </div>
                                 </div>

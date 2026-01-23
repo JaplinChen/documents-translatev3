@@ -1,12 +1,12 @@
 from __future__ import annotations
 from pptx import Presentation
 from pptx.dml.color import RGBColor
-from .pptx_apply_core import _apply_translations_to_presentation
-from .pptx_apply_layout import duplicate_slide, insert_slide_after, iter_table_cells, find_shape_with_id, find_shape_in_shapes, add_overflow_textboxes, capture_font_spec
-from .pptx_xml_core import get_pptx_theme_summary
-from .font_manager import estimate_scale
-from .pptx_text_utils import parse_hex_color, split_text_chunks
-from .pptx_apply_text import set_bilingual_text, set_text_preserve_format
+from .apply_core import _apply_translations_to_presentation
+from .apply_layout import duplicate_slide, insert_slide_after, iter_table_cells, find_shape_with_id, find_shape_in_shapes, add_overflow_textboxes, capture_font_spec
+from .xml_core import get_pptx_theme_summary
+from backend.services.font_manager import estimate_scale
+from .text_utils import parse_hex_color, split_text_chunks
+from .apply_text import set_bilingual_text, set_text_preserve_format
 
 def apply_bilingual(
     pptx_in: str,

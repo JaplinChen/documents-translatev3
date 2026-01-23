@@ -6,8 +6,8 @@ from pptx.enum.text import MSO_AUTO_SIZE
 from pptx.text.text import TextFrame
 
 from backend.services.font_manager import contains_cjk
-from .pptx_text_utils import sanitize_xml_text, CJK_SPACE_PATTERN
-from .pptx_text_styles import capture_full_frame_styles, apply_paragraph_style
+from .text_utils import sanitize_xml_text, CJK_SPACE_PATTERN
+from .text_styles import capture_full_frame_styles, apply_paragraph_style
 
 def apply_shape_highlight(shape: Any, fill_color: RGBColor|None=None, line_color: RGBColor|None=None, dash_style: MSO_LINE_DASH_STYLE|None=None) -> None:
     if fill_color:
@@ -21,10 +21,10 @@ def apply_shape_highlight(shape: Any, fill_color: RGBColor|None=None, line_color
         except Exception: pass
 
 def set_text_preserve_format(text_frame: TextFrame, new_text: str, auto_size: bool=False, scale: float=1.0) -> None:
+    """Sets text while preserving original paragraph styles and applying Auto-fit logic."""
     try:
         new_text = sanitize_xml_text(new_text)
         para_styles = capture_full_frame_styles(text_frame)
-        # Filter to get only meaningful styles based on original content (ignore empty spacers)
         content_styles = [s for s in para_styles if s.get("has_text")]
         if not content_styles: content_styles = para_styles
 
@@ -34,7 +34,6 @@ def set_text_preserve_format(text_frame: TextFrame, new_text: str, auto_size: bo
         for index, line in enumerate(lines):
             paragraph = text_frame.paragraphs[0] if index == 0 else text_frame.add_paragraph()
             paragraph.text = line
-            # Smart mapping: map text lines to content styles
             style_idx = min(index, len(content_styles) - 1) if content_styles else -1
             if style_idx >= 0:
                 apply_paragraph_style(paragraph, content_styles[style_idx], scale=scale)
@@ -58,7 +57,6 @@ def set_bilingual_text(text_frame: TextFrame, source_text: str, translated_text:
     source_text, translated_text = sanitize_xml_text(source_text), sanitize_xml_text(translated_text)
     try:
         para_styles = capture_full_frame_styles(text_frame)
-        # Filter to get only meaningful styles based on original content
         content_styles = [s for s in para_styles if s.get("has_text")]
         if not content_styles: content_styles = para_styles
 
@@ -72,14 +70,16 @@ def set_bilingual_text(text_frame: TextFrame, source_text: str, translated_text:
             if style_idx >= 0:
                 apply_paragraph_style(paragraph, content_styles[style_idx], scale=scale)
         if source_lines and translated_text.strip():
-            sep = text_frame.add_paragraph(); sep.text = " "
+            # Add a subtle separator paragraph with reduced spacing
+            sep = text_frame.add_paragraph()
+            sep.text = "─" * 5 
             sz = para_styles[0]["font_obj"].size if para_styles and para_styles[0].get("font_obj") else 120000
-            sep.font.size = int(sz * 0.4) # Slightly smaller separator
+            sep.font.size = int(sz * 0.3)
+            sep.font.color.rgb = RGBColor(128, 128, 128) # Grey separator
         translated_lines = [apply_cjk_line_breaking(l.strip()) for l in translated_text.split("\n") if l.strip()]
         for index, line in enumerate(translated_lines):
             paragraph = text_frame.paragraphs[0] if index == 0 and not source_lines else text_frame.add_paragraph()
             paragraph.text = line
-            # For bilingual, we map translated lines to content styles as well
             style_idx = min(index, len(content_styles) - 1) if content_styles else -1
             if style_idx >= 0:
                 apply_paragraph_style(paragraph, content_styles[style_idx], scale=scale, target_language=target_language, font_mapping=font_mapping)

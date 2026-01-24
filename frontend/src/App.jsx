@@ -13,6 +13,7 @@ import { CJK_REGEX, VI_REGEX } from "./utils/regex";
 import { useTerminology } from "./hooks/useTerminology";
 import { useDocumentProcessor } from "./hooks/useDocumentProcessor";
 import { usePanelResize } from "./hooks/usePanelResize";
+import { useBlockFilter } from "./hooks/useBlockFilter";
 
 // Stores
 import { useFileStore } from "./store/useFileStore";
@@ -38,24 +39,7 @@ function App() {
 
   usePanelResize(leftPanelRef, fileStore.blocks.length);
 
-  const filteredBlocks = React.useMemo(() => {
-    const { blocks } = fileStore;
-    const { filterType, filterSlide, filterText } = ui;
-    return blocks.filter((block) => {
-      if (filterType !== "all" && block.block_type !== filterType) return false;
-      if (filterSlide.trim() !== "") {
-        const slideValue = Number(filterSlide);
-        if (!Number.isNaN(slideValue) && block.slide_index !== slideValue) return false;
-      }
-      if (filterText.trim() !== "") {
-        const needle = filterText.toLowerCase();
-        const source = (block.source_text || "").toLowerCase();
-        const translated = (block.translated_text || "").toLowerCase();
-        if (!source.includes(needle) && !translated.includes(needle)) return false;
-      }
-      return true;
-    });
-  }, [fileStore.blocks, ui.filterText, ui.filterSlide, ui.filterType]);
+  const filteredBlocks = useBlockFilter(fileStore.blocks, ui.filterType, ui.filterSlide, ui.filterText);
 
   const applyDetectedLanguages = (summary) => {
     const primary = summary?.primary || "";

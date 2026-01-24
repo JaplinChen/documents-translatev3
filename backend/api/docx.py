@@ -16,9 +16,14 @@ from fastapi.responses import FileResponse, StreamingResponse
 
 from backend.contracts import coerce_blocks
 from backend.services.language_detect import detect_document_languages, resolve_source_language
+from backend.api.error_handler import api_error_handler, validate_json_blocks
 from backend.services.correction_mode import apply_correction_mode, prepare_blocks_for_correction
 from backend.services.docx.extract import extract_blocks as extract_docx_blocks
-from backend.services.docx.apply import apply_bilingual, apply_translations, apply_chinese_corrections
+from backend.services.docx.apply import (
+    apply_bilingual,
+    apply_translations,
+    apply_chinese_corrections,
+)
 from backend.services.translate_llm import translate_blocks_async
 from backend.api.pptx_naming import generate_semantic_filename
 
@@ -26,15 +31,14 @@ LOGGER = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/api/docx")
 
+
 @router.post("/extract")
+@api_error_handler(validate_file=False, read_error_msg="DOCX 檔案無效")
 async def docx_extract(file: UploadFile = File(...)) -> dict:
     if not file.filename.lower().endswith(".docx"):
         raise HTTPException(status_code=400, detail="只支援 .docx 檔案")
-    
-    try:
-        docx_bytes = await file.read()
-    except Exception as exc:
-        raise HTTPException(status_code=400, detail="DOCX 檔案無效") from exc
+
+    docx_bytes = await file.read()  # File read handled by decorator
 
     data = extract_docx_blocks(docx_bytes)
     blocks = data["blocks"]
@@ -42,10 +46,12 @@ async def docx_extract(file: UploadFile = File(...)) -> dict:
         "blocks": blocks,
         "language_summary": detect_document_languages(blocks),
         "slide_width": data["slide_width"],
-        "slide_height": data["slide_height"]
+        "slide_height": data["slide_height"],
     }
 
+
 @router.post("/apply")
+@api_error_handler(validate_file=False)  # Manual validation for custom checks
 async def docx_apply(
     file: UploadFile = File(...),
     blocks: str = Form(...),
@@ -54,27 +60,24 @@ async def docx_apply(
 ) -> dict:
     if not file.filename.lower().endswith(".docx"):
         raise HTTPException(status_code=400, detail="只支援 .docx 檔案")
-    
-    try:
-        docx_bytes = await file.read()
-    except Exception as exc:
-        raise HTTPException(status_code=400, detail="DOCX 檔案無效") from exc
 
-    try:
-        blocks_data = coerce_blocks(json.loads(blocks))
-    except Exception as exc:
-        raise HTTPException(status_code=400, detail="資料格式錯誤") from exc
+    docx_bytes = await file.read()  # File read handled by decorator
+
+    # Parse and validate JSON data
+    blocks_data = validate_json_blocks(blocks)
 
     if mode not in {"bilingual", "correction", "translated"}:
         raise HTTPException(status_code=400, detail="不支援的 mode")
-    
+
     with tempfile.TemporaryDirectory() as temp_dir:
         out_p = os.path.join(temp_dir, "out.docx")
 
         if mode == "bilingual":
             apply_bilingual(docx_bytes, out_p, blocks_data, target_language=target_language)
         elif mode == "translated":
-            apply_translations(docx_bytes, out_p, blocks_data, mode="direct", target_language=target_language)
+            apply_translations(
+                docx_bytes, out_p, blocks_data, mode="direct", target_language=target_language
+            )
         else:
             apply_chinese_corrections(docx_bytes, out_p, blocks_data)
 
@@ -85,40 +88,44 @@ async def docx_apply(
     final_filename = generate_semantic_filename(file.filename, mode, "inline")
     if not final_filename.endswith(".docx"):
         final_filename = final_filename.rsplit(".", 1)[0] + ".docx"
-        
+
     save_path = Path("data/exports") / final_filename
     save_path.parent.mkdir(parents=True, exist_ok=True)
     with open(save_path, "wb") as f:
         f.write(output_bytes)
-        
+
     import urllib.parse
-    safe_uri = urllib.parse.quote(final_filename, safe='')
+
+    safe_uri = urllib.parse.quote(final_filename, safe="")
     return {
         "status": "success",
         "filename": final_filename,
-        "download_url": f"/api/docx/download/{safe_uri}"
+        "download_url": f"/api/docx/download/{safe_uri}",
     }
+
 
 @router.get("/download/{filename:path}")
 async def docx_download(filename: str):
     import urllib.parse
+
     if "%" in filename:
         filename = urllib.parse.unquote(filename)
     file_path = Path("data/exports") / filename
     if not file_path.exists():
         raise HTTPException(status_code=404, detail="檔案不存在")
-        
+
     ascii_name = "".join(c if ord(c) < 128 else "_" for c in filename)
-    safe_name = urllib.parse.quote(filename, safe='')
+    safe_name = urllib.parse.quote(filename, safe="")
     return FileResponse(
         path=file_path,
         media_type="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
         headers={
-            "Content-Disposition": f'attachment; filename="{ascii_name}"; filename*=UTF-8\'\'{safe_name}',
+            "Content-Disposition": f"attachment; filename=\"{ascii_name}\"; filename*=UTF-8''{safe_name}",
             "Access-Control-Expose-Headers": "Content-Disposition",
-            "Cache-Control": "no-cache"
-        }
+            "Cache-Control": "no-cache",
+        },
     )
+
 
 @router.post("/translate-stream")
 async def docx_translate_stream(
@@ -171,16 +178,19 @@ async def docx_translate_stream(
 
     async def event_generator():
         queue = asyncio.Queue()
+
         async def progress_cb(progress_data):
             await queue.put({"event": "progress", "data": json.dumps(progress_data)})
 
         try:
             # yield initial progress
             yield f"event: progress\ndata: {json.dumps({'chunk_index': 0, 'completed_indices': [], 'chunk_size': 0, 'total_pending': len(blocks_data), 'timestamp': 0})}\n\n"
-            
+
             task = asyncio.create_task(
                 translate_blocks_async(
-                    _prepare_blocks_for_correction(effective_blocks, target_language) if mode == "correction" else effective_blocks,
+                    _prepare_blocks_for_correction(effective_blocks, target_language)
+                    if mode == "correction"
+                    else effective_blocks,
                     target_language,
                     source_language=resolved_source_language,
                     use_tm=use_tm,
@@ -198,7 +208,9 @@ async def docx_translate_stream(
 
             while True:
                 get_queue_task = asyncio.create_task(queue.get())
-                done, pending = await asyncio.wait([get_queue_task, task], return_when=asyncio.FIRST_COMPLETED)
+                done, pending = await asyncio.wait(
+                    [get_queue_task, task], return_when=asyncio.FIRST_COMPLETED
+                )
 
                 if get_queue_task in done:
                     event = get_queue_task.result()
@@ -212,7 +224,9 @@ async def docx_translate_stream(
                         yield f"event: {event['event']}\ndata: {event['data']}\n\n"
                     result = await task
                     if mode == "correction":
-                        translated_texts = [b.get("translated_text", "") for b in result.get("blocks", [])]
+                        translated_texts = [
+                            b.get("translated_text", "") for b in result.get("blocks", [])
+                        ]
                         result["blocks"] = apply_correction_mode(
                             effective_blocks,
                             translated_texts,

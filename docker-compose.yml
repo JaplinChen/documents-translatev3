@@ -36,6 +36,9 @@ services:
       - LLM_RETRY_BACKOFF=${LLM_RETRY_BACKOFF:-0.8}
       - LLM_RETRY_MAX_BACKOFF=${LLM_RETRY_MAX_BACKOFF:-8}
       - LLM_CHUNK_DELAY=${LLM_CHUNK_DELAY:-0}
+      - PDF_OCR_DPI=${PDF_OCR_DPI:-200}
+      - PDF_OCR_LANG=${PDF_OCR_LANG:-eng}
+      - PDF_OCR_CONF_MIN=${PDF_OCR_CONF_MIN:-10}
       - CORS_ORIGIN=${CORS_ORIGIN:-*}
     volumes:
       - ./data:/app/data
@@ -81,3 +84,4 @@ services:
 networks:
   default:
     name: document-translate-network
+

@@ -6,7 +6,7 @@ from pathlib import Path
 from fastapi import APIRouter, File, Form, HTTPException, UploadFile
 from fastapi.responses import FileResponse
 
-from backend.api.pptx_naming import generate_semantic_filename
+from backend.api.pptx_naming import generate_semantic_filename_with_ext
 from backend.api.pptx_translate import pptx_translate_stream
 from backend.api.pptx_utils import validate_file_type
 from backend.contracts import coerce_blocks
@@ -77,7 +77,12 @@ async def pdf_apply(
         with open(out_p, "rb") as h:
             output_bytes = h.read()
 
-    final_filename = generate_semantic_filename(file.filename, mode, "inline")
+    final_filename = generate_semantic_filename_with_ext(
+        file.filename,
+        mode,
+        "inline",
+        ".pdf",
+    )
     save_path = Path("data/exports") / final_filename
     save_path.parent.mkdir(parents=True, exist_ok=True)
     with open(save_path, "wb") as f:

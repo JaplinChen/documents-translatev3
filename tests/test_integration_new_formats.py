@@ -63,6 +63,7 @@ def test_xlsx_integration(dummy_xlsx):
     
     assert response.status_code == 200
     assert "download_url" in response.json()
+    assert response.json()["filename"].endswith(".xlsx")
 
 def test_pdf_integration(dummy_pdf):
     # 1. Test Extract
@@ -87,3 +88,4 @@ def test_pdf_integration(dummy_pdf):
     
     assert response.status_code == 200
     assert "download_url" in response.json()
+    assert response.json()["filename"].endswith(".pdf")

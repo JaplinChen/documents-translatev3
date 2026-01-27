@@ -1,27 +1,26 @@
 import asyncio
-import time
-import shutil
 import os
+import time
 from pathlib import Path
-from fastapi import FastAPI, BackgroundTasks
+
+from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from backend.api import (
     docx_router,
     export_router,
     llm_router,
+    ocr_settings_router,
+    pdf_router,
     pptx_router,
     pptx_translate_router,
     preserve_terms_router,
     prompt_router,
+    style_router,
     tm_router,
     token_stats_router,
     xlsx_router,
-    pdf_router,
-    ocr_settings_router,
-    style_router,
 )
-
 from backend.tools.logging_middleware import StructuredLoggingMiddleware
 
 app = FastAPI()
@@ -56,7 +55,10 @@ async def reset_cache():
     count = 0
     if data_dir.exists():
         for item in data_dir.glob("**/*"):
-            if item.is_file() and (item.suffix in (".db", ".json", ".pptx", ".docx") or "cache" in item.name):
+            if item.is_file() and (
+                item.suffix in (".db", ".json", ".pptx", ".docx")
+                or "cache" in item.name
+            ):
                 try:
                     os.remove(item)
                     count += 1

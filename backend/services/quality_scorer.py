@@ -9,7 +9,6 @@ from __future__ import annotations
 import re
 from dataclasses import dataclass
 
-
 @dataclass
 class QualityScore:
     """Translation quality assessment result."""
@@ -22,7 +21,10 @@ class QualityScore:
     issues: list[str]  # List of detected issues
 
 
-def calculate_length_ratio(source: str, translated: str) -> tuple[float, str | None]:
+def calculate_length_ratio(
+    source: str,
+    translated: str,
+) -> tuple[float, str | None]:
     """Calculate length ratio and determine if it's acceptable."""
     if not source or not translated:
         return 1.0, None
@@ -48,7 +50,11 @@ def calculate_length_ratio(source: str, translated: str) -> tuple[float, str | N
     return round(ratio, 2), warning
 
 
-def detect_untranslated(source: str, translated: str, source_lang: str = "vi") -> bool:
+def detect_untranslated(
+    source: str,
+    translated: str,
+    source_lang: str = "vi",
+) -> bool:
     """Detect if significant source text appears unchanged in translation."""
     if not source or not translated:
         return False
@@ -92,13 +98,17 @@ def detect_untranslated(source: str, translated: str, source_lang: str = "vi") -
 
     if len(source_words) > 0:
         overlap_ratio = len(overlap) / len(source_words)
-        return overlap_ratio > 0.3  # More than 30% overlap suggests untranslated
+        # More than 30% overlap suggests untranslated content.
+        return overlap_ratio > 0.3
 
     return False
 
 
 def score_translation(
-    source: str, translated: str, source_lang: str = "vi", target_lang: str = "zh-TW"
+    source: str,
+    translated: str,
+    source_lang: str = "vi",
+    target_lang: str = "zh-TW",
 ) -> QualityScore:
     """
     Score a translation based on multiple quality metrics.

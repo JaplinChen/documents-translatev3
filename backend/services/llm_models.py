@@ -3,7 +3,6 @@ from __future__ import annotations
 import json
 from urllib.request import Request, urlopen
 
-
 def list_openai_models(api_key: str, base_url: str) -> list[str]:
     request = Request(
         f"{base_url.rstrip('/')}/models",

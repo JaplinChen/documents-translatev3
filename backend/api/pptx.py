@@ -7,22 +7,18 @@ application of translated content, and language detection.
 from __future__ import annotations
 
 import json
-import logging
 import os
 import tempfile
-import uuid
-import time
-import re
+import urllib.parse
 from pathlib import Path
 
-from fastapi import APIRouter, File, Form, HTTPException, Response, UploadFile
+from fastapi import APIRouter, File, Form, HTTPException, UploadFile
 from fastapi.responses import FileResponse
 
-LOGGER = logging.getLogger(__name__)
-
-from backend.api.pptx_utils import validate_file_type
 from backend.api.error_handler import api_error_handler, validate_json_blocks
-from backend.contracts import coerce_blocks
+from backend.api.pptx_history import delete_history_file, get_history_items
+from backend.api.pptx_naming import generate_semantic_filename
+from backend.api.pptx_utils import validate_file_type
 from backend.services.language_detect import detect_document_languages
 from backend.services.pptx.apply import (
     apply_bilingual,
@@ -30,8 +26,6 @@ from backend.services.pptx.apply import (
     apply_translations,
 )
 from backend.services.pptx.extract import extract_blocks as extract_pptx_blocks
-from backend.api.pptx_naming import generate_semantic_filename
-from backend.api.pptx_history import get_history_items, delete_history_file
 
 router = APIRouter(prefix="/api/pptx")
 
@@ -46,7 +40,9 @@ async def pptx_extract(file: UploadFile = File(...)) -> dict:
         with open(input_path, "wb") as h:
             h.write(pptx_bytes)
         data = extract_pptx_blocks(input_path)
-        blocks, sw, sh = data["blocks"], data["slide_width"], data["slide_height"]
+        blocks = data["blocks"]
+        sw = data["slide_width"]
+        sh = data["slide_height"]
 
     return {
         "blocks": blocks,
@@ -98,7 +94,8 @@ async def pptx_apply(
         raise HTTPException(status_code=400, detail="不支援的 mode")
 
     with tempfile.TemporaryDirectory() as temp_dir:
-        in_p, out_p = os.path.join(temp_dir, "in.pptx"), os.path.join(temp_dir, "out.pptx")
+        in_p = os.path.join(temp_dir, "in.pptx")
+        out_p = os.path.join(temp_dir, "out.pptx")
         with open(in_p, "wb") as h:
             h.write(pptx_bytes)
 
@@ -134,13 +131,15 @@ async def pptx_apply(
         with open(out_p, "rb") as h:
             output_bytes = h.read()
 
-    final_filename = generate_semantic_filename(file.filename, mode, bilingual_layout)
+    final_filename = generate_semantic_filename(
+        file.filename,
+        mode,
+        bilingual_layout,
+    )
     save_path = Path("data/exports") / final_filename
     save_path.parent.mkdir(parents=True, exist_ok=True)
     with open(save_path, "wb") as f:
         f.write(output_bytes)
-
-    import urllib.parse
 
     safe_uri = urllib.parse.quote(final_filename, safe="")
     return {
@@ -153,8 +152,6 @@ async def pptx_apply(
 
 @router.get("/download/{filename:path}")
 async def pptx_download(filename: str):
-    import urllib.parse
-
     if "%" in filename:
         filename = urllib.parse.unquote(filename)
     file_path = Path("data/exports") / filename
@@ -163,11 +160,17 @@ async def pptx_download(filename: str):
 
     ascii_name = "".join(c if ord(c) < 128 else "_" for c in filename)
     safe_name = urllib.parse.quote(filename, safe="")
+    content_disposition = (
+        f"attachment; filename=\"{ascii_name}\"; filename*=UTF-8''{safe_name}"
+    )
     return FileResponse(
         path=file_path,
-        media_type="application/vnd.openxmlformats-officedocument.presentationml.presentation",
+        media_type=(
+            "application/vnd.openxmlformats-officedocument."
+            "presentationml.presentation"
+        ),
         headers={
-            "Content-Disposition": f"attachment; filename=\"{ascii_name}\"; filename*=UTF-8''{safe_name}",
+            "Content-Disposition": content_disposition,
             "Access-Control-Expose-Headers": "Content-Disposition",
             "Cache-Control": "no-cache",
         },
@@ -200,7 +203,8 @@ async def pptx_extract_glossary(
         )
         return {"terms": terms}
     except Exception as exc:
-        raise HTTPException(status_code=400, detail=str(exc)) from exc
+        # Return a 200 with error details so frontend can surface it without hard-fail
+        return {"terms": [], "error": str(exc)}
 
 
 @router.get("/debug-version")

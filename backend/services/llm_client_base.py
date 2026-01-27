@@ -13,7 +13,11 @@ from pathlib import Path
 
 from backend.services.llm_contract import build_contract
 
-CONTRACT_PATH = Path(__file__).resolve().parents[2] / "docs" / "translation_contract_pptx.json"
+CONTRACT_PATH = (
+    Path(__file__).resolve().parents[2]
+    / "docs"
+    / "translation_contract_pptx.json"
+)
 
 
 def load_contract_example() -> dict:
@@ -58,7 +62,12 @@ class MockTranslator:
     ) -> dict:
         """Return original text as translation (mock mode)."""
         return self.translate(
-            blocks, target_language, context, preferred_terms, placeholder_tokens, language_hint
+            blocks,
+            target_language,
+            context,
+            preferred_terms,
+            placeholder_tokens,
+            language_hint,
         )
 
     def complete(self, prompt: str) -> str:

@@ -1,15 +1,14 @@
 """
-Smart Term Suggester Service
+Smart Term Suggester Service.
 
-Analyzes text to suggest terms for the preserve terms or translation glossary databases.
-Uses NLP patterns to identify technical terms, product names, and acronyms.
+Analyzes text to suggest preserve terms or glossary entries.
+Uses NLP patterns to identify technical terms and acronyms.
 """
 
 from __future__ import annotations
 
 import re
 from dataclasses import dataclass
-
 
 @dataclass
 class TermSuggestion:
@@ -27,7 +26,8 @@ ACRONYM_PATTERN = re.compile(r"\b[A-Z]{2,6}\b")
 PRODUCT_PATTERN = re.compile(r"\b[A-Z][a-z]+(?:[A-Z][a-z]+)+\b")  # CamelCase
 TECH_PATTERNS = [
     re.compile(
-        r"\b(?:API|SDK|HTTP|HTTPS|JSON|XML|SQL|CSS|HTML|JS|PDF|AI|ML|UI|UX)\b", re.IGNORECASE
+        r"\b(?:API|SDK|HTTP|HTTPS|JSON|XML|SQL|CSS|HTML|JS|PDF|AI|ML|UI|UX)\b",
+        re.IGNORECASE,
     ),
     re.compile(r"\b\w+(?:\.js|\.py|\.ts|\.jsx|\.tsx)\b"),  # File extensions
     re.compile(r"\b(?:v?\d+\.\d+(?:\.\d+)?)\b"),  # Version numbers
@@ -73,7 +73,18 @@ def extract_acronyms(text: str) -> list[TermSuggestion]:
 
     for match in set(matches):
         # Skip very common words
-        if match.lower() in {"am", "pm", "ok", "to", "in", "on", "at", "of", "it", "is"}:
+        if match.lower() in {
+            "am",
+            "pm",
+            "ok",
+            "to",
+            "in",
+            "on",
+            "at",
+            "of",
+            "it",
+            "is",
+        }:
             continue
 
         suggestions.append(

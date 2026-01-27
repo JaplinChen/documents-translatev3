@@ -1,6 +1,7 @@
 import React from "react";
 import { useTranslation } from "react-i18next";
 import { usePreserveTerms } from "../../hooks/usePreserveTerms";
+import { API_BASE } from "../../constants";
 import { PreserveTermsHeader } from "./PreserveTerms/PreserveTermsHeader";
 import { PreserveTermsAddForm } from "./PreserveTerms/PreserveTermsAddForm";
 import { PreserveTermsList } from "./PreserveTerms/PreserveTermsList";
@@ -10,7 +11,8 @@ export default function PreserveTermsTab({ onClose }) {
     const {
         filteredTerms, loading, filterText, setFilterText, filterCategory, setFilterCategory,
         editingId, setEditingId, editForm, setEditForm, newTerm, setNewTerm, categories,
-        handleAdd, handleDelete, handleUpdate, handleExport, handleImport, handleConvertToGlossary
+        handleAdd, handleDelete, handleUpdate, handleExport, handleImport, handleConvertToGlossary,
+        refreshTerms
     } = usePreserveTerms();
 
     const [selectedIds, setSelectedIds] = React.useState([]);
@@ -22,16 +24,15 @@ export default function PreserveTermsTab({ onClose }) {
         if (!selectedIds.length) return;
         if (!window.confirm(t("manage.preserve.alerts.delete_confirm"))) return;
         try {
-            const res = await fetch(`${API_BASE}/api/tm/glossary/batch`, {
-                method: "DELETE",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ ids: selectedIds })
-            });
-            if (res.ok) {
-                setSelectedIds([]);
-                // Trigger refresh by re-fetching (implicitly handled by usePreserveTerms if we had a trigger)
-                window.location.reload(); // Simple sync for now, or improve usePreserveTerms
-            }
+            await Promise.all(
+                selectedIds.map((id) =>
+                    fetch(`${API_BASE}/api/preserve-terms/${id}`, {
+                        method: "DELETE",
+                    })
+                )
+            );
+            setSelectedIds([]);
+            refreshTerms();
         } catch (err) {
             console.error(err);
         }
@@ -42,31 +43,28 @@ export default function PreserveTermsTab({ onClose }) {
         if (!window.confirm("確定要將選取的術語轉為對照表嗎？（原記錄將自動刪除）")) return;
 
         try {
-            for (const id of selectedIds) {
-                const term = filteredTerms.find(t => t.id === id);
-                if (term) {
-                    // Call backend to upsert glossary
+            await Promise.all(
+                selectedIds.map(async (id) => {
+                    const term = filteredTerms.find((item) => item.id === id);
+                    if (!term) return;
                     await fetch(`${API_BASE}/api/tm/glossary`, {
                         method: "POST",
                         headers: { "Content-Type": "application/json" },
                         body: JSON.stringify({
                             source_lang: "auto",
                             target_lang: "zh-TW",
-                            source_text: term.source_text,
-                            target_text: term.source_text, // Default to target = source for preserve transfer
-                            priority: 10
-                        })
+                            source_text: term.term,
+                            target_text: term.term,
+                            priority: 10,
+                        }),
                     });
-                    // Delete original preserve term
-                    await fetch(`${API_BASE}/api/tm/glossary`, {
+                    await fetch(`${API_BASE}/api/preserve-terms/${term.id}`, {
                         method: "DELETE",
-                        headers: { "Content-Type": "application/json" },
-                        body: JSON.stringify({ id: term.id })
                     });
-                }
-            }
+                })
+            );
             setSelectedIds([]);
-            window.location.reload();
+            refreshTerms();
         } catch (err) {
             console.error(err);
         }

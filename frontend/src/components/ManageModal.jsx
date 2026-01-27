@@ -346,7 +346,7 @@ function DataTable({ items, isGlossary, editingKey, draft, saving, selectedIds, 
                                     {!isGlossary && (
                                         <IconButton icon={Table} size="sm" onClick={() => onConvertToGlossary(item)} title={t("manage.actions.convert_glossary")} />
                                     )}
-                                    <IconButton icon={Trash2} variant="danger" size="sm" onClick={() => handleDelete(item)} title={t("manage.actions.delete")} />
+                                    <IconButton icon={Trash2} variant="danger" size="sm" onClick={() => onDelete(item)} title={t("manage.actions.delete")} />
                                 </>
                             )}
                         </div>

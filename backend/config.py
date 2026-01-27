@@ -1,6 +1,5 @@
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
-
 class Settings(BaseSettings):
     # LLM Configuration
     llm_provider: str = "ollama"
@@ -46,7 +45,11 @@ class Settings(BaseSettings):
     llm_retry_max_backoff: float = 8.0
     llm_chunk_delay: float = 0.0
 
-    model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8", extra="ignore")
+    model_config = SettingsConfigDict(
+        env_file=".env",
+        env_file_encoding="utf-8",
+        extra="ignore",
+    )
 
 
 settings = Settings()

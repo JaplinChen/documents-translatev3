@@ -4,15 +4,11 @@ import json
 from collections.abc import Iterable
 
 from backend.services.prompt_store import render_prompt
-
 from backend.services.translate_config import (
-    LANGUAGE_HINTS,
-    LANGUAGE_LABELS,
+    get_language_example as _language_example,
     get_language_hint as _language_hint,
     get_language_label as _language_label,
-    get_language_example as _language_example,
 )
-
 
 def build_prompt(
     blocks: Iterable[dict],
@@ -32,7 +28,8 @@ def build_prompt(
     }
     if preferred_terms:
         input_payload["preferred_terms"] = [
-            {"source": source, "target": target} for source, target in preferred_terms
+            {"source": source, "target": target}
+            for source, target in preferred_terms
         ]
     if placeholder_tokens:
         input_payload["placeholder_tokens"] = placeholder_tokens

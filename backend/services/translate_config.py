@@ -23,17 +23,23 @@ LANGUAGE_HINTS = {
         "【重要】請務必使用「越南語」(Tiếng Việt) 進行翻譯。\n"
         "1. 語氣：請使用專業正式的商務語氣。\n"
         "2. 字符：必須正確使用越南語聲調與字母 (ă, â, ê, ô, ơ, ư, đ)。\n"
-        "3. 技術名詞：常見技術名詞（如 AI, API, Cloud）可保留英文縮寫，但可在括號內提供越南語說明。\n"
+        "3. 技術名詞：常見技術名詞（如 AI, API, Cloud）可保留英文縮寫，\n"
+        "   但可在括號內提供越南語說明。\n"
         "4. 範例：解決方案 → Giải pháp, 自動 → Tự động。\n"
         "嚴禁混雜菲律賓語、泰語、西班牙語或英文內容。"
     ),
     "zh-TW": (
         "請使用「繁體中文（台灣）」。\n"
         "1. 標點符號：必須使用全形標點（，。：；！？），引號請使用「」。\n"
-        "2. 技術用語：務必符合台灣習慣。例如：使用「伺服器」而非「服務器」、「記憶體」而非「內存」、「使用者」而非「用戶」、「專案」而非「項目」、「貼上」而非「粘貼」。\n"
+        "2. 技術用語：務必符合台灣習慣。例如：使用「伺服器」而非"
+        "「服務器」、「記憶體」而非「內存」、「使用者」而非「用戶」、"
+        "「專案」而非「項目」、「貼上」而非「粘貼」。\n"
         "3. 語法：避免使用冗餘的「進行」、「的一個」等西化或大陸式語句，保持自然流暢。"
     ),
-    "zh-CN": "請使用「簡體中文（中國大陸）」。用語需符合當地的技術用語習慣（例如：使用「內存」而非「記憶體」）。",
+    "zh-CN": (
+        "請使用「簡體中文（中國大陸）」。用語需符合當地的技術用語習慣"
+        "（例如：使用「內存」而非「記憶體」）。"
+    ),
     "zh": "請使用中文翻譯。",
     "en": "Please respond in professional English.",
     "ja": "日本語（熟語やビジネス表現）で回答してください。",
@@ -115,7 +121,11 @@ def get_vision_context_instruction(use_vision: bool) -> str:
     )
 
 
-def get_provider_config(provider: str, key: str, default: int | float | bool) -> int | float | bool:
+def get_provider_config(
+    provider: str,
+    key: str,
+    default: int | float | bool,
+) -> int | float | bool:
     """Get provider-specific configuration value."""
     provider_defaults = PROVIDER_DEFAULTS.get(provider, {})
     return provider_defaults.get(key, default)

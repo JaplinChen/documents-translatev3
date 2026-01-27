@@ -26,15 +26,22 @@ async def llm_models(
         if provider in {"openai", "chatgpt"}:
             if not api_key:
                 raise HTTPException(status_code=400, detail="API key 為必填")
-            models = list_openai_models(api_key, base_url or "https://api.openai.com/v1")
+            models = list_openai_models(
+                api_key,
+                base_url or "https://api.openai.com/v1",
+            )
         elif provider == "gemini":
             if not api_key:
                 raise HTTPException(status_code=400, detail="API key 為必填")
             models = list_gemini_models(
-                api_key, base_url or "https://generativelanguage.googleapis.com/v1beta"
+                api_key,
+                base_url
+                or "https://generativelanguage.googleapis.com/v1beta",
             )
         elif provider == "ollama":
-            models = list_ollama_models(base_url or "http://host.docker.internal:11434")
+            models = list_ollama_models(
+                base_url or "http://host.docker.internal:11434"
+            )
         else:
             raise HTTPException(status_code=400, detail="不支援的 provider")
     except HTTPException:
@@ -44,7 +51,8 @@ async def llm_models(
             raise HTTPException(
                 status_code=400,
                 detail=build_connection_refused_message(
-                    "Ollama", base_url or "http://host.docker.internal:11434"
+                    "Ollama",
+                    base_url or "http://host.docker.internal:11434",
                 ),
             ) from exc
         raise HTTPException(status_code=400, detail=str(exc)) from exc

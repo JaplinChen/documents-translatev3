@@ -1,17 +1,17 @@
-"""
-Unified error handling for API endpoints.
+"""Unified error handling for API endpoints.
 
-This module provides decorators to standardize error handling across FastAPI routes,
-reducing code duplication and improving maintainability.
+This module provides decorators to standardize error handling across
+FastAPI routes.
 """
 
 from __future__ import annotations
 
 import functools
+import json
 import logging
-from typing import Callable, Any
-
 import traceback
+from collections.abc import Callable
+
 from fastapi import HTTPException, UploadFile
 
 from backend.api.pptx_utils import validate_file_type
@@ -51,8 +51,13 @@ def api_error_handler(
                     await file.seek(0)
                 except Exception as exc:
                     error_msg = read_error_msg or f"{file.filename} 檔案無效"
-                    LOGGER.error(f"File read error for {file.filename}: {exc}")
-                    raise HTTPException(status_code=400, detail=error_msg) from exc
+                    LOGGER.error(
+                        "File read error for %s: %s", file.filename, exc
+                    )
+                    raise HTTPException(
+                        status_code=400,
+                        detail=error_msg,
+                    ) from exc
 
             try:
                 return await func(*args, **kwargs)
@@ -62,7 +67,9 @@ def api_error_handler(
             except Exception as exc:
                 # Log unexpected errors
                 traceback.print_exc()
-                LOGGER.error(f"Unexpected error in {func.__name__}: {exc}")
+                LOGGER.error(
+                    "Unexpected error in %s: %s", func.__name__, exc
+                )
                 raise HTTPException(status_code=500, detail="內部伺服器錯誤") from exc
 
         return wrapper
@@ -83,10 +90,9 @@ def validate_json_blocks(blocks_str: str) -> dict:
     Raises:
         HTTPException: If JSON is invalid or blocks format is wrong
     """
-    from backend.contracts import coerce_blocks
-
     try:
-        blocks_data = coerce_blocks(__import__("json").loads(blocks_str))
-        return blocks_data
+        from backend.contracts import coerce_blocks
+
+        return coerce_blocks(json.loads(blocks_str))
     except Exception as exc:
         raise HTTPException(status_code=400, detail="資料格式錯誤") from exc

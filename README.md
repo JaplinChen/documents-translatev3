@@ -63,12 +63,25 @@
 python scripts/cleanup_project.py --no-dry-run
 ```
 
+## 🧰 開發流程
+
+- 安裝 `pre-commit` 並啟用：  
+  ```bash
+  python -m pip install pre-commit
+  pre-commit install
+  ```
+- `pre-commit` 目前只會在 `backend/` 範圍執行 `flake8 --select=E9,F63,F7,F82`，確保重大錯誤（例如 `F821`）不會再出現。  
+- 若要在開發前手動檢查所有 backend 檔案，可跑：  
+  ```bash
+  pre-commit run backend-only flake8 --all-files
+  ```
+
 ---
 
 ## 📂 專案結構
 
 ```
-PPTX-Translate/
+Documents-Translate/ (舊稱 PPTX-Translate)
 ├── install.bat          # [New] Windows 一鍵安裝進入點
 ├── scripts/             # 自動化腳本 (安裝、打包、清理)
 ├── backend/             # FastAPI 後端引擎

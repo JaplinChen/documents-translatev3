@@ -35,7 +35,11 @@ def build_ollama_options() -> dict:
     if settings.ollama_num_thread is not None:
         options["num_thread"] = settings.ollama_num_thread
 
-    if settings.ollama_force_gpu and "num_gpu" not in options and "num_gpu_layers" not in options:
+    if (
+        settings.ollama_force_gpu
+        and "num_gpu" not in options
+        and "num_gpu_layers" not in options
+    ):
         options["num_gpu"] = 1
 
     return options
@@ -74,7 +78,8 @@ class OllamaTranslator:
                 return data
         except httpx.HTTPStatusError as exc:
             raise ValueError(
-                f"Ollama API 錯誤 ({exc.response.status_code}): {exc.response.reason_phrase}"
+                f"Ollama API 錯誤 ({exc.response.status_code}): "
+                f"{exc.response.reason_phrase}"
             ) from exc
         except httpx.RequestError as exc:
             raise ValueError(f"無法連線至 Ollama ({self.base_url}): {exc}") from exc
@@ -84,11 +89,17 @@ class OllamaTranslator:
         url = f"{self.base_url}{endpoint}"
         try:
             if self._async_client is not None:
-                response = await self._async_client.post(url, json=payload, timeout=settings.ollama_timeout)
+                response = await self._async_client.post(
+                    url,
+                    json=payload,
+                    timeout=settings.ollama_timeout,
+                )
                 response.raise_for_status()
                 data = response.json()
             else:
-                async with httpx.AsyncClient(timeout=settings.ollama_timeout) as client:
+                async with httpx.AsyncClient(
+                    timeout=settings.ollama_timeout
+                ) as client:
                     response = await client.post(url, json=payload)
                     response.raise_for_status()
                     data = response.json()
@@ -101,11 +112,12 @@ class OllamaTranslator:
                     prompt_tokens=data.get("prompt_eval_count", 0),
                     completion_tokens=data.get("eval_count", 0),
                 )
-            
+
             return data
         except httpx.HTTPStatusError as exc:
             raise ValueError(
-                f"Ollama API 錯誤 ({exc.response.status_code}): {exc.response.reason_phrase}"
+                f"Ollama API 錯誤 ({exc.response.status_code}): "
+                f"{exc.response.reason_phrase}"
             ) from exc
         except httpx.RequestError as exc:
             raise ValueError(f"無法連線至 Ollama ({self.base_url}): {exc}") from exc

@@ -1,130 +1,149 @@
 from __future__ import annotations
+
 from typing import Any
+
 from lxml import etree
 from pptx.text.text import TextFrame
+
 from backend.services.font_manager import clone_font_props
 
-def capture_full_frame_styles(text_frame: TextFrame) -> list[dict[str, Any]]:
-    styles = []
-    for p in text_frame.paragraphs:
-        # Deep XML capture for high-fidelity replication (Indentation, tab stops, etc)
-        p_pr = None
-        try:
-            p_xml = p._p
-            p_pr_xml = p_xml.find('.//{http://schemas.openxmlformats.org/presentationml/2006/main}pPr')
-            if p_pr_xml is None:
-                p_pr_xml = p_xml.find('.//{http://schemas.openxmlformats.org/drawingml/2006/main}pPr')
-            if p_pr_xml is not None:
-                p_pr = etree.tostring(p_pr_xml)
-        except Exception: pass
+def capture_full_frame_styles(
+    text_frame: TextFrame,
+) -> list[dict[str, Any]]:
+    """Return paragraph-level metadata for a text frame."""
+    styles: list[dict[str, Any]] = []
+    for paragraph in text_frame.paragraphs:
+        styles.append(_capture_paragraph_style(paragraph))
 
-        styles.append({
-            "level": p.level,
-            "alignment": p.alignment,
-            "space_before": p.space_before,
-            "space_after": p.space_after,
-            "line_spacing": p.line_spacing,
-            "font_obj": p.runs[0].font if p.runs else None,
-            "bold": p.runs[0].font.bold if p.runs else None,
-            "italic": p.runs[0].font.italic if p.runs else None,
-            "underline": p.runs[0].font.underline if p.runs else None,
-            "has_text": bool(p.text and p.text.strip()),
-            "pPr_xml": p_pr
-        })
-    
-    # --- Post-process: Consolidate spacing from empty paragraphs ---
-    # Convert empty lines into space_after of previous paragraph or space_before of next
-    try:
-        last_text_idx = -1
-        pending_before = 0
-        
-        for i, style in enumerate(styles):
-            if style["has_text"]:
-                # Apply any pending space from initial empty lines to this first text paragraph
-                if pending_before > 0:
-                    current_before = style["space_before"] if style["space_before"] is not None else 0
-                    style["space_before"] = current_before + pending_before
-                    pending_before = 0
-                last_text_idx = i
-            else:
-                # Calculate visual height of this empty paragraph
-                # Default font size 18pt if missing (approximate)
-                f_size = 18 * 12700 
-                if style["font_obj"] and style["font_obj"].size:
-                    f_size = style["font_obj"].size
-                
-                # Default line spacing 1.0 lines
-                l_spacing = 1.0
-                is_spacing_points = False
-                if style["line_spacing"]:
-                    if isinstance(style["line_spacing"], int) or style["line_spacing"] > 100: 
-                        # It's likely points/EMUs
-                        l_spacing = style["line_spacing"]
-                        is_spacing_points = True
-                    else:
-                        l_spacing = style["line_spacing"]
-                
-                # Approximate height
-                if is_spacing_points:
-                    para_height = l_spacing
-                else:
-                    para_height = int(f_size * l_spacing)
-                
-                # Add extra spacing from space_before/after of the empty paragraph itself
-                p_before = style["space_before"] if style["space_before"] else 0
-                p_after = style["space_after"] if style["space_after"] else 0
-                total_empty_height = para_height + p_before + p_after
-
-                if last_text_idx >= 0:
-                    # Add to previous paragraph's space_after
-                    prev_after = styles[last_text_idx]["space_after"] if styles[last_text_idx]["space_after"] is not None else 0
-                    styles[last_text_idx]["space_after"] = prev_after + total_empty_height
-                else:
-                    # Accumulate for the first upcoming text paragraph
-                    pending_before += total_empty_height
-
-    except Exception: pass
-    
+    _consolidate_empty_spacing(styles)
     return styles
 
-def apply_paragraph_style(
-    paragraph, 
-    p_style: dict[str, Any], 
-    scale: float = 1.0, 
-    target_language: str | None = None,
-    font_mapping: dict[str, list[str]] | None = None
-) -> None:
+
+def _capture_paragraph_style(paragraph) -> dict[str, Any]:
+    p_pr_xml = None
     try:
-        # Step 1: High-fidelity XML sync for Indents and Bullets (Base State)
+        parent = paragraph._p
+        p_pr_xml = parent.find(
+            ".//{http://schemas.openxmlformats.org/presentationml/2006/main}"
+            "pPr"
+        )
+        if p_pr_xml is None:
+            p_pr_xml = parent.find(
+                ".//{http://schemas.openxmlformats.org/drawingml/2006/main}pPr"
+            )
+        if p_pr_xml is not None:
+            p_pr_xml = etree.tostring(p_pr_xml)
+    except Exception:
+        p_pr_xml = None
+
+    runs = paragraph.runs
+    primary_font = runs[0].font if runs else None
+
+    return {
+        "level": paragraph.level,
+        "alignment": paragraph.alignment,
+        "space_before": paragraph.space_before,
+        "space_after": paragraph.space_after,
+        "line_spacing": paragraph.line_spacing,
+        "font_obj": primary_font,
+        "bold": primary_font.bold if primary_font else None,
+        "italic": primary_font.italic if primary_font else None,
+        "underline": primary_font.underline if primary_font else None,
+        "has_text": bool(paragraph.text and paragraph.text.strip()),
+        "pPr_xml": p_pr_xml,
+    }
+
+
+def _consolidate_empty_spacing(styles: list[dict[str, Any]]) -> None:
+    pending_before = 0
+    last_text_idx = -1
+    for i, style in enumerate(styles):
+        if style["has_text"]:
+            if pending_before > 0:
+                current_before = style["space_before"] or 0
+                style["space_before"] = current_before + pending_before
+                pending_before = 0
+            last_text_idx = i
+            continue
+
+        para_height = _estimate_empty_paragraph_height(style)
+        extra_spacing = (
+            (style["space_before"] or 0)
+            + (style["space_after"] or 0)
+            + para_height
+        )
+        if last_text_idx >= 0:
+            prev_after = styles[last_text_idx]["space_after"] or 0
+            styles[last_text_idx]["space_after"] = prev_after + extra_spacing
+        else:
+            pending_before += extra_spacing
+
+
+def _estimate_empty_paragraph_height(style: dict[str, Any]) -> int:
+    default_size = 18 * 12700
+    font_size = default_size
+    if style["font_obj"] and style["font_obj"].size:
+        font_size = style["font_obj"].size
+
+    line_spacing = style["line_spacing"] or 1.0
+    is_points = isinstance(line_spacing, (int, float)) and line_spacing > 100
+    spacing_value = line_spacing if is_points else font_size * line_spacing
+    return int(spacing_value)
+
+
+def apply_paragraph_style(
+    paragraph,
+    p_style: dict[str, Any],
+    scale: float = 1.0,
+    target_language: str | None = None,
+    font_mapping: dict[str, list[str]] | None = None,
+) -> None:
+    """Apply recorded style values to a live paragraph."""
+    try:
         p_pr_xml_bytes = p_style.get("pPr_xml")
         if p_pr_xml_bytes:
-            try:
-                target_p = paragraph._p
-                new_p_pr = etree.fromstring(p_pr_xml_bytes)
-                
-                # Replace or update existing pPr
-                old_p_pr = target_p.find('.//{http://schemas.openxmlformats.org/presentationml/2006/main}pPr')
-                if old_p_pr is None:
-                    old_p_pr = target_p.find('.//{http://schemas.openxmlformats.org/drawingml/2006/main}pPr')
-                
-                if old_p_pr is not None:
-                    target_p.replace(old_p_pr, new_p_pr)
-                else:
-                    target_p.insert(0, new_p_pr)
-            except Exception: pass
+            _apply_xml_style(paragraph, p_pr_xml_bytes)
 
-        # Step 2: Apply basic properties via API (Overrides)
-        # This must come AFTER XML sync so our calculated spacing takes precedence
         paragraph.level = p_style.get("level", 0)
         paragraph.alignment = p_style.get("alignment")
-        if p_style.get("space_before") is not None: paragraph.space_before = p_style["space_before"]
-        if p_style.get("space_after") is not None: paragraph.space_after = p_style["space_after"]
-        if p_style.get("line_spacing") is not None: paragraph.line_spacing = p_style["line_spacing"]
-            
-        # Step 3: Font properties
+        if p_style.get("space_before") is not None:
+            paragraph.space_before = p_style["space_before"]
+        if p_style.get("space_after") is not None:
+            paragraph.space_after = p_style["space_after"]
+        if p_style.get("line_spacing") is not None:
+            paragraph.line_spacing = p_style["line_spacing"]
+
         source_font = p_style.get("font_obj")
         if source_font and paragraph.runs:
-            clone_font_props(source_font, paragraph.runs[0].font, target_language=target_language, font_mapping=font_mapping)
+            clone_font_props(
+                source_font,
+                paragraph.runs[0].font,
+                target_language=target_language,
+                font_mapping=font_mapping,
+            )
             if scale != 1.0 and paragraph.runs[0].font.size:
-                paragraph.runs[0].font.size = int(paragraph.runs[0].font.size * scale)
-    except Exception: pass
+                paragraph.runs[0].font.size = int(
+                    paragraph.runs[0].font.size * scale
+                )
+    except Exception:
+        pass
+
+
+def _apply_xml_style(paragraph, p_pr_xml_bytes: bytes) -> None:
+    try:
+        target_p = paragraph._p
+        new_p_pr = etree.fromstring(p_pr_xml_bytes)
+        old_p_pr = target_p.find(
+            ".//{http://schemas.openxmlformats.org/presentationml/2006/main}"
+            "pPr"
+        )
+        if old_p_pr is None:
+            old_p_pr = target_p.find(
+                ".//{http://schemas.openxmlformats.org/drawingml/2006/main}pPr"
+            )
+        if old_p_pr is not None:
+            target_p.replace(old_p_pr, new_p_pr)
+        else:
+            target_p.insert(0, new_p_pr)
+    except Exception:
+        pass

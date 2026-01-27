@@ -5,7 +5,6 @@ from pptx import Presentation
 
 from backend.services.pptx import apply_translations
 
-
 class TestPptxApply(unittest.TestCase):
     def test_apply_translations_updates_text(self) -> None:
         presentation = Presentation()

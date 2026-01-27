@@ -26,7 +26,7 @@ export function PreserveTermsList({ filteredTerms, filterText, filterCategory, e
         <div className="flex-grow overflow-auto">
             <table className="w-full text-left border-collapse border-spacing-0">
                 <thead className="sticky top-0 bg-white/95 backdrop-blur-md z-10 border-b border-slate-100/50">
-                    <tr className="text-[10px] font-black text-slate-400 uppercase tracking-[0.15em]">
+                    <tr className="text-xs font-bold text-slate-500 uppercase tracking-wider">
                         <th className="py-4 px-4 w-10 text-center">
                             <input type="checkbox" checked={allSelected} onChange={(e) => handleSelectAll(e.target.checked)} />
                         </th>
@@ -54,7 +54,7 @@ export function PreserveTermsList({ filteredTerms, filterText, filterCategory, e
                                             autoFocus
                                         />
                                     ) : (
-                                        <span className="text-sm font-bold text-slate-700">{term.source_text}</span>
+                                        <span className="text-sm font-bold text-slate-700">{term.term}</span>
                                     )}
                                 </td>
                                 <td className="py-4 px-2 text-center">
@@ -111,7 +111,7 @@ export function PreserveTermsList({ filteredTerms, filterText, filterCategory, e
                                             <>
                                                 <button className="p-1.5 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors" onClick={() => {
                                                     setEditingId(term.id);
-                                                    setEditForm({ term: term.source_text, category: term.category, case_sensitive: term.case_sensitive });
+                                                    setEditForm({ term: term.term, category: term.category, case_sensitive: term.case_sensitive });
                                                 }} title={t("manage.actions.edit")}>
                                                     <Edit size={16} />
                                                 </button>

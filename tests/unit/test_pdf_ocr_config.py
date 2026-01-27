@@ -1,7 +1,5 @@
-import os
 
 from backend.services.pdf import extract as pdf_extract
-
 
 def test_get_ocr_config_defaults(monkeypatch):
     monkeypatch.delenv("PDF_OCR_DPI", raising=False)

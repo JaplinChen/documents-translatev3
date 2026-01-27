@@ -1,7 +1,9 @@
 import os
+
 import pytest
-from backend.services.xlsx.extract import extract_blocks
 from openpyxl import Workbook
+
+from backend.services.xlsx.extract import extract_blocks
 
 def test_xlsx_extraction(tmp_path):
     # Create a dummy XLSX file
@@ -13,10 +15,10 @@ def test_xlsx_extraction(tmp_path):
     ws["C3"] = "API_KEY" # Should be filtered (technical)
     ws["D4"] = "這是一個測試"
     wb.save(xlsx_path)
-    
+
     result = extract_blocks(xlsx_path)
     blocks = result["blocks"]
-    
+
     # Check if only meaningful text is extracted
     texts = [b["source_text"] for b in blocks]
     assert "Hello World" in texts

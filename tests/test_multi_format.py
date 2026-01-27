@@ -1,5 +1,5 @@
+
 import requests
-import os
 
 API_BASE = "http://localhost:5002"
 
@@ -11,13 +11,15 @@ def test_extract(file_path, file_type):
         data = response.json()
         print(f"✅ {file_type.upper()} Extract Success!")
         print(f"   Blocks count: {len(data.get('blocks', []))}")
-        if 'sheet_count' in data: print(f"   Sheets: {data['sheet_count']}")
-        if 'page_count' in data: print(f"   Pages: {data['page_count']}")
+        if 'sheet_count' in data:
+            print(f"   Sheets: {data['sheet_count']}")
+        if 'page_count' in data:
+            print(f"   Pages: {data['page_count']}")
     else:
         print(f"❌ {file_type.upper()} Extract Failed: {response.text}")
 
 if __name__ == "__main__":
     # Note: This test requires a running backend and sample files.
-    # Since I cannot run the backend in a long-lived process here, 
+    # Since I cannot run the backend in a long-lived process here,
     # this script is for the user or manual verification.
     print("Test script ready. Please ensure backend is running at http://localhost:5002")

@@ -1,6 +1,5 @@
 from backend.services.correction_mode import apply_correction_mode, prepare_blocks_for_correction
 
-
 def test_prepare_blocks_for_correction_skips_target_language():
     blocks = [
         {"source_text": "Hello", "slide_index": 0, "shape_id": 1, "block_type": "textbox"},

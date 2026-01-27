@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import csv
 
-
 def load_glossary(path: str | None) -> list[tuple[str, str]]:
     if not path:
         return []

@@ -8,27 +8,45 @@ from __future__ import annotations
 import asyncio
 import json
 import logging
+import re
+import time
+from pathlib import Path
 
 from fastapi import APIRouter, Form, HTTPException
 from fastapi.responses import StreamingResponse
 
 from backend.config import settings
 from backend.contracts import coerce_blocks
+from backend.services.correction_mode import (
+    apply_correction_mode,
+    prepare_blocks_for_correction,
+)
 from backend.services.language_detect import resolve_source_language
-from backend.services.correction_mode import apply_correction_mode, prepare_blocks_for_correction
 from backend.services.llm_errors import (
     build_connection_refused_message,
     is_connection_refused,
 )
-from backend.services.translate_llm import translate_blocks_async as translate_pptx_blocks_async
+from backend.services.translate_llm import (
+    translate_blocks_async as translate_pptx_blocks_async,
+)
 
 LOGGER = logging.getLogger(__name__)
+VI_REGEX = re.compile(
+    r"[đĐàáảãạăằắẳẵặâầấẩẫậèéẻẽẹêềếểễệìíỉĩịòóỏõọôồốổỗộơờớởỡợùúủũụưừứửữựỳýỷỹỵ]",
+    re.I,
+)
 
 router = APIRouter(prefix="/api/pptx")
 
 
-def _prepare_blocks_for_correction(items: list[dict], target_language: str | None) -> list[dict]:
-    """Prepare blocks for correction mode by skipping target language blocks."""
+def _prepare_blocks_for_correction(
+    items: list[dict],
+    target_language: str | None,
+) -> list[dict]:
+    """Prepare blocks for correction mode.
+
+    Skip blocks that match the target language.
+    """
     return prepare_blocks_for_correction(items, target_language)
 
 
@@ -58,16 +76,28 @@ async def pptx_translate(
     except json.JSONDecodeError as exc:
         raise HTTPException(status_code=400, detail="blocks JSON 無效") from exc
     except Exception as exc:
-        raise HTTPException(status_code=400, detail="blocks 資料無效 (translate)") from exc
+        raise HTTPException(
+            status_code=400,
+            detail="blocks 資料無效 (translate)",
+        ) from exc
 
     if not target_language:
         raise HTTPException(status_code=400, detail="target_language 為必填")
 
-    resolved_source_language = resolve_source_language(blocks_data, source_language)
+    resolved_source_language = resolve_source_language(
+        blocks_data,
+        source_language,
+    )
 
     param_overrides = {"refresh": refresh}
     if (provider or "").lower() == "ollama" and ollama_fast_mode:
-        param_overrides.update({"single_request": False, "chunk_size": 1, "chunk_delay": 0.0})
+        param_overrides.update(
+            {
+                "single_request": False,
+                "chunk_size": 1,
+                "chunk_delay": 0.0,
+            }
+        )
 
     try:
         translated = await translate_pptx_blocks_async(
@@ -91,7 +121,8 @@ async def pptx_translate(
             raise HTTPException(
                 status_code=400,
                 detail=build_connection_refused_message(
-                    "Ollama", base_url or "http://localhost:11434"
+                    "Ollama",
+                    base_url or "http://localhost:11434",
                 ),
             ) from exc
         error_msg = str(exc)
@@ -108,7 +139,10 @@ async def pptx_translate(
 
     result_blocks = translated.get("blocks", [])
     if mode == "correction":
-        translated_texts = [b.get("translated_text", "") for b in result_blocks]
+        translated_texts = [
+            b.get("translated_text", "")
+            for b in result_blocks
+        ]
         result_blocks = apply_correction_mode(
             blocks_data,
             translated_texts,
@@ -127,7 +161,7 @@ async def pptx_translate(
 
 
 @router.post("/translate-stream")
-async def pptx_translate_stream(
+async def pptx_translate_stream(  # noqa: C901
     blocks: str = Form(...),
     source_language: str | None = Form(None),
     target_language: str | None = Form(None),
@@ -154,8 +188,11 @@ async def pptx_translate_stream(
         except (json.JSONDecodeError, TypeError):
             pass
 
-    print(f"\n[ENTRY_DEBUG] /translate-stream RAW BLOCKS: {blocks[:200]}", flush=True)
-    print(f"[ENTRY_DEBUG] REFRESH: {refresh}", flush=True)
+    LOGGER.debug(
+        "[ENTRY_DEBUG] /translate-stream RAW BLOCKS: %s",
+        blocks[:200],
+    )
+    LOGGER.debug("[ENTRY_DEBUG] REFRESH: %s", refresh)
 
     try:
         blocks_data = coerce_blocks(json.loads(blocks))
@@ -165,23 +202,30 @@ async def pptx_translate_stream(
     if not target_language:
         raise HTTPException(status_code=400, detail="target_language 為必填")
 
-    resolved_source_language = resolve_source_language(blocks_data, source_language)
+    resolved_source_language = resolve_source_language(
+        blocks_data,
+        source_language,
+    )
 
     param_overrides = {"refresh": refresh}
     if (provider or "").lower() == "ollama" and ollama_fast_mode:
-        param_overrides.update({"single_request": False, "chunk_size": 1, "chunk_delay": 0.0})
+        param_overrides.update(
+            {
+                "single_request": False,
+                "chunk_size": 1,
+                "chunk_delay": 0.0,
+            }
+        )
 
     # 執行過濾：跳過已翻譯且不在 refresh 模式下的區塊
     effective_blocks = []
     skipped_count = 0
-    import re
-    vi_regex = r'[đĐàáảãạăằắẳẵặâầấẩẫậèéẻẽẹêềếểễệìíỉĩịòóỏõọôồốổỗộơờớởỡợùúủũụưừứửữựỳýỷỹỵ]'
-
     for b in blocks_data:
         text = b.get("source_text", "")
-        has_vi = bool(re.search(vi_regex, text, re.I))
-        
-        # 核心修正：如果是混排區塊且處於 refresh 模式，強制進入處理隊列，確保 LLM 執行雙語保留指令
+        has_vi = bool(VI_REGEX.search(text))
+
+        # 核心修正：如果是混排區塊且處於 refresh 模式，
+        # 強制進入處理隊列，確保 LLM 執行雙語保留指令
         if refresh and has_vi:
             effective_blocks.append(b)
             continue
@@ -193,17 +237,23 @@ async def pptx_translate_stream(
         effective_blocks.append(b)
 
     if skipped_count > 0:
-        LOGGER.info("Resuming translation, skipping %s already completed blocks", skipped_count)
+        LOGGER.info(
+            "Resuming translation, skipping %s already completed blocks",
+            skipped_count,
+        )
 
     async def event_generator():
         queue = asyncio.Queue()
 
         async def progress_cb(progress_data):
-            await queue.put({"event": "progress", "data": json.dumps(progress_data)})
+            await queue.put(
+                {"event": "progress", "data": json.dumps(progress_data)}
+            )
 
         try:
             # yield initial progress event immediately to switch UI status
-            # This ensures headers are sent before any potential blocking initialization
+            # This ensures headers are sent before any potential blocking
+            # initialization.
             initial_data = json.dumps(
                 {
                     "chunk_index": 0,
@@ -217,7 +267,10 @@ async def pptx_translate_stream(
 
             task = asyncio.create_task(
                 translate_pptx_blocks_async(
-                    _prepare_blocks_for_correction(effective_blocks, target_language)
+                    _prepare_blocks_for_correction(
+                        effective_blocks,
+                        target_language,
+                    )
                     if mode == "correction"
                     else effective_blocks,
                     target_language,
@@ -244,19 +297,29 @@ async def pptx_translate_stream(
 
                 if get_queue_task in done:
                     event = get_queue_task.result()
-                    yield f"event: {event['event']}\ndata: {event['data']}\n\n"
+                    yield (
+                        f"event: {event['event']}\n"
+                        f"data: {event['data']}\n\n"
+                    )
                 else:
                     get_queue_task.cancel()
 
                 if task in done:
-                    # Flush any remaining items in queue regardless of task status
+                    # Flush any remaining items in queue regardless of
+                    # task status.
                     while not queue.empty():
                         event = queue.get_nowait()
-                        yield f"event: {event['event']}\ndata: {event['data']}\n\n"
-                        
+                        yield (
+                            f"event: {event['event']}\n"
+                            f"data: {event['data']}\n\n"
+                        )
+
                     result = await task
                     if mode == "correction":
-                        translated_texts = [b.get("translated_text", "") for b in result.get("blocks", [])]
+                        translated_texts = [
+                            b.get("translated_text", "")
+                            for b in result.get("blocks", [])
+                        ]
                         result["blocks"] = apply_correction_mode(
                             effective_blocks,
                             translated_texts,
@@ -264,21 +327,23 @@ async def pptx_translate_stream(
                             similarity_threshold=similarity_threshold,
                         )
                     yield f"event: complete\ndata: {json.dumps(result)}\n\n"
-                    
+
                     # Auto-save to history (JSON only) for immediate visibility
                     try:
-                        from pathlib import Path
-                        import time
                         export_dir = Path("data/exports")
                         export_dir.mkdir(parents=True, exist_ok=True)
                         ts = time.strftime("%Y%m%d-%H%M%S")
                         filename = f"autosave-{mode}-{ts}.json"
-                        with open(export_dir / filename, "w", encoding="utf-8") as f:
+                        with open(
+                            export_dir / filename,
+                            "w",
+                            encoding="utf-8",
+                        ) as f:
                             json.dump(result, f, ensure_ascii=False, indent=2)
-                        LOGGER.info(f"Auto-saved history to {filename}")
-                    except Exception as e:
-                        LOGGER.error(f"Failed to auto-save history: {e}")
-                        
+                        LOGGER.info("Auto-saved history to %s", filename)
+                    except Exception as err:
+                        LOGGER.error("Failed to auto-save history: %s", err)
+
                     break
 
         except Exception as exc:

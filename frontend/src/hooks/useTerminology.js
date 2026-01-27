@@ -221,6 +221,10 @@ export function useTerminology() {
 
             if (!response.ok) throw new Error("提取失敗");
             const data = await response.json();
+            if (data.error) {
+                setStatus(`提取失敗：${data.error}`);
+                return;
+            }
             const rawTerms = data.terms || [];
 
             if (rawTerms.length === 0) {

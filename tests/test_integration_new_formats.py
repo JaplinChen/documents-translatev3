@@ -1,10 +1,10 @@
-import os
 import json
-import pytest
+import os
+
 import openpyxl
+import pytest
 from fastapi.testclient import TestClient
 from reportlab.pdfgen import canvas
-from io import BytesIO
 
 from backend.main import app
 
@@ -20,7 +20,7 @@ def dummy_xlsx():
     ws["B1"] = "Translation Test" # Plain string
     # Add some style
     ws["A1"].font = openpyxl.styles.Font(bold=True, color="FF0000")
-    
+
     file_path = "test_input.xlsx"
     wb.save(file_path)
     yield file_path
@@ -40,8 +40,17 @@ def dummy_pdf():
 def test_xlsx_integration(dummy_xlsx):
     # 1. Test Extract
     with open(dummy_xlsx, "rb") as f:
-        response = client.post("/api/xlsx/extract", files={"file": ("test.xlsx", f, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")})
-    
+        response = client.post(
+            "/api/xlsx/extract",
+            files={
+                "file": (
+                    "test.xlsx",
+                    f,
+                    "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                )
+            },
+        )
+
     assert response.status_code == 200
     data = response.json()
     assert len(data["blocks"]) >= 2
@@ -54,13 +63,23 @@ def test_xlsx_integration(dummy_xlsx):
     blocks = data["blocks"]
     for b in blocks:
         b["translated_text"] = "你好世界"
-    
+
     with open(dummy_xlsx, "rb") as f:
-        response = client.post("/api/xlsx/apply", data={
-            "blocks": json.dumps(blocks),
-            "mode": "translated"
-        }, files={"file": ("test.xlsx", f, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")})
-    
+        response = client.post(
+            "/api/xlsx/apply",
+            data={
+                "blocks": json.dumps(blocks),
+                "mode": "translated",
+            },
+            files={
+                "file": (
+                    "test.xlsx",
+                    f,
+                    "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                )
+            },
+        )
+
     assert response.status_code == 200
     assert "download_url" in response.json()
     assert response.json()["filename"].endswith(".xlsx")
@@ -68,8 +87,11 @@ def test_xlsx_integration(dummy_xlsx):
 def test_pdf_integration(dummy_pdf):
     # 1. Test Extract
     with open(dummy_pdf, "rb") as f:
-        response = client.post("/api/pdf/extract", files={"file": ("test.pdf", f, "application/pdf")})
-    
+        response = client.post(
+            "/api/pdf/extract",
+            files={"file": ("test.pdf", f, "application/pdf")},
+        )
+
     assert response.status_code == 200
     data = response.json()
     assert len(data["blocks"]) >= 1
@@ -79,13 +101,13 @@ def test_pdf_integration(dummy_pdf):
     blocks = data["blocks"]
     for b in blocks:
         b["translated_text"] = "這是 PDF 測試內容"
-        
+
     with open(dummy_pdf, "rb") as f:
         response = client.post("/api/pdf/apply", data={
             "blocks": json.dumps(blocks),
             "mode": "translated"
         }, files={"file": ("test.pdf", f, "application/pdf")})
-    
+
     assert response.status_code == 200
     assert "download_url" in response.json()
     assert response.json()["filename"].endswith(".pdf")

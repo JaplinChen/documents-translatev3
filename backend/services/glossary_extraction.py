@@ -11,7 +11,10 @@ from backend.services.llm_clients import (
     OpenAITranslator,
     TranslationConfig,
 )
-from backend.services.translate_config import get_language_hint, get_language_label
+from backend.services.translate_config import (
+    get_language_hint,
+    get_language_label,
+)
 
 LOGGER = logging.getLogger(__name__)
 
@@ -40,7 +43,7 @@ def _parse_json_array(content: str) -> list:
     end = text.rfind("]")
     if start != -1 and end != -1 and end > start:
         try:
-            result = json.loads(text[start : end + 1])
+            result = json.loads(text[start:end + 1])
             if isinstance(result, list):
                 return result
         except json.JSONDecodeError:
@@ -49,7 +52,7 @@ def _parse_json_array(content: str) -> list:
     return []
 
 
-def extract_glossary_terms(
+def extract_glossary_terms(  # noqa: C901
     blocks: list[dict],
     target_language: str,
     provider: str | None = None,
@@ -58,8 +61,8 @@ def extract_glossary_terms(
     base_url: str | None = None,
 ) -> list[dict[str, str]]:
     """
-    Extract key terminology from a list of PPTX blocks using LLM.
-    Returns a list of dicts: [{"source": "...", "target": "...", "reason": "..."}]
+    Extract key terminology from PPTX blocks using LLM.
+    Returns: [{"source": "...", "target": "...", "reason": "..."}]
     """
     mode = os.getenv("TRANSLATE_LLM_MODE", "real").lower()
 
@@ -71,26 +74,31 @@ def extract_glossary_terms(
             config = TranslationConfig(
                 model=model or os.getenv("OPENAI_MODEL", "gpt-4o-mini"),
                 api_key=api_key or os.getenv("OPENAI_API_KEY", ""),
-                base_url=base_url or os.getenv("OPENAI_BASE_URL", "https://api.openai.com/v1"),
+                base_url=base_url
+                or os.getenv("OPENAI_BASE_URL", "https://api.openai.com/v1"),
             )
             client = OpenAITranslator(config)
         elif resolved_provider == "gemini":
             client = GeminiTranslator(
                 api_key=api_key or os.getenv("GEMINI_API_KEY", ""),
                 base_url=base_url
-                or os.getenv("GEMINI_BASE_URL", "https://generativelanguage.googleapis.com/v1beta"),
+                or os.getenv(
+                    "GEMINI_BASE_URL",
+                    "https://generativelanguage.googleapis.com/v1beta",
+                ),
                 model=model or os.getenv("GEMINI_MODEL", "gemini-1.5-flash"),
             )
         elif resolved_provider == "ollama":
             client = OllamaTranslator(
                 model=model or os.getenv("OLLAMA_MODEL", "llama3.1"),
-                base_url=base_url or os.getenv("OLLAMA_BASE_URL", "http://localhost:11434"),
+                base_url=base_url
+                or os.getenv("OLLAMA_BASE_URL", "http://localhost:11434"),
             )
         else:
             client = MockTranslator()
 
     # Consolidate all text for extraction
-    # Support both 'original_text' (frontend) and 'source_text' (possible legacy)
+    # Support both 'original_text' (frontend) and 'source_text' (legacy).
     full_text = "\n".join(
         [
             b.get("original_text") or b.get("source_text", "")
@@ -99,18 +107,23 @@ def extract_glossary_terms(
         ]
     )
     if not full_text.strip():
-        LOGGER.warning("No text content found in blocks for glossary extraction")
+        LOGGER.warning(
+            "No text content found in blocks for glossary extraction"
+        )
         return []
 
     # Limit text size to avoid token limit
     text_sample = full_text[:10000]
 
     from backend.services.prompt_store import render_prompt
-    prompt = render_prompt("glossary_extraction", {
-        "target_language": get_language_label(target_language),
-        "text_sample": text_sample,
-        "language_hint": get_language_hint(target_language)
-    })
+    prompt = render_prompt(
+        "glossary_extraction",
+        {
+            "target_language": get_language_label(target_language),
+            "text_sample": text_sample,
+            "language_hint": get_language_hint(target_language),
+        },
+    )
 
     try:
         if hasattr(client, "complete"):

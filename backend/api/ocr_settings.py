@@ -19,7 +19,12 @@ class OcrSettings(BaseModel):
     poppler_path: str | None = None
 
 
-def _validate_range(name: str, value: int | None, min_val: int, max_val: int) -> None:
+def _validate_range(
+    name: str,
+    value: int | None,
+    min_val: int,
+    max_val: int,
+) -> None:
     if value is None:
         return
     if value < min_val or value > max_val:
@@ -38,7 +43,9 @@ async def get_settings() -> dict:
         "conf_min": cfg["conf_min"],
         "psm": cfg.get("psm", 6),
         "engine": cfg.get("engine", "tesseract"),
-        "poppler_path": os.getenv("PDF_POPPLER_PATH", "") or get_poppler_path() or "",
+        "poppler_path": (
+            os.getenv("PDF_POPPLER_PATH", "") or get_poppler_path() or ""
+        ),
     }
 
 
@@ -47,8 +54,14 @@ async def update_settings(payload: OcrSettings) -> dict:
     _validate_range("dpi", payload.dpi, 50, 600)
     _validate_range("conf_min", payload.conf_min, 0, 100)
     _validate_range("psm", payload.psm, 3, 13)
-    if payload.engine is not None and payload.engine not in {"tesseract", "paddle"}:
-        raise HTTPException(status_code=400, detail="engine 只支援 tesseract 或 paddle")
+    if (
+        payload.engine is not None
+        and payload.engine not in {"tesseract", "paddle"}
+    ):
+        raise HTTPException(
+            status_code=400,
+            detail="engine 只支援 tesseract 或 paddle",
+        )
 
     if payload.dpi is not None:
         os.environ["PDF_OCR_DPI"] = str(payload.dpi)

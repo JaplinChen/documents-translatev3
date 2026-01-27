@@ -8,6 +8,7 @@ Supports multiple providers: OpenAI, Anthropic, Google, Ollama.
 from __future__ import annotations
 
 import json
+import threading
 from dataclasses import asdict, dataclass
 from datetime import datetime
 from pathlib import Path
@@ -59,7 +60,11 @@ def estimate_tokens(text: str, provider: str = "default") -> int:
     return max(1, len(text) // chars_per_token)
 
 
-def estimate_cost(model: str, prompt_tokens: int, completion_tokens: int) -> float:
+def estimate_cost(
+    model: str,
+    prompt_tokens: int,
+    completion_tokens: int,
+) -> float:
     """Estimate cost in USD based on model and token counts."""
     # Normalize model name for lookup
     model_key = model.lower()
@@ -86,16 +91,15 @@ def _load_usage_history() -> list[dict]:
         return []
 
 
-import threading
-
 def _save_usage_history_bg(history: list[dict]) -> None:
-    """Save usage history to JSON file in a background thread to avoid blocking."""
+    """Save usage history in a background thread to avoid blocking."""
     try:
         USAGE_FILE.parent.mkdir(parents=True, exist_ok=True)
         with open(USAGE_FILE, "w", encoding="utf-8") as f:
             json.dump(history, f, ensure_ascii=False, indent=2)
     except Exception:
         pass
+
 
 def record_usage(
     provider: str,
@@ -143,7 +147,9 @@ def get_session_stats() -> dict:
     recent = []
     for record in history:
         try:
-            ts = datetime.fromisoformat(record["timestamp"].replace("Z", "+00:00"))
+            ts = datetime.fromisoformat(
+                record["timestamp"].replace("Z", "+00:00")
+            )
             if ts.timestamp() > cutoff:
                 recent.append(record)
         except Exception:
@@ -180,7 +186,11 @@ def get_all_time_stats() -> dict:
     history = _load_usage_history()
 
     if not history:
-        return {"total_tokens": 0, "estimated_cost_usd": 0.0, "request_count": 0}
+        return {
+            "total_tokens": 0,
+            "estimated_cost_usd": 0.0,
+            "request_count": 0,
+        }
 
     total_tokens = sum(r.get("total_tokens", 0) for r in history)
     total_cost = sum(r.get("estimated_cost_usd", 0) for r in history)

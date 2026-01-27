@@ -4,9 +4,10 @@ import sys
 
 from backend.services.pptx_apply import apply_bilingual
 
-
 def main() -> int:
-    parser = argparse.ArgumentParser(description="Apply bilingual translations to a PPTX.")
+    parser = argparse.ArgumentParser(
+        description="Apply bilingual translations to a PPTX."
+    )
     parser.add_argument("--in", dest="pptx_in", required=True)
     parser.add_argument("--out", dest="pptx_out", required=True)
     parser.add_argument("--blocks", dest="blocks_path", required=True)

@@ -1,6 +1,9 @@
 from __future__ import annotations
+
 from collections.abc import Iterable
+
 from pptx import Presentation
+
 from .apply_core import _apply_translations_to_presentation
 
 def apply_translations(

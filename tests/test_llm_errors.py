@@ -3,7 +3,6 @@ from backend.services.llm_errors import (
     is_connection_refused,
 )
 
-
 def test_is_connection_refused_with_oserror():
     assert is_connection_refused(ConnectionRefusedError("refused"))
 

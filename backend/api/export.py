@@ -43,8 +43,13 @@ async def export_docx(request: ExportRequest):
         output = export_to_docx(request.blocks)
         return StreamingResponse(
             output,
-            media_type="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-            headers={"Content-Disposition": "attachment; filename=translation.docx"},
+            media_type=(
+                "application/vnd.openxmlformats-officedocument."
+                "wordprocessingml.document"
+            ),
+            headers={
+                "Content-Disposition": "attachment; filename=translation.docx"
+            },
         )
     except ImportError as e:
         raise HTTPException(status_code=500, detail=str(e)) from e
@@ -59,8 +64,13 @@ async def export_xlsx(request: ExportRequest):
         output = export_to_xlsx(request.blocks)
         return StreamingResponse(
             output,
-            media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-            headers={"Content-Disposition": "attachment; filename=translation.xlsx"},
+            media_type=(
+                "application/vnd.openxmlformats-officedocument."
+                "spreadsheetml.sheet"
+            ),
+            headers={
+                "Content-Disposition": "attachment; filename=translation.xlsx"
+            },
         )
     except ImportError as e:
         raise HTTPException(status_code=500, detail=str(e)) from e
@@ -76,7 +86,9 @@ async def export_txt(request: ExportRequest):
         return StreamingResponse(
             output,
             media_type="text/plain; charset=utf-8",
-            headers={"Content-Disposition": "attachment; filename=translation.txt"},
+            headers={
+                "Content-Disposition": "attachment; filename=translation.txt"
+            },
         )
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"匯出失敗: {str(e)}") from e
@@ -90,7 +102,9 @@ async def export_pdf(request: ExportRequest):
         return StreamingResponse(
             output,
             media_type="application/pdf",
-            headers={"Content-Disposition": "attachment; filename=translation.pdf"},
+            headers={
+                "Content-Disposition": "attachment; filename=translation.pdf"
+            },
         )
     except ImportError as e:
         raise HTTPException(status_code=500, detail=str(e)) from e

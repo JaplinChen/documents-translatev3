@@ -1,11 +1,8 @@
 from __future__ import annotations
 
-import os
-from collections.abc import Iterable
 from io import BytesIO
 
 from docx import Document
-from docx.enum.text import WD_ALIGN_PARAGRAPH
 from docx.shared import RGBColor
 
 def _copy_run_format(source_run, target_run):
@@ -18,9 +15,10 @@ def _copy_run_format(source_run, target_run):
     if source_run.font.color and source_run.font.color.rgb:
         target_run.font.color.rgb = source_run.font.color.rgb
 
+
 def _set_paragraph_text(paragraph, text, mode="replace", source_text=None):
     """
-    Set text for a paragraph. 
+    Set text for a paragraph.
     mode="replace": Replace entire paragraph content.
     mode="bilingual": Append translated text after original runs.
     """
@@ -34,9 +32,10 @@ def _set_paragraph_text(paragraph, text, mode="replace", source_text=None):
         # Paragraph already contains source_text
         paragraph.add_run("\n")
         new_run = paragraph.add_run(text)
-        new_run.font.color.rgb = RGBColor(0x1F, 0x77, 0xB4) # Accent color
+        new_run.font.color.rgb = RGBColor(0x1F, 0x77, 0xB4)  # Accent color
 
-def apply_translations(
+
+def apply_translations(  # noqa: C901
     docx_in: str | bytes,
     docx_out: str,
     blocks: list[dict],
@@ -51,8 +50,12 @@ def apply_translations(
 
     # Simple mapping: block_idx -> text
     # For Word, we use slide_index as paragraph/table index
-    para_map = {b["slide_index"]: b for b in blocks if b.get("block_type") == "textbox"}
-    table_map = {} # complex key: t{table_idx}_r{row_idx}_c{cell_idx}
+    para_map = {
+        b["slide_index"]: b
+        for b in blocks
+        if b.get("block_type") == "textbox"
+    }
+    table_map = {}  # complex key: t{table_idx}_r{row_idx}_c{cell_idx}
     for b in blocks:
         if b.get("block_type") == "table_cell":
             table_map[b.get("shape_id")] = b
@@ -62,10 +65,16 @@ def apply_translations(
         if i in para_map:
             block = para_map[i]
             translated = block.get("translated_text", "")
-            if not translated: continue
-            
+            if not translated:
+                continue
+
             if mode == "bilingual":
-                _set_paragraph_text(para, translated, mode="bilingual", source_text=block.get("source_text"))
+                _set_paragraph_text(
+                    para,
+                    translated,
+                    mode="bilingual",
+                    source_text=block.get("source_text"),
+                )
             else:
                 _set_paragraph_text(para, translated, mode="replace")
 
@@ -77,18 +86,22 @@ def apply_translations(
                 if shape_id in table_map:
                     block = table_map[shape_id]
                     translated = block.get("translated_text", "")
-                    if not translated: continue
-                    
+                    if not translated:
+                        continue
+
                     if mode == "bilingual":
                         # For cells, we might want to just append or replace
-                        cell.text = f"{block.get('source_text', '')}\n{translated}"
+                        source_text = block.get("source_text", "")
+                        cell.text = f"{source_text}\n{translated}"
                     else:
                         cell.text = translated
 
     doc.save(docx_out)
 
+
 def apply_bilingual(docx_in, docx_out, blocks, **kwargs):
     apply_translations(docx_in, docx_out, blocks, mode="bilingual")
+
 
 def apply_chinese_corrections(docx_in, docx_out, blocks, **kwargs):
     # For now, correction in Word just replaces the text

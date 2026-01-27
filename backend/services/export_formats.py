@@ -13,7 +13,10 @@ from __future__ import annotations
 import io
 from xml.sax.saxutils import escape
 
-def export_to_docx(blocks: list[dict], filename: str = "translation") -> io.BytesIO:
+def export_to_docx(
+    blocks: list[dict],
+    filename: str = "translation",
+) -> io.BytesIO:
     """
     Export blocks to Word document with bilingual comparison table.
     Requires python-docx.
@@ -22,7 +25,8 @@ def export_to_docx(blocks: list[dict], filename: str = "translation") -> io.Byte
         from docx import Document
     except ImportError as e:
         raise ImportError(
-            "python-docx is required for DOCX export. Install with: pip install python-docx"
+            "python-docx is required for DOCX export. "
+            "Install with: pip install python-docx"
         ) from e
 
     doc = Document()
@@ -52,7 +56,10 @@ def export_to_docx(blocks: list[dict], filename: str = "translation") -> io.Byte
     return output
 
 
-def export_to_xlsx(blocks: list[dict], filename: str = "translation") -> io.BytesIO:
+def export_to_xlsx(
+    blocks: list[dict],
+    filename: str = "translation",
+) -> io.BytesIO:
     """
     Export blocks to Excel spreadsheet with translation comparison.
     Requires openpyxl.
@@ -62,7 +69,8 @@ def export_to_xlsx(blocks: list[dict], filename: str = "translation") -> io.Byte
         from openpyxl.styles import Alignment, Font, PatternFill
     except ImportError as e:
         raise ImportError(
-            "openpyxl is required for Excel export. Install with: pip install openpyxl"
+            "openpyxl is required for Excel export. "
+            "Install with: pip install openpyxl"
         ) from e
 
     wb = Workbook()
@@ -71,7 +79,11 @@ def export_to_xlsx(blocks: list[dict], filename: str = "translation") -> io.Byte
 
     # Headers with styling
     headers = ["#", "原文", "譯文", "投影片", "類型"]
-    header_fill = PatternFill(start_color="4472C4", end_color="4472C4", fill_type="solid")
+    header_fill = PatternFill(
+        start_color="4472C4",
+        end_color="4472C4",
+        fill_type="solid",
+    )
     header_font = Font(color="FFFFFF", bold=True)
 
     for col, header in enumerate(headers, 1):
@@ -102,7 +114,10 @@ def export_to_xlsx(blocks: list[dict], filename: str = "translation") -> io.Byte
     return output
 
 
-def export_to_txt(blocks: list[dict], include_original: bool = True) -> io.BytesIO:
+def export_to_txt(
+    blocks: list[dict],
+    include_original: bool = True,
+) -> io.BytesIO:
     """
     Export blocks to plain text file.
     """
@@ -125,7 +140,10 @@ def export_to_txt(blocks: list[dict], include_original: bool = True) -> io.Bytes
     return output
 
 
-def export_to_pdf(blocks: list[dict], filename: str = "translation") -> io.BytesIO:
+def export_to_pdf(
+    blocks: list[dict],
+    filename: str = "translation",
+) -> io.BytesIO:
     """
     匯出翻譯區塊為 PDF 對照表。
     需要 reportlab。
@@ -136,7 +154,13 @@ def export_to_pdf(blocks: list[dict], filename: str = "translation") -> io.Bytes
         from reportlab.lib.styles import ParagraphStyle, getSampleStyleSheet
         from reportlab.pdfbase import pdfmetrics
         from reportlab.pdfbase.cidfonts import UnicodeCIDFont
-        from reportlab.platypus import Paragraph, SimpleDocTemplate, Spacer, Table, TableStyle
+        from reportlab.platypus import (
+            Paragraph,
+            SimpleDocTemplate,
+            Spacer,
+            Table,
+            TableStyle,
+        )
     except ImportError as e:
         raise ImportError(
             "PDF 匯出需要 reportlab。請安裝: pip install reportlab"
@@ -174,8 +198,14 @@ def export_to_pdf(blocks: list[dict], filename: str = "translation") -> io.Bytes
 
     data = [["#", "原文", "譯文"]]
     for idx, block in enumerate(blocks, 1):
-        original = escape(block.get("original_text", "")).replace("\n", "<br/>")
-        translated = escape(block.get("translated_text", "")).replace("\n", "<br/>")
+        original = escape(block.get("original_text", "")).replace(
+            "\n",
+            "<br/>",
+        )
+        translated = escape(block.get("translated_text", "")).replace(
+            "\n",
+            "<br/>",
+        )
         data.append(
             [
                 str(idx),
@@ -197,7 +227,12 @@ def export_to_pdf(blocks: list[dict], filename: str = "translation") -> io.Bytes
                 ("ALIGN", (0, 0), (0, -1), "CENTER"),
                 ("VALIGN", (0, 0), (-1, -1), "TOP"),
                 ("GRID", (0, 0), (-1, -1), 0.5, colors.HexColor("#CBD5E1")),
-                ("ROWBACKGROUNDS", (0, 1), (-1, -1), [colors.white, colors.HexColor("#F8FAFC")]),
+                (
+                    "ROWBACKGROUNDS",
+                    (0, 1),
+                    (-1, -1),
+                    [colors.white, colors.HexColor("#F8FAFC")],
+                ),
                 ("BOTTOMPADDING", (0, 0), (-1, -1), 6),
                 ("TOPPADDING", (0, 0), (-1, -1), 6),
             ]
@@ -213,10 +248,30 @@ def export_to_pdf(blocks: list[dict], filename: str = "translation") -> io.Bytes
 def get_export_formats() -> list[dict]:
     """Get list of available export formats."""
     return [
-        {"id": "pptx", "label": "PowerPoint (.pptx)", "icon": "📊", "available": True},
-        {"id": "docx", "label": "Word 對照表 (.docx)", "icon": "📝", "available": True},
-        {"id": "xlsx", "label": "Excel 對照表 (.xlsx)", "icon": "📈", "available": True},
-        {"id": "txt", "label": "純文字 (.txt)", "icon": "📄", "available": True},
+        {
+            "id": "pptx",
+            "label": "PowerPoint (.pptx)",
+            "icon": "📊",
+            "available": True,
+        },
+        {
+            "id": "docx",
+            "label": "Word 對照表 (.docx)",
+            "icon": "📝",
+            "available": True,
+        },
+        {
+            "id": "xlsx",
+            "label": "Excel 對照表 (.xlsx)",
+            "icon": "📈",
+            "available": True,
+        },
+        {
+            "id": "txt",
+            "label": "純文字 (.txt)",
+            "icon": "📄",
+            "available": True,
+        },
         {
             "id": "pdf",
             "label": "PDF 對照表 (.pdf)",

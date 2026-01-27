@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import json
 import os
 import tempfile
 from pathlib import Path
@@ -8,11 +7,10 @@ from pathlib import Path
 from fastapi import APIRouter, File, Form, HTTPException, UploadFile
 from fastapi.responses import FileResponse
 
+from backend.api.error_handler import api_error_handler, validate_json_blocks
 from backend.api.pptx_naming import generate_semantic_filename_with_ext
 from backend.api.pptx_translate import pptx_translate_stream
 from backend.api.pptx_utils import validate_file_type
-from backend.api.error_handler import api_error_handler, validate_json_blocks
-from backend.contracts import coerce_blocks
 from backend.services.language_detect import detect_document_languages
 from backend.services.xlsx.apply import apply_bilingual, apply_translations
 from backend.services.xlsx.extract import extract_blocks as extract_xlsx_blocks
@@ -108,10 +106,14 @@ async def xlsx_download(filename: str):
 
     ascii_name = "".join(c if ord(c) < 128 else "_" for c in filename)
     safe_name = urllib.parse.quote(filename, safe="")
-    disposition = f"attachment; filename=\"{ascii_name}\"; filename*=UTF-8''{safe_name}"
+    disposition = (
+        f"attachment; filename=\"{ascii_name}\"; filename*=UTF-8''{safe_name}"
+    )
     return FileResponse(
         path=file_path,
-        media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        media_type=(
+            "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+        ),
         headers={
             "Content-Disposition": disposition,
             "Access-Control-Expose-Headers": "Content-Disposition",

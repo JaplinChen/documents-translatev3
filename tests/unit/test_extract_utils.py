@@ -1,4 +1,3 @@
-import pytest
 from backend.services.extract_utils import is_numeric_only, is_technical_terms_only
 
 def test_is_numeric_only_happy_path():
@@ -24,10 +23,10 @@ def test_is_technical_terms_only_edge_cases():
     assert is_technical_terms_only("") is True
     assert is_technical_terms_only("This is a normal sentence.") is False
     assert is_technical_terms_only("你好世界") is False # CJK characters
-    
+
     # Very long strings should not be technical terms
     long_str = "A" * 50
     assert is_technical_terms_only(long_str) is False
-    
+
     # Common words should not be technical terms (filtered by sentence_indicators)
     assert is_technical_terms_only("the") is False

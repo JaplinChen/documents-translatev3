@@ -2,9 +2,10 @@ import argparse
 import json
 import sys
 
-
 def main() -> int:
-    parser = argparse.ArgumentParser(description="Mock-translate extracted blocks.")
+    parser = argparse.ArgumentParser(
+        description="Mock-translate extracted blocks."
+    )
     parser.add_argument("--in", dest="blocks_in", required=True)
     parser.add_argument("--out", dest="blocks_out", required=True)
     args = parser.parse_args()

@@ -5,7 +5,6 @@ from pptx import Presentation
 
 from backend.services.pptx import extract_blocks
 
-
 class TestPptxExtract(unittest.TestCase):
     def test_extract_blocks_basic(self) -> None:
         presentation = Presentation()

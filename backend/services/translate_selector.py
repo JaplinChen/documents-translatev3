@@ -1,10 +1,8 @@
-"""Translator selection and configuration utilities.
-
-This module provides translator instantiation and parameter
-configuration based on provider and environment settings.
-"""
+"""Translator selection + parameter helpers."""
 
 from __future__ import annotations
+
+import logging
 
 from backend.config import settings
 from backend.services.llm_clients import (
@@ -15,6 +13,8 @@ from backend.services.llm_clients import (
     TranslationConfig,
 )
 
+LOGGER = logging.getLogger(__name__)
+
 
 def select_translator(
     provider: str | None,
@@ -23,31 +23,26 @@ def select_translator(
     base_url: str | None,
     fallback_on_error: bool,
 ) -> tuple[str, object]:
-    """Select and instantiate the appropriate translator.
-
-    Args:
-        provider: LLM provider name (openai, gemini, ollama)
-        model: Model name to use
-        api_key: API key for the provider
-        base_url: Base URL for the API
-        fallback_on_error: Whether to fallback to mock on error
-
-    Returns:
-        Tuple of (resolved_provider_name, translator_instance)
-    """
+    """Select translator instance for the requested provider."""
     resolved_provider = (provider or "openai").lower()
-
     if resolved_provider in {"openai", "chatgpt", "gpt-4o"}:
         return _create_openai_translator(
             resolved_provider, model, api_key, base_url, fallback_on_error
         )
-
     if resolved_provider == "gemini":
-        return _create_gemini_translator(model, api_key, base_url, fallback_on_error)
-
+        return _create_gemini_translator(
+            model,
+            api_key,
+            base_url,
+            fallback_on_error,
+        )
     if resolved_provider == "ollama":
         return _create_ollama_translator(model, base_url)
 
+    LOGGER.warning(
+        "Unknown provider %s, falling back to mock translator",
+        resolved_provider,
+    )
     return "mock", MockTranslator()
 
 
@@ -109,7 +104,10 @@ def _create_ollama_translator(
     )
 
 
-def get_translation_params(provider: str, overrides: dict | None = None) -> dict:
+def get_translation_params(
+    provider: str,
+    overrides: dict | None = None,
+) -> dict:
     """Get translation parameters based on provider and environment.
 
     Args:
@@ -123,7 +121,10 @@ def get_translation_params(provider: str, overrides: dict | None = None) -> dict
     chunk_size = overrides.get("chunk_size", settings.llm_chunk_size)
     max_retries = overrides.get("max_retries", settings.llm_max_retries)
     chunk_delay = overrides.get("chunk_delay", settings.llm_chunk_delay)
-    single_request = overrides.get("single_request", settings.llm_single_request)
+    single_request = overrides.get(
+        "single_request",
+        settings.llm_single_request,
+    )
 
     return {
         "chunk_size": chunk_size,

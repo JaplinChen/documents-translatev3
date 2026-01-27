@@ -3,7 +3,6 @@ from backend.services.translate_prompt import (
     parse_ollama_batch_response,
 )
 
-
 def test_build_ollama_batch_prompt_includes_blocks() -> None:
     blocks = [{"source_text": "Hello"}, {"source_text": "World"}]
     prompt = build_ollama_batch_prompt(blocks, "zh-TW")

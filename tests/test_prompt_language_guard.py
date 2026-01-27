@@ -1,7 +1,6 @@
 from backend.services.llm_prompt import build_prompt
 from backend.services.translate_retry import matches_target_language
 
-
 def test_build_prompt_includes_target_language_label_and_code() -> None:
     contract_example = {
         "document_language": "auto",

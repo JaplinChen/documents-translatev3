@@ -101,7 +101,7 @@ def cleanup(dry_run=True):
         print("\nCleanup aborted by user.")
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description="PPTX-Translate Codebase Cleanup Tool")
+    parser = argparse.ArgumentParser(description="Documents-Translate Codebase Cleanup Tool")
     parser.add_argument("--no-dry-run", action="store_true", help="Perform actual deletion")
     args = parser.parse_args()
 

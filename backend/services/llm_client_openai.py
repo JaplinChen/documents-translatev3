@@ -13,7 +13,10 @@ from collections.abc import Iterable
 import httpx
 
 from backend.config import settings
-from backend.services.llm_client_base import TranslationConfig, load_contract_example
+from backend.services.llm_client_base import (
+    TranslationConfig,
+    load_contract_example,
+)
 from backend.services.llm_contract import validate_contract
 from backend.services.llm_prompt import build_prompt
 from backend.services.prompt_store import get_prompt
@@ -128,7 +131,9 @@ class OpenAITranslator:
         }
         url = f"{self.config.base_url}/chat/completions"
 
-        async with httpx.AsyncClient(timeout=settings.openai_timeout) as client:
+        async with httpx.AsyncClient(
+            timeout=settings.openai_timeout
+        ) as client:
             response = await client.post(url, json=payload, headers=headers)
             response.raise_for_status()
             response_data = response.json()
@@ -156,10 +161,14 @@ class OpenAITranslator:
 
     def complete(self, prompt: str, system_message: str | None = None) -> str:
         """Complete a prompt using OpenAI API (Synchronous)."""
+        default_system = "You are a helpful assistant."
         payload = {
             "model": self.config.model,
             "messages": [
-                {"role": "system", "content": system_message or "You are a helpful assistant."},
+                {
+                    "role": "system",
+                    "content": system_message or default_system,
+                },
                 {"role": "user", "content": prompt},
             ],
             "temperature": 0,
@@ -175,12 +184,20 @@ class OpenAITranslator:
             response_data = response.json()
         return response_data["choices"][0]["message"]["content"]
 
-    async def complete_async(self, prompt: str, system_message: str | None = None) -> str:
+    async def complete_async(
+        self,
+        prompt: str,
+        system_message: str | None = None,
+    ) -> str:
         """Complete a prompt using OpenAI API (Asynchronous)."""
+        default_system = "You are a helpful assistant."
         payload = {
             "model": self.config.model,
             "messages": [
-                {"role": "system", "content": system_message or "You are a helpful assistant."},
+                {
+                    "role": "system",
+                    "content": system_message or default_system,
+                },
                 {"role": "user", "content": prompt},
             ],
             "temperature": 0,
@@ -190,7 +207,9 @@ class OpenAITranslator:
             "Content-Type": "application/json",
         }
         url = f"{self.config.base_url}/chat/completions"
-        async with httpx.AsyncClient(timeout=settings.openai_timeout) as client:
+        async with httpx.AsyncClient(
+            timeout=settings.openai_timeout
+        ) as client:
             response = await client.post(url, json=payload, headers=headers)
             response.raise_for_status()
             response_data = response.json()

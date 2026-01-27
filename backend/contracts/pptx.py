@@ -1,14 +1,14 @@
 from __future__ import annotations
 
 from collections.abc import Iterable
-from typing import Literal, Any
+from typing import Any, Literal
 
 from pydantic import BaseModel
 
 class PPTXBlock(BaseModel):
     slide_index: int
     shape_id: Any
-    block_type: str # Use str to be more flexible, but validated in make_block
+    block_type: str  # Use str to be more flexible, but validated in make_block
     source_text: str
     translated_text: str = ""
     client_id: str | None = None
@@ -24,7 +24,6 @@ class PPTXBlock(BaseModel):
 
     class Config:
         extra = "allow"
-
 
 
 class PPTXExtractResponse(BaseModel):
@@ -46,7 +45,15 @@ def _model_validate(model_cls, data: dict) -> BaseModel:
 def make_block(
     slide_index: int,
     shape_id: Any,
-    block_type: Literal["textbox", "table_cell", "notes", "spreadsheet_cell", "pdf_text_block", "complex_graphic", "master"],
+    block_type: Literal[
+        "textbox",
+        "table_cell",
+        "notes",
+        "spreadsheet_cell",
+        "pdf_text_block",
+        "complex_graphic",
+        "master",
+    ],
     source_text: str,
     translated_text: str = "",
     mode: Literal["direct", "bilingual", "correction"] = "direct",
@@ -68,7 +75,6 @@ def make_block(
         height=height,
     )
     return _model_dump(block)
-
 
 
 def coerce_blocks(blocks: Iterable[dict]) -> list[dict]:

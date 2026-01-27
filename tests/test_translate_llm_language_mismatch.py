@@ -7,7 +7,6 @@ from backend.services.llm_clients import OpenAITranslator
 from backend.services.llm_contract import build_contract
 from backend.services.translate_llm import translate_blocks
 
-
 def test_translate_blocks_raises_when_language_mismatch_persists(monkeypatch) -> None:
     """Test that ValueError is raised when translation language doesn't match target."""
 

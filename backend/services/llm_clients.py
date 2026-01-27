@@ -12,7 +12,10 @@ from backend.services.llm_client_base import (
     load_contract_example,
 )
 from backend.services.llm_client_gemini import GeminiTranslator
-from backend.services.llm_client_ollama import OllamaTranslator, build_ollama_options
+from backend.services.llm_client_ollama import (
+    OllamaTranslator,
+    build_ollama_options,
+)
 from backend.services.llm_client_openai import OpenAITranslator
 
 __all__ = [

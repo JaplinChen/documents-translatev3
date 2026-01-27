@@ -3,7 +3,8 @@ services:
     build:
       context: .
       dockerfile: Dockerfile.backend
-    container_name: document-translate-backend
+    image: documents-translate-backend:latest
+    container_name: documents-translate-backend
     ports:
       - "5002:5002"
     extra_hosts:
@@ -68,7 +69,8 @@ services:
     build:
       context: .
       dockerfile: Dockerfile.frontend
-    container_name: document-translate-frontend
+    image: documents-translate-frontend:latest
+    container_name: documents-translate-frontend
     ports:
       - "5194:80"
     depends_on:
@@ -86,5 +88,4 @@ services:
 
 networks:
   default:
-    name: document-translate-network
-
+    name: documents-translate-network

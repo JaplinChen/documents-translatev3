@@ -16,6 +16,7 @@ from backend.services.pdf.extract import extract_blocks as extract_pdf_blocks
 
 router = APIRouter(prefix="/api/pdf")
 
+
 @router.post("/extract")
 async def pdf_extract(file: UploadFile = File(...)) -> dict:
     valid, err = validate_file_type(file.filename)
@@ -37,8 +38,9 @@ async def pdf_extract(file: UploadFile = File(...)) -> dict:
     return {
         "blocks": blocks,
         "language_summary": detect_document_languages(blocks),
-        "page_count": data.get("page_count", 0)
+        "page_count": data.get("page_count", 0),
     }
+
 
 @router.post("/apply")
 async def pdf_apply(
@@ -89,16 +91,19 @@ async def pdf_apply(
         f.write(output_bytes)
 
     import urllib.parse
-    safe_uri = urllib.parse.quote(final_filename, safe='')
+
+    safe_uri = urllib.parse.quote(final_filename, safe="")
     return {
         "status": "success",
         "filename": final_filename,
-        "download_url": f"/api/pdf/download/{safe_uri}"
+        "download_url": f"/api/pdf/download/{safe_uri}",
     }
+
 
 @router.get("/download/{filename:path}")
 async def pdf_download(filename: str):
     import urllib.parse
+
     if "%" in filename:
         filename = urllib.parse.unquote(filename)
     file_path = Path("data/exports") / filename
@@ -106,17 +111,20 @@ async def pdf_download(filename: str):
         raise HTTPException(status_code=404, detail="檔案不存在")
 
     ascii_name = "".join(c if ord(c) < 128 else "_" for c in filename)
-    safe_name = urllib.parse.quote(filename, safe='')
-    disposition = f'attachment; filename="{ascii_name}"; filename*=UTF-8\'\'{safe_name}'
+    safe_name = urllib.parse.quote(filename, safe="")
+    disposition = (
+        f'attachment; filename="{ascii_name}"; filename*=UTF-8\'\'{safe_name}'
+    )
     return FileResponse(
         path=file_path,
         media_type="application/pdf",
         headers={
             "Content-Disposition": disposition,
             "Access-Control-Expose-Headers": "Content-Disposition",
-            "Cache-Control": "no-cache"
-        }
+            "Cache-Control": "no-cache",
+        },
     )
+
 
 @router.post("/translate-stream")
 async def pdf_translate_stream(

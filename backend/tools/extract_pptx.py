@@ -3,7 +3,6 @@ import sys
 
 from backend.services.pptx_extract import extract_blocks
 
-
 def main() -> int:
     if len(sys.argv) != 2:
         print(

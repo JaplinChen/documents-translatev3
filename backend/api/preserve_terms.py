@@ -12,7 +12,9 @@ from pydantic import BaseModel
 
 router = APIRouter(prefix="/api/preserve-terms")
 
-PRESERVE_TERMS_FILE = Path(__file__).parent.parent / "data" / "preserve_terms.json"
+PRESERVE_TERMS_FILE = (
+    Path(__file__).parent.parent / "data" / "preserve_terms.json"
+)
 
 
 class PreserveTerm(BaseModel):
@@ -56,7 +58,10 @@ async def create_preserve_term(term: PreserveTerm) -> dict:
     # Check for duplicates
     for existing in terms:
         if existing["term"].lower() == term.term.lower():
-            raise HTTPException(status_code=400, detail=f"術語 '{term.term}' 已存在")
+            raise HTTPException(
+                status_code=400,
+                detail=f"術語 '{term.term}' 已存在",
+            )
 
     new_term = {
         "id": str(uuid4()),
@@ -108,7 +113,10 @@ async def export_preserve_terms() -> Response:
     terms = _load_preserve_terms()
 
     output = io.StringIO()
-    writer = csv.DictWriter(output, fieldnames=["term", "category", "case_sensitive"])
+    writer = csv.DictWriter(
+        output,
+        fieldnames=["term", "category", "case_sensitive"],
+    )
     writer.writeheader()
 
     for term in terms:
@@ -125,7 +133,9 @@ async def export_preserve_terms() -> Response:
     return Response(
         content=csv_content,
         media_type="text/csv",
-        headers={"Content-Disposition": "attachment; filename=preserve_terms.csv"},
+        headers={
+            "Content-Disposition": "attachment; filename=preserve_terms.csv"
+        },
     )
 
 
@@ -145,7 +155,10 @@ async def import_preserve_terms(csv_data: str) -> dict:
                 continue
 
             # Check for duplicates
-            exists = any(existing["term"].lower() == term_text.lower() for existing in terms)
+            exists = any(
+                existing["term"].lower() == term_text.lower()
+                for existing in terms
+            )
 
             if exists:
                 skipped += 1
@@ -155,7 +168,9 @@ async def import_preserve_terms(csv_data: str) -> dict:
                 "id": str(uuid4()),
                 "term": term_text,
                 "category": row.get("category", "未分類").strip(),
-                "case_sensitive": row.get("case_sensitive", "true").lower() == "true",
+                "case_sensitive": (
+                    row.get("case_sensitive", "true").lower() == "true"
+                ),
                 "created_at": datetime.utcnow().isoformat() + "Z",
             }
 
@@ -167,7 +182,10 @@ async def import_preserve_terms(csv_data: str) -> dict:
         return {"imported": imported, "skipped": skipped, "total": len(terms)}
 
     except Exception as exc:
-        raise HTTPException(status_code=400, detail=f"CSV 匯入失敗: {str(exc)}") from exc
+        raise HTTPException(
+            status_code=400,
+            detail=f"CSV 匯入失敗: {str(exc)}",
+        ) from exc
 
 
 @router.delete("")
@@ -197,7 +215,10 @@ async def convert_glossary_to_preserve_term(
     # Check for duplicates
     for existing in terms:
         if existing["term"].lower() == term_text.lower():
-            raise HTTPException(status_code=400, detail=f"術語 '{term_text}' 已存在於保留術語中")
+            raise HTTPException(
+                status_code=400,
+                detail=f"術語 '{term_text}' 已存在於保留術語中",
+            )
 
     new_term = {
         "id": str(uuid4()),

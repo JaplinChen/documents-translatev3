@@ -1,7 +1,10 @@
 from __future__ import annotations
 
-
-def build_context(strategy: str, all_blocks: list[dict], chunk_blocks: list[dict]) -> dict | None:
+def build_context(  # noqa: C901
+    strategy: str,
+    all_blocks: list[dict],
+    chunk_blocks: list[dict],
+) -> dict | None:
     if strategy == "none":
         return None
 
@@ -12,7 +15,13 @@ def build_context(strategy: str, all_blocks: list[dict], chunk_blocks: list[dict
             continue
         blocks_by_slide.setdefault(slide_index, []).append(block)
 
-    chunk_slides = sorted(list({block.get("slide_index") for block in chunk_blocks if block.get("slide_index") is not None}))
+    chunk_slides = sorted(
+        {
+            block.get("slide_index")
+            for block in chunk_blocks
+            if block.get("slide_index") is not None
+        }
+    )
     total_slides = max(blocks_by_slide.keys()) + 1 if blocks_by_slide else 0
 
     if strategy == "neighbor":
@@ -32,7 +41,7 @@ def build_context(strategy: str, all_blocks: list[dict], chunk_blocks: list[dict
         for slide_index in chunk_slides:
             slide_blocks = blocks_by_slide.get(slide_index, [])
             if slide_blocks:
-                # Try to pick a block that looks like a title (usually first or has specific characteristics)
+                # Try to pick a block that looks like a title (usually first).
                 title_blocks.append(slide_blocks[0])
         return {
             "strategy": "title-only",

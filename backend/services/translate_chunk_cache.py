@@ -4,13 +4,17 @@ This module contains cache-related functions for translation chunks.
 """
 
 from __future__ import annotations
-from typing import Callable
+
+from collections.abc import Callable
 
 from backend.services.translation_cache import cache
 
-
 def get_from_cache(
-    chunk_blocks: list[dict], target_language: str, provider: str, model: str, **kwargs
+    chunk_blocks: list[dict],
+    target_language: str,
+    provider: str,
+    model: str,
+    **kwargs,
 ) -> tuple[list[dict | None], list[int]]:
     """Get blocks from cache and return final list and uncached indices."""
     final_blocks = []
@@ -22,7 +26,7 @@ def get_from_cache(
             provider,
             model,
             tone=kwargs.get("tone"),
-            vision_context=kwargs.get("vision_context", True)
+            vision_context=kwargs.get("vision_context", True),
         )
         if cached:
             final_blocks.append({**block, "translated_text": cached})
@@ -76,7 +80,7 @@ def translate_and_cache_blocks(
             params.get("model", "default"),
             translated_text,
             tone=tone,
-            vision_context=vision_context
+            vision_context=vision_context,
         )
 
     result["blocks"] = final_blocks
@@ -127,7 +131,7 @@ async def translate_and_cache_blocks_async(
             params.get("model", "default"),
             translated_text,
             tone=tone,
-            vision_context=vision_context
+            vision_context=vision_context,
         )
 
     result["blocks"] = final_blocks

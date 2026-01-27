@@ -44,5 +44,3 @@ def validate_file_type(filename: str | None) -> tuple[bool, str]:
         return False, f"不支援的檔案格式 ({ext})，支援 .pptx, .docx, .xlsx, .pdf"
 
     return True, ""
-
-    return True, ""

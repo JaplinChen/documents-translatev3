@@ -1,7 +1,6 @@
 from backend.config import settings
 from backend.services.llm_clients import build_ollama_options
 
-
 def test_build_ollama_options_empty_by_default(monkeypatch) -> None:
     monkeypatch.setattr(settings, "ollama_num_gpu", None)
     monkeypatch.setattr(settings, "ollama_num_gpu_layers", None)

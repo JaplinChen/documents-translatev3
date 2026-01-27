@@ -1,7 +1,6 @@
 from backend.config import settings
 from backend.services.translate_llm import translate_blocks
 
-
 def test_translate_blocks_chunk_indices(monkeypatch) -> None:
     monkeypatch.setattr(settings, "translate_llm_mode", "mock")
     monkeypatch.setattr(settings, "llm_single_request", False)

@@ -1,9 +1,7 @@
-import os
 
 import time
 
 from backend.api.pptx_naming import generate_semantic_filename_with_ext
-
 
 def test_generate_semantic_filename_with_ext_respects_extension(tmp_path, monkeypatch):
     monkeypatch.chdir(tmp_path)

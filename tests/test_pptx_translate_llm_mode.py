@@ -4,7 +4,6 @@ import json
 from backend.api.pptx_translate import pptx_translate
 from backend.config import settings
 
-
 def test_pptx_translate_returns_llm_mode_warning(monkeypatch):
     monkeypatch.setattr(settings, "translate_llm_mode", "mock")
     blocks = [

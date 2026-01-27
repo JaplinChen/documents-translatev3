@@ -1,6 +1,5 @@
 from backend.services.language_detect import detect_language, resolve_source_language
 
-
 def test_resolve_source_language_prefers_explicit() -> None:
     blocks = [{"source_text": "Hello"}]
     assert resolve_source_language(blocks, "en") == "en"

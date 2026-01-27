@@ -8,7 +8,7 @@ export function PreserveTermsAddForm({ newTerm, setNewTerm, categories, getCateg
         <div className="create-row bg-slate-50/80 p-3 px-5 rounded-2xl border border-slate-200/50 flex items-center gap-5 shadow-inner">
             <div className="flex-grow flex items-center gap-6">
                 <div className="flex-1 space-y-1.5">
-                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-[0.1em] ml-1">{t("manage.preserve.term_placeholder")}</label>
+                    <label className="text-xs font-bold text-slate-500 uppercase tracking-wider ml-1">{t("manage.preserve.term_placeholder")}</label>
                     <input
                         className="text-input !py-2 !px-4 w-full !bg-white !border-slate-200 hover:border-blue-300 focus:ring-4 focus:ring-blue-50/50 transition-all outline-none text-sm"
                         type="text"
@@ -18,7 +18,7 @@ export function PreserveTermsAddForm({ newTerm, setNewTerm, categories, getCateg
                     />
                 </div>
                 <div className="w-32 space-y-1.5">
-                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-[0.1em] ml-1">{t("manage.preserve.table.category")}</label>
+                    <label className="text-xs font-bold text-slate-500 uppercase tracking-wider ml-1">{t("manage.preserve.table.category")}</label>
                     <select
                         className="select-input !py-2 !px-3 w-full !bg-white !border-slate-200 hover:border-blue-300 transition-all outline-none text-sm font-medium"
                         value={newTerm.category}

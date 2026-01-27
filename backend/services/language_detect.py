@@ -73,13 +73,13 @@ def detect_language(text: str) -> str | None:
         return "vi"
 
     if _CJK_RE.search(text):
-        # Improved check: only return ZH if CJK characters are a significant portion
+        # Return ZH only if CJK characters are a significant portion
         # or if there are no other identifiable language features.
         cjk_count = len(_CJK_RE.findall(text))
         total_len = len(text.strip())
         if cjk_count / total_len > 0.3 or len(text.strip()) < 5:
             return _detect_zh_variant(text)
-    
+
     try:
         lang = _normalize_lang(detect(text))
         if lang == "zh":
@@ -99,7 +99,11 @@ def detect_document_languages(blocks: Iterable[dict]) -> dict:
     if len(blocks_list) > 50:
         # Take first 20, middle 10, last 20
         mid = len(blocks_list) // 2
-        sampled_blocks = blocks_list[:20] + blocks_list[mid : mid + 10] + blocks_list[-20:]
+        sampled_blocks = (
+            blocks_list[:20]
+            + blocks_list[mid:mid + 10]
+            + blocks_list[-20:]
+        )
     else:
         sampled_blocks = blocks_list
 
@@ -132,7 +136,10 @@ def detect_document_languages(blocks: Iterable[dict]) -> dict:
     return {"primary": primary, "secondary": secondary, "counts": dict(counts)}
 
 
-def resolve_source_language(blocks: Iterable[dict], source_language: str | None) -> str | None:
+def resolve_source_language(
+    blocks: Iterable[dict],
+    source_language: str | None,
+) -> str | None:
     if source_language and source_language != "auto":
         return source_language
     summary = detect_document_languages(blocks)

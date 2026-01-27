@@ -4,9 +4,10 @@ import sys
 
 from backend.services.pptx_apply import apply_chinese_corrections
 
-
 def main() -> int:
-    parser = argparse.ArgumentParser(description="Apply Chinese corrections to a PPTX.")
+    parser = argparse.ArgumentParser(
+        description="Apply Chinese corrections to a PPTX."
+    )
     parser.add_argument("--in", dest="pptx_in", required=True)
     parser.add_argument("--out", dest="pptx_out", required=True)
     parser.add_argument("--blocks", dest="blocks_path", required=True)
@@ -20,7 +21,12 @@ def main() -> int:
         print(f"Failed to read blocks file: {exc}", file=sys.stderr)
         return 1
 
-    apply_chinese_corrections(args.pptx_in, args.pptx_out, blocks, line_dash=args.line_dash)
+    apply_chinese_corrections(
+        args.pptx_in,
+        args.pptx_out,
+        blocks,
+        line_dash=args.line_dash,
+    )
     return 0
 
 

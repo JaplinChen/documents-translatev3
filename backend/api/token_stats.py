@@ -33,7 +33,13 @@ async def record_token_usage(
     operation: str = "translate",
 ) -> dict:
     """Manually record token usage (for testing or external tracking)."""
-    usage = record_usage(provider, model, prompt_tokens, completion_tokens, operation)
+    usage = record_usage(
+        provider,
+        model,
+        prompt_tokens,
+        completion_tokens,
+        operation,
+    )
     return {
         "recorded": True,
         "usage": {

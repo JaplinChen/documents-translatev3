@@ -24,9 +24,9 @@ from backend.services.translate_chunk_dispatch import (
     dispatch_translate_async,
 )
 from backend.services.translate_retry import (
-    has_language_mismatch,
     fallback_mock,
     fallback_mock_async,
+    has_language_mismatch,
     retry_for_language,
     retry_for_language_async,
 )
@@ -97,12 +97,12 @@ def translate_chunk(
                 uncached_indices = list(range(len(chunk_blocks)))
             else:
                 final_blocks, uncached_indices = get_from_cache(
-                    chunk_blocks, 
-                    target_language, 
-                    provider, 
+                    chunk_blocks,
+                    target_language,
+                    provider,
                     params.get("model", "default"),
                     tone=tone,
-                    vision_context=vision_context
+                    vision_context=vision_context,
                 )
 
             if not uncached_indices:
@@ -125,8 +125,14 @@ def translate_chunk(
                 mode=mode,
             )
 
-            chunk_texts = [item.get("translated_text", "") for item in result["blocks"]]
-            if not retried_for_language and has_language_mismatch(chunk_texts, target_language):
+            chunk_texts = [
+                item.get("translated_text", "")
+                for item in result["blocks"]
+            ]
+            if not retried_for_language and has_language_mismatch(
+                chunk_texts,
+                target_language,
+            ):
                 retried_for_language = True
                 result = retry_for_language(
                     translator,
@@ -156,7 +162,12 @@ def translate_chunk(
                     )
                 raise
 
-            sleep_for = _calculate_backoff(exc, attempt, params["backoff"], params["max_backoff"])
+            sleep_for = _calculate_backoff(
+                exc,
+                attempt,
+                params["backoff"],
+                params["max_backoff"],
+            )
             time.sleep(sleep_for)
 
 
@@ -195,12 +206,12 @@ async def translate_chunk_async(
                 uncached_indices = list(range(len(chunk_blocks)))
             else:
                 final_blocks, uncached_indices = get_from_cache(
-                    chunk_blocks, 
-                    target_language, 
-                    provider, 
+                    chunk_blocks,
+                    target_language,
+                    provider,
                     params.get("model", "default"),
                     tone=tone,
-                    vision_context=vision_context
+                    vision_context=vision_context,
                 )
 
             if not uncached_indices:
@@ -223,8 +234,14 @@ async def translate_chunk_async(
                 mode=mode,
             )
 
-            chunk_texts = [item.get("translated_text", "") for item in result["blocks"]]
-            if not retried_for_language and has_language_mismatch(chunk_texts, target_language):
+            chunk_texts = [
+                item.get("translated_text", "")
+                for item in result["blocks"]
+            ]
+            if not retried_for_language and has_language_mismatch(
+                chunk_texts,
+                target_language,
+            ):
                 retried_for_language = True
                 result = await retry_for_language_async(
                     translator,
@@ -254,7 +271,12 @@ async def translate_chunk_async(
                     )
                 raise
 
-            sleep_for = _calculate_backoff(exc, attempt, params["backoff"], params["backoff"])
+            sleep_for = _calculate_backoff(
+                exc,
+                attempt,
+                params["backoff"],
+                params["max_backoff"],
+            )
             await asyncio.sleep(sleep_for)
 
 
@@ -276,7 +298,12 @@ def _is_vision_error(error_msg: str) -> bool:
     return "image" in lower or "vision" in lower
 
 
-def _calculate_backoff(exc: Exception, attempt: int, backoff: float, max_backoff: float) -> float:
+def _calculate_backoff(
+    exc: Exception,
+    attempt: int,
+    backoff: float,
+    max_backoff: float,
+) -> float:
     """Calculate backoff time for retry."""
     retry_after = None
     if isinstance(exc, HTTPError) and exc.code in {429, 503}:

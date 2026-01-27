@@ -2,7 +2,6 @@ import pytest
 
 from backend.services.translate_llm import translate_blocks_async
 
-
 @pytest.mark.asyncio
 async def test_translate_blocks_async_basic():
     """Test basic async translation with mock mode."""

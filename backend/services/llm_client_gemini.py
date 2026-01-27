@@ -57,11 +57,17 @@ class GeminiTranslator:
 
         payload = {
             "contents": [{"role": "user", "parts": [{"text": full_prompt}]}],
-            "generationConfig": {"temperature": 0, "responseMimeType": "application/json"},
+            "generationConfig": {
+                "temperature": 0,
+                "responseMimeType": "application/json",
+            },
         }
 
         timeout = settings.gemini_timeout
-        url = f"{self.base_url}/models/{self.model}:generateContent?key={self.api_key}"
+        url = (
+            f"{self.base_url}/models/{self.model}:generateContent"
+            f"?key={self.api_key}"
+        )
 
         try:
             with httpx.Client(timeout=timeout) as client:
@@ -100,14 +106,20 @@ class GeminiTranslator:
 
         system_message = self._get_system_message()
         full_prompt = f"{system_message}\n\n[TASK START]\n{prompt}"
-        
+
         payload = {
             "contents": [{"role": "user", "parts": [{"text": full_prompt}]}],
-            "generationConfig": {"temperature": 0, "responseMimeType": "application/json"},
+            "generationConfig": {
+                "temperature": 0,
+                "responseMimeType": "application/json",
+            },
         }
 
         timeout = settings.gemini_timeout
-        url = f"{self.base_url}/models/{self.model}:generateContent?key={self.api_key}"
+        url = (
+            f"{self.base_url}/models/{self.model}:generateContent"
+            f"?key={self.api_key}"
+        )
 
         try:
             async with httpx.AsyncClient(timeout=timeout) as client:
@@ -126,7 +138,11 @@ class GeminiTranslator:
         self._check_prompt_feedback(response_data)
         self._check_candidates(response_data)
 
-        parts = response_data.get("candidates", [])[0].get("content", {}).get("parts", [])
+        parts = (
+            response_data.get("candidates", [])[0]
+            .get("content", {})
+            .get("parts", [])
+        )
         content = parts[0].get("text", "") if parts else ""
 
         if not content:
@@ -142,19 +158,30 @@ class GeminiTranslator:
         error_message = response.text
         try:
             error_json = response.json()
-            error_message = error_json.get("error", {}).get("message", response.text)
+            error_message = error_json.get("error", {}).get(
+                "message",
+                response.text,
+            )
         except (json.JSONDecodeError, ValueError):
             pass
 
         code = response.status_code
         if code == 400:
-            raise ValueError(f"Gemini API 請求錯誤 (400): {error_message}") from exc
+            raise ValueError(
+                f"Gemini API 請求錯誤 (400): {error_message}"
+            ) from exc
         elif code == 403:
-            raise ValueError(f"Gemini API 權限不足 (403): {error_message}") from exc
+            raise ValueError(
+                f"Gemini API 權限不足 (403): {error_message}"
+            ) from exc
         elif code == 429:
-            raise ValueError(f"Gemini API 請求過於頻繁 (429): {error_message}") from exc
+            raise ValueError(
+                f"Gemini API 請求過於頻繁 (429): {error_message}"
+            ) from exc
         elif code >= 500:
-            raise ValueError(f"Gemini 伺服器錯誤 ({code}): {error_message}") from exc
+            raise ValueError(
+                f"Gemini 伺服器錯誤 ({code}): {error_message}"
+            ) from exc
         raise ValueError(f"Gemini API 錯誤 ({code}): {error_message}") from exc
 
     def _check_prompt_feedback(self, response_data: dict) -> None:
@@ -165,7 +192,9 @@ class GeminiTranslator:
         if block_reason:
             safety_ratings = prompt_feedback.get("safetyRatings", [])
             blocked_categories = [
-                r.get("category", "") for r in safety_ratings if r.get("blocked", False)
+                r.get("category", "")
+                for r in safety_ratings
+                if r.get("blocked", False)
             ]
             raise ValueError(
                 f"Gemini 拒絕處理此請求 (blockReason={block_reason})。"
@@ -182,7 +211,9 @@ class GeminiTranslator:
         if finish_reason == "SAFETY":
             raise ValueError("Gemini 因安全政策停止生成 (finishReason=SAFETY)。")
         elif finish_reason == "RECITATION":
-            raise ValueError("Gemini 因可能涉及版權內容停止生成 (finishReason=RECITATION)。")
+            raise ValueError(
+                "Gemini 因可能涉及版權內容停止生成 (finishReason=RECITATION)。"
+            )
         elif finish_reason == "MAX_TOKENS":
             raise ValueError("Gemini 輸出超過 token 上限 (finishReason=MAX_TOKENS)。")
 
@@ -192,12 +223,19 @@ class GeminiTranslator:
             "contents": [{"role": "user", "parts": [{"text": prompt}]}],
             "generationConfig": {"temperature": 0},
         }
-        url = f"{self.base_url}/models/{self.model}:generateContent?key={self.api_key}"
+        url = (
+            f"{self.base_url}/models/{self.model}:generateContent"
+            f"?key={self.api_key}"
+        )
         with httpx.Client(timeout=settings.gemini_timeout) as client:
             response = client.post(url, json=payload)
             response.raise_for_status()
             response_data = response.json()
-        parts = response_data.get("candidates", [])[0].get("content", {}).get("parts", [])
+        parts = (
+            response_data.get("candidates", [])[0]
+            .get("content", {})
+            .get("parts", [])
+        )
         return parts[0].get("text", "") if parts else ""
 
     async def complete_async(self, prompt: str) -> str:
@@ -206,10 +244,19 @@ class GeminiTranslator:
             "contents": [{"role": "user", "parts": [{"text": prompt}]}],
             "generationConfig": {"temperature": 0},
         }
-        url = f"{self.base_url}/models/{self.model}:generateContent?key={self.api_key}"
-        async with httpx.AsyncClient(timeout=settings.gemini_timeout) as client:
+        url = (
+            f"{self.base_url}/models/{self.model}:generateContent"
+            f"?key={self.api_key}"
+        )
+        async with httpx.AsyncClient(
+            timeout=settings.gemini_timeout
+        ) as client:
             response = await client.post(url, json=payload)
             response.raise_for_status()
             response_data = response.json()
-        parts = response_data.get("candidates", [])[0].get("content", {}).get("parts", [])
+        parts = (
+            response_data.get("candidates", [])[0]
+            .get("content", {})
+            .get("parts", [])
+        )
         return parts[0].get("text", "") if parts else ""

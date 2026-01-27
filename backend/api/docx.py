@@ -1,31 +1,39 @@
 """DOCX API endpoints.
 
-This module provides REST API endpoints for DOCX file extraction and application.
+This module provides REST API endpoints for DOCX file extraction and
+application.
 """
 
 from __future__ import annotations
 
+import asyncio
 import json
 import logging
 import os
 import tempfile
 from pathlib import Path
-import asyncio
+
 from fastapi import APIRouter, File, Form, HTTPException, UploadFile
 from fastapi.responses import FileResponse, StreamingResponse
 
-from backend.contracts import coerce_blocks
-from backend.services.language_detect import detect_document_languages, resolve_source_language
 from backend.api.error_handler import api_error_handler, validate_json_blocks
-from backend.services.correction_mode import apply_correction_mode, prepare_blocks_for_correction
-from backend.services.docx.extract import extract_blocks as extract_docx_blocks
+from backend.api.pptx_naming import generate_semantic_filename
+from backend.contracts import coerce_blocks
+from backend.services.correction_mode import (
+    apply_correction_mode,
+    prepare_blocks_for_correction,
+)
 from backend.services.docx.apply import (
     apply_bilingual,
-    apply_translations,
     apply_chinese_corrections,
+    apply_translations,
+)
+from backend.services.docx.extract import extract_blocks as extract_docx_blocks
+from backend.services.language_detect import (
+    detect_document_languages,
+    resolve_source_language,
 )
 from backend.services.translate_llm import translate_blocks_async
-from backend.api.pptx_naming import generate_semantic_filename
 
 LOGGER = logging.getLogger(__name__)
 
@@ -73,10 +81,19 @@ async def docx_apply(
         out_p = os.path.join(temp_dir, "out.docx")
 
         if mode == "bilingual":
-            apply_bilingual(docx_bytes, out_p, blocks_data, target_language=target_language)
+            apply_bilingual(
+                docx_bytes,
+                out_p,
+                blocks_data,
+                target_language=target_language,
+            )
         elif mode == "translated":
             apply_translations(
-                docx_bytes, out_p, blocks_data, mode="direct", target_language=target_language
+                docx_bytes,
+                out_p,
+                blocks_data,
+                mode="direct",
+                target_language=target_language,
             )
         else:
             apply_chinese_corrections(docx_bytes, out_p, blocks_data)
@@ -116,11 +133,17 @@ async def docx_download(filename: str):
 
     ascii_name = "".join(c if ord(c) < 128 else "_" for c in filename)
     safe_name = urllib.parse.quote(filename, safe="")
+    content_disposition = (
+        f"attachment; filename=\"{ascii_name}\"; filename*=UTF-8''{safe_name}"
+    )
     return FileResponse(
         path=file_path,
-        media_type="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+        media_type=(
+            "application/vnd.openxmlformats-officedocument."
+            "wordprocessingml.document"
+        ),
         headers={
-            "Content-Disposition": f"attachment; filename=\"{ascii_name}\"; filename*=UTF-8''{safe_name}",
+            "Content-Disposition": content_disposition,
             "Access-Control-Expose-Headers": "Content-Disposition",
             "Cache-Control": "no-cache",
         },
@@ -128,7 +151,7 @@ async def docx_download(filename: str):
 
 
 @router.post("/translate-stream")
-async def docx_translate_stream(
+async def docx_translate_stream(  # noqa: C901
     blocks: str = Form(...),
     source_language: str | None = Form(None),
     target_language: str | None = Form(None),
@@ -155,7 +178,10 @@ async def docx_translate_stream(
     if not target_language:
         raise HTTPException(status_code=400, detail="target_language 為必填")
 
-    resolved_source_language = resolve_source_language(blocks_data, source_language)
+    resolved_source_language = resolve_source_language(
+        blocks_data,
+        source_language,
+    )
     param_overrides = {"refresh": refresh}
 
     # 解析已完成的 ID 列表
@@ -173,22 +199,40 @@ async def docx_translate_stream(
             continue
         effective_blocks.append(b)
 
-    def _prepare_blocks_for_correction(items: list[dict], target_lang: str | None) -> list[dict]:
+    def _prepare_blocks_for_correction(
+        items: list[dict],
+        target_lang: str | None,
+    ) -> list[dict]:
         return prepare_blocks_for_correction(items, target_lang)
 
     async def event_generator():
         queue = asyncio.Queue()
 
         async def progress_cb(progress_data):
-            await queue.put({"event": "progress", "data": json.dumps(progress_data)})
+            await queue.put(
+                {"event": "progress", "data": json.dumps(progress_data)}
+            )
 
         try:
             # yield initial progress
-            yield f"event: progress\ndata: {json.dumps({'chunk_index': 0, 'completed_indices': [], 'chunk_size': 0, 'total_pending': len(blocks_data), 'timestamp': 0})}\n\n"
+            initial_payload = {
+                "chunk_index": 0,
+                "completed_indices": [],
+                "chunk_size": 0,
+                "total_pending": len(blocks_data),
+                "timestamp": 0,
+            }
+            yield (
+                "event: progress\n"
+                f"data: {json.dumps(initial_payload)}\n\n"
+            )
 
             task = asyncio.create_task(
                 translate_blocks_async(
-                    _prepare_blocks_for_correction(effective_blocks, target_language)
+                    _prepare_blocks_for_correction(
+                        effective_blocks,
+                        target_language,
+                    )
                     if mode == "correction"
                     else effective_blocks,
                     target_language,
@@ -214,18 +258,25 @@ async def docx_translate_stream(
 
                 if get_queue_task in done:
                     event = get_queue_task.result()
-                    yield f"event: {event['event']}\ndata: {event['data']}\n\n"
+                    yield (
+                        f"event: {event['event']}\n"
+                        f"data: {event['data']}\n\n"
+                    )
                 else:
                     get_queue_task.cancel()
 
                 if task in done:
                     while not queue.empty():
                         event = queue.get_nowait()
-                        yield f"event: {event['event']}\ndata: {event['data']}\n\n"
+                        yield (
+                            f"event: {event['event']}\n"
+                            f"data: {event['data']}\n\n"
+                        )
                     result = await task
                     if mode == "correction":
                         translated_texts = [
-                            b.get("translated_text", "") for b in result.get("blocks", [])
+                            b.get("translated_text", "")
+                            for b in result.get("blocks", [])
                         ]
                         result["blocks"] = apply_correction_mode(
                             effective_blocks,

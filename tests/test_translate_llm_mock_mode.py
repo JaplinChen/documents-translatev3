@@ -1,7 +1,6 @@
 from backend.config import settings
 from backend.services.translate_llm import translate_blocks
 
-
 def test_translate_blocks_mock_mode_ignores_provider(monkeypatch):
     monkeypatch.setattr(settings, "translate_llm_mode", "mock")
     blocks = [

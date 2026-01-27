@@ -1,9 +1,7 @@
 from __future__ import annotations
 
-import json
 import re
 from collections.abc import Iterable
-from pathlib import Path
 
 from pptx import Presentation
 from pptx.enum.shapes import MSO_SHAPE_TYPE
@@ -12,7 +10,11 @@ from pptx.table import _Cell
 from pptx.text.text import TextFrame
 
 from backend.contracts import make_block
-from backend.services.extract_utils import is_numeric_only, is_technical_terms_only, is_garbage_text
+from backend.services.extract_utils import (
+    is_garbage_text,
+    is_numeric_only,
+    is_technical_terms_only,
+)
 
 def _safe_get_shape_type(shape) -> int | None:
     try:
@@ -20,11 +22,13 @@ def _safe_get_shape_type(shape) -> int | None:
     except Exception:
         return None
 
+
 def _safe_has_text_frame(shape) -> bool:
     try:
         return getattr(shape, "has_text_frame", False)
     except Exception:
         return False
+
 
 def _safe_has_table(shape) -> bool:
     try:
@@ -32,27 +36,33 @@ def _safe_has_table(shape) -> bool:
     except Exception:
         return False
 
+
 # Pre-compile regex for performance
-_A_T_RE = re.compile(r'<a:t[^>]*>(.*?)</a:t>', re.DOTALL)
-_XML_TAG_RE = re.compile(r'<[^>]+>')
+_A_T_RE = re.compile(r"<a:t[^>]*>(.*?)</a:t>", re.DOTALL)
+_XML_TAG_RE = re.compile(r"<[^>]+>")
+
 
 def _extract_complex_text(shape) -> list[str]:
-    """Fallback extraction for SmartArt and Charts using XML if direct API fails."""
+    """Fallback extraction for SmartArt/Charts using XML."""
     texts = []
     try:
         # Some shapes might not have .element or .xml
         if not hasattr(shape, "element") or not hasattr(shape.element, "xml"):
             return []
-            
+
         xml_str = shape.element.xml
         tags = _A_T_RE.findall(xml_str)
         for t in tags:
-            clean_t = _XML_TAG_RE.sub('', t).strip()
-            if clean_t and not is_numeric_only(clean_t) and not is_technical_terms_only(clean_t):
+            clean_t = _XML_TAG_RE.sub("", t).strip()
+            if (
+                clean_t
+                and not is_numeric_only(clean_t)
+                and not is_technical_terms_only(clean_t)
+            ):
                 texts.append(clean_t)
     except Exception:
         pass
-    return list(dict.fromkeys(texts)) # Unique values
+    return list(dict.fromkeys(texts))  # Unique values
 
 
 def _text_frame_to_text(text_frame: TextFrame) -> str:
@@ -83,7 +93,11 @@ def emu_to_points(emu: int | float | None) -> float:
         return 0.0
 
 
-def _iter_textbox_blocks(slide: Slide, slide_index: int, seen_ids: set[int]) -> Iterable[dict]:
+def _iter_textbox_blocks(  # noqa: C901
+    slide: Slide,
+    slide_index: int,
+    seen_ids: set[int],
+) -> Iterable[dict]:
     for shape in _iter_shapes(slide.shapes):
         try:
             if not _safe_has_text_frame(shape) or _safe_has_table(shape):
@@ -93,17 +107,31 @@ def _iter_textbox_blocks(slide: Slide, slide_index: int, seen_ids: set[int]) -> 
             text = _text_frame_to_text(shape.text_frame)
         except Exception:
             continue
-        if not text or is_numeric_only(text) or is_technical_terms_only(text) or is_garbage_text(text):
+        if (
+            not text
+            or is_numeric_only(text)
+            or is_technical_terms_only(text)
+            or is_garbage_text(text)
+        ):
             continue
-        
+
         seen_ids.add(shape.shape_id)
         # Extract layout info
-        x = emu_to_points(getattr(shape, 'left', 0))
-        y = emu_to_points(getattr(shape, 'top', 0))
-        w = emu_to_points(getattr(shape, 'width', 0))
-        h = emu_to_points(getattr(shape, 'height', 0))
+        x = emu_to_points(getattr(shape, "left", 0))
+        y = emu_to_points(getattr(shape, "top", 0))
+        w = emu_to_points(getattr(shape, "width", 0))
+        h = emu_to_points(getattr(shape, "height", 0))
 
-        yield make_block(slide_index, shape.shape_id, "textbox", text, x=x, y=y, width=w, height=h)
+        yield make_block(
+            slide_index,
+            shape.shape_id,
+            "textbox",
+            text,
+            x=x,
+            y=y,
+            width=w,
+            height=h,
+        )
 
     # Secondary pass for SmartArt/Charts that don't have standard text_frame
     for shape in _iter_shapes(slide.shapes):
@@ -112,16 +140,29 @@ def _iter_textbox_blocks(slide: Slide, slide_index: int, seen_ids: set[int]) -> 
             if sid is None or sid in seen_ids:
                 continue
             stype = _safe_get_shape_type(shape)
-            if stype in (MSO_SHAPE_TYPE.GRAPHIC_FRAME, MSO_SHAPE_TYPE.SMART_ART, MSO_SHAPE_TYPE.CHART):
+            if stype in (
+                MSO_SHAPE_TYPE.GRAPHIC_FRAME,
+                MSO_SHAPE_TYPE.SMART_ART,
+                MSO_SHAPE_TYPE.CHART,
+            ):
                 complex_texts = _extract_complex_text(shape)
                 if complex_texts:
                     seen_ids.add(sid)
                     combined_text = "\n".join(complex_texts)
-                    x = emu_to_points(getattr(shape, 'left', 0))
-                    y = emu_to_points(getattr(shape, 'top', 0))
-                    w = emu_to_points(getattr(shape, 'width', 0))
-                    h = emu_to_points(getattr(shape, 'height', 0))
-                    yield make_block(slide_index, sid, "complex_graphic", combined_text, x=x, y=y, width=w, height=h)
+                    x = emu_to_points(getattr(shape, "left", 0))
+                    y = emu_to_points(getattr(shape, "top", 0))
+                    w = emu_to_points(getattr(shape, "width", 0))
+                    h = emu_to_points(getattr(shape, "height", 0))
+                    yield make_block(
+                        slide_index,
+                        sid,
+                        "complex_graphic",
+                        combined_text,
+                        x=x,
+                        y=y,
+                        width=w,
+                        height=h,
+                    )
         except Exception:
             continue
 
@@ -135,20 +176,34 @@ def _iter_table_blocks(slide: Slide, slide_index: int) -> Iterable[dict]:
         try:
             if not _safe_has_table(shape):
                 continue
-            
+
             # Table position
-            tx = emu_to_points(getattr(shape, 'left', 0))
-            ty = emu_to_points(getattr(shape, 'top', 0))
-            tw = emu_to_points(getattr(shape, 'width', 0))
-            th = emu_to_points(getattr(shape, 'height', 0))
+            tx = emu_to_points(getattr(shape, "left", 0))
+            ty = emu_to_points(getattr(shape, "top", 0))
+            tw = emu_to_points(getattr(shape, "width", 0))
+            th = emu_to_points(getattr(shape, "height", 0))
 
             for row in shape.table.rows:
                 for cell in row.cells:
                     try:
                         text = _cell_to_text(cell)
-                        if not text or is_numeric_only(text) or is_technical_terms_only(text) or is_garbage_text(text):
+                        if (
+                            not text
+                            or is_numeric_only(text)
+                            or is_technical_terms_only(text)
+                            or is_garbage_text(text)
+                        ):
                             continue
-                        yield make_block(slide_index, shape.shape_id, "table_cell", text, x=tx, y=ty, width=tw, height=th)
+                        yield make_block(
+                            slide_index,
+                            shape.shape_id,
+                            "table_cell",
+                            text,
+                            x=tx,
+                            y=ty,
+                            width=tw,
+                            height=th,
+                        )
                     except Exception:
                         continue
         except Exception:
@@ -169,16 +224,30 @@ def _iter_notes_blocks(slide: Slide, slide_index: int) -> Iterable[dict]:
             if not _safe_has_text_frame(shape):
                 continue
             text = _text_frame_to_text(shape.text_frame)
-            if not text or is_numeric_only(text) or is_technical_terms_only(text) or is_garbage_text(text):
+            if (
+                not text
+                or is_numeric_only(text)
+                or is_technical_terms_only(text)
+                or is_garbage_text(text)
+            ):
                 continue
-            
-            # Notes position
-            x = emu_to_points(getattr(shape, 'left', 0))
-            y = emu_to_points(getattr(shape, 'top', 0))
-            w = emu_to_points(getattr(shape, 'width', 0))
-            h = emu_to_points(getattr(shape, 'height', 0))
 
-            yield make_block(slide_index, getattr(shape, "shape_id", 0), "notes", text, x=x, y=y, width=w, height=h)
+            # Notes position
+            x = emu_to_points(getattr(shape, "left", 0))
+            y = emu_to_points(getattr(shape, "top", 0))
+            w = emu_to_points(getattr(shape, "width", 0))
+            h = emu_to_points(getattr(shape, "height", 0))
+
+            yield make_block(
+                slide_index,
+                getattr(shape, "shape_id", 0),
+                "notes",
+                text,
+                x=x,
+                y=y,
+                width=w,
+                height=h,
+            )
         except Exception:
             continue
 
@@ -197,12 +266,26 @@ def _iter_master_blocks(presentation: Presentation) -> Iterable[dict]:
                     if not _safe_has_text_frame(shape):
                         continue
                     text = _text_frame_to_text(shape.text_frame)
-                    if not text or is_numeric_only(text) or is_technical_terms_only(text) or is_garbage_text(text):
+                    if (
+                        not text
+                        or is_numeric_only(text)
+                        or is_technical_terms_only(text)
+                        or is_garbage_text(text)
+                    ):
                         continue
-                    
+
                     sid = getattr(shape, "shape_id", 0)
                     shape_id = f"m{master_idx}_{sid}"
-                    yield make_block(-1, shape_id, "master", text, x=0.0, y=0.0, width=500, height=50)
+                    yield make_block(
+                        -1,
+                        shape_id,
+                        "master",
+                        text,
+                        x=0.0,
+                        y=0.0,
+                        width=500,
+                        height=50,
+                    )
                 except Exception:
                     continue
         except Exception:
@@ -212,7 +295,7 @@ def _iter_master_blocks(presentation: Presentation) -> Iterable[dict]:
 def extract_blocks(pptx_path: str) -> dict:
     presentation = Presentation(pptx_path)
     blocks: list[dict] = []
-    
+
     # Get slide dimensions in Points
     slide_width = emu_to_points(presentation.slide_width)
     slide_height = emu_to_points(presentation.slide_height)
@@ -222,13 +305,12 @@ def extract_blocks(pptx_path: str) -> dict:
         blocks.extend(_iter_textbox_blocks(slide, slide_index, seen_ids))
         blocks.extend(_iter_table_blocks(slide, slide_index))
         blocks.extend(_iter_notes_blocks(slide, slide_index))
-    
+
     # Add masters
     blocks.extend(_iter_master_blocks(presentation))
-    
+
     return {
         "blocks": blocks,
         "slide_width": slide_width,
-        "slide_height": slide_height
+        "slide_height": slide_height,
     }
-

@@ -1,15 +1,13 @@
-import openpyxl
 from copy import copy
 
+import openpyxl
+
 def apply_translations(input_path: str, output_path: str, blocks: list[dict]):
-    """
-    Apply translations back to the Excel file.
-    Preserves original styles and formulas by loading with data_only=False (default).
-    """
+    """Apply translations to the Excel file."""
     # Load with data_only=False to keep formulas
     wb = openpyxl.load_workbook(input_path, data_only=False)
 
-    # Create a mapping for quick lookup: (sheet_name, cell_address) -> translated_text
+    # Map (sheet_name, cell_address) -> translated_text.
     translations = {}
     for block in blocks:
         sheet_name = block.get("sheet_name")
@@ -24,8 +22,8 @@ def apply_translations(input_path: str, output_path: str, blocks: list[dict]):
             if s_name == sheet_name:
                 try:
                     # Skills optimization:
-                    # Directly updating cell.value preserves existing cell.font, cell.fill, etc.
-                    # openpyxl handles this correctly for non-read-only workbooks.
+                    # Directly updating cell.value keeps cell styles.
+                    # openpyxl handles this for non-read-only workbooks.
                     ws[addr] = text
                 except Exception:
                     continue
@@ -33,7 +31,12 @@ def apply_translations(input_path: str, output_path: str, blocks: list[dict]):
     wb.save(output_path)
 
 
-def apply_bilingual(input_path: str, output_path: str, blocks: list[dict], layout: str = "inline"):
+def apply_bilingual(
+    input_path: str,
+    output_path: str,
+    blocks: list[dict],
+    layout: str = "inline",
+):
     """
     Apply bilingual translations back to the Excel file.
     Preserves original styles and optimizes alignment for multi-line content.
@@ -48,7 +51,9 @@ def apply_bilingual(input_path: str, output_path: str, blocks: list[dict], layou
         translated_text = block.get("translated_text", "")
         if sheet_name and cell_address:
             # Simple bilingual: Source \n Translated
-            translations[(sheet_name, cell_address)] = f"{source_text}\n{translated_text}"
+            translations[(sheet_name, cell_address)] = (
+                f"{source_text}\n{translated_text}"
+            )
 
     for sheet_name in wb.sheetnames:
         ws = wb[sheet_name]
@@ -58,17 +63,18 @@ def apply_bilingual(input_path: str, output_path: str, blocks: list[dict], layou
                     cell = ws[addr]
                     cell.value = text
 
-                    # Skills improvement: 
-                    # Use copy() to modify a cell's style without affecting others 
+                    # Skills improvement:
+                    # Use copy() to avoid mutating shared styles.
                     # sharing the same style object.
                     if cell.alignment:
                         new_alignment = copy(cell.alignment)
                         new_alignment.wrapText = True
                         cell.alignment = new_alignment
                     else:
-                        cell.alignment = openpyxl.styles.Alignment(wrapText=True)
+                        cell.alignment = openpyxl.styles.Alignment(
+                            wrapText=True
+                        )
                 except Exception:
                     continue
 
     wb.save(output_path)
-

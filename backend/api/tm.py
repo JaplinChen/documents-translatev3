@@ -175,8 +175,14 @@ async def tm_glossary_import(file: UploadFile = File(...)) -> dict:
         if len(parts) < 4:
             continue
         source_lang, target_lang, source_text, target_text = parts[:4]
-        priority = int(parts[4]) if len(parts) > 4 and parts[4].isdigit() else 0
-        entries.append((source_lang, target_lang, source_text, target_text, priority))
+        priority = (
+            int(parts[4])
+            if len(parts) > 4 and parts[4].isdigit()
+            else 0
+        )
+        entries.append(
+            (source_lang, target_lang, source_text, target_text, priority)
+        )
     seed_glossary(entries)
     return {"status": "ok", "count": len(entries)}
 

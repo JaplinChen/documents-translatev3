@@ -3,7 +3,6 @@ from __future__ import annotations
 from collections.abc import Iterable
 from dataclasses import dataclass
 
-
 @dataclass(frozen=True)
 class TranslationRequest:
     document_language: str
@@ -12,7 +11,11 @@ class TranslationRequest:
 
 
 class MockGPTClient:
-    def translate_blocks(self, blocks: Iterable[dict], target_language: str) -> list[str]:
+    def translate_blocks(
+        self,
+        blocks: Iterable[dict],
+        target_language: str,
+    ) -> list[str]:
         return [block["source_text"] for block in blocks]
 
 

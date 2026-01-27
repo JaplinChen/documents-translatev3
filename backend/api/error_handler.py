@@ -11,6 +11,7 @@ import functools
 import logging
 from typing import Callable, Any
 
+import traceback
 from fastapi import HTTPException, UploadFile
 
 from backend.api.pptx_utils import validate_file_type
@@ -60,6 +61,7 @@ def api_error_handler(
                 raise
             except Exception as exc:
                 # Log unexpected errors
+                traceback.print_exc()
                 LOGGER.error(f"Unexpected error in {func.__name__}: {exc}")
                 raise HTTPException(status_code=500, detail="內部伺服器錯誤") from exc
 

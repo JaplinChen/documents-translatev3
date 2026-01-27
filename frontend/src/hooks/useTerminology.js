@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { API_BASE } from "../constants";
 import { useUIStore } from "../store/useUIStore";
 import { useSettingsStore } from "../store/useSettingsStore";
@@ -9,8 +9,14 @@ export function useTerminology() {
     const [tmItems, setTmItems] = useState([]);
 
     // Store Integration
-    const { setManageOpen, setManageTab, manageOpen, manageTab } = useUIStore();
+    const { setManageOpen, setManageTab, manageOpen, manageTab, sourceLang, targetLang } = useUIStore();
     const { useTm, setUseTm } = useSettingsStore();
+
+    // --- Initial Load ---
+    useEffect(() => {
+        loadGlossary();
+        loadMemory();
+    }, []);
 
     const loadGlossary = async () => {
         try {
@@ -32,13 +38,40 @@ export function useTerminology() {
         }
     };
 
-    const upsertGlossary = async (entry) => {
-        await fetch(`${API_BASE}/api/tm/glossary`, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify(entry)
-        });
-        await loadGlossary();
+    const upsertGlossary = async (blockOrEntry) => {
+        console.log("Upserting glossary with input:", blockOrEntry);
+        // Ensure we prioritize data directly from the block to avoid stale context issues
+        const entry = {
+            id: blockOrEntry.id, // Support updating existing records
+            source_lang: blockOrEntry.source_lang || sourceLang || "vi",
+            target_lang: blockOrEntry.target_lang || targetLang || "zh-TW",
+            source_text: (blockOrEntry.source_text || blockOrEntry.text || "").trim(),
+            target_text: (blockOrEntry.target_text || blockOrEntry.translated_text || "").trim(),
+            priority: blockOrEntry.priority != null ? Number(blockOrEntry.priority) : 0
+        };
+
+        if (!entry.source_text) {
+            console.error("Glossary source_text is empty, aborting upsert", entry);
+            return;
+        }
+
+        try {
+            const resp = await fetch(`${API_BASE}/api/tm/glossary`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(entry)
+            });
+            if (!resp.ok) {
+                const err = await resp.text();
+                console.error("Glossary upsert failed server-side:", err);
+                alert("儲存術語失敗: " + err);
+            } else {
+                console.log("Glossary upsert success");
+                await loadGlossary();
+            }
+        } catch (error) {
+            console.error("Fetch error during glossary upsert:", error);
+        }
     };
 
     const deleteGlossary = async (entry) => {
@@ -50,13 +83,37 @@ export function useTerminology() {
         await loadGlossary();
     };
 
-    const upsertMemory = async (entry) => {
-        await fetch(`${API_BASE}/api/tm/memory`, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify(entry)
-        });
-        await loadMemory();
+    const upsertMemory = async (blockOrEntry) => {
+        console.log("Upserting memory with input:", blockOrEntry);
+        const entry = {
+            source_lang: blockOrEntry.source_lang || sourceLang || "vi",
+            target_lang: blockOrEntry.target_lang || targetLang || "zh-TW",
+            source_text: (blockOrEntry.source_text || blockOrEntry.text || "").trim(),
+            target_text: (blockOrEntry.target_text || blockOrEntry.translated_text || "").trim()
+        };
+
+        if (!entry.source_text) {
+            console.error("Memory source_text is empty, aborting upsert", entry);
+            return;
+        }
+
+        try {
+            const resp = await fetch(`${API_BASE}/api/tm/memory`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(entry)
+            });
+            if (!resp.ok) {
+                const err = await resp.text();
+                console.error("Memory upsert failed server-side:", err);
+                alert("儲存記憶失敗: " + err);
+            } else {
+                console.log("Memory upsert success");
+                await loadMemory();
+            }
+        } catch (error) {
+            console.error("Fetch error during memory upsert:", error);
+        }
     };
 
     const deleteMemory = async (entry) => {
@@ -105,6 +162,10 @@ export function useTerminology() {
             }
 
             const data = await response.json();
+            // Automatically delete from glossary after successful conversion to preserve term
+            if (item.id) {
+                await deleteGlossary({ id: item.id });
+            }
             alert(data.message || `已將 "${item.source_text}" 添加到保留術語`);
         } catch (error) {
             console.error("Failed to convert to preserve term:", error);

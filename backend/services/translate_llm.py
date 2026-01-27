@@ -24,6 +24,7 @@ from backend.services.bilingual_alignment import align_bilingual_blocks
 from backend.services.translate_chunk import (
     prepare_chunk,
     translate_chunk,
+    translate_chunk_async,
 )
 from backend.services.translate_llm_helpers import (
     create_async_chunk_tasks,
@@ -37,24 +38,25 @@ LOGGER = logging.getLogger(__name__)
 
 
 def translate_blocks(
-    blocks: list[dict] | tuple[dict, ...],
+    blocks: list[dict],
     target_language: str,
     source_language: str | None = None,
-    use_tm: bool = True,
     provider: str | None = None,
     model: str | None = None,
     api_key: str | None = None,
     base_url: str | None = None,
+    use_tm: bool = True,
     tone: str | None = None,
     vision_context: bool = True,
     smart_layout: bool = True,
     param_overrides: dict | None = None,
+    mode: str | None = None,
 ) -> dict:
-    """Translate text blocks using LLM."""
-    mode = settings.translate_llm_mode.lower()
+    """Translate text blocks using LLM (Synchronous)."""
+    resolved_mode = (mode or settings.translate_llm_mode).lower()
     fallback_on_error = settings.llm_fallback_on_error
 
-    if mode == "mock":
+    if resolved_mode == "mock":
         resolved_provider = "mock"
         translator = MockTranslator()
     else:
@@ -66,11 +68,21 @@ def translate_blocks(
     source_lang = source_language or settings.source_language
 
     # Apply alignment
-    if settings.translate_llm_mode.lower() != "mock":
+    if resolved_mode != "mock":
         blocks_list = align_bilingual_blocks(blocks_list, source_lang, target_language)
 
     preferred_terms = load_preferred_terms(source_lang, target_language, use_tm)
     use_placeholders = resolved_provider != "ollama"
+
+    param_overrides = (param_overrides or {}).copy()
+    refresh = param_overrides.get("refresh", False)
+
+    llm_context = {
+        "provider": resolved_provider,
+        "model": model,
+        "tone": tone,
+        "vision_context": vision_context,
+    }
 
     translated_texts, pending, local_cache = prepare_pending_blocks(
         blocks_list,
@@ -79,9 +91,10 @@ def translate_blocks(
         use_tm,
         use_placeholders,
         preferred_terms,
+        refresh=refresh,
+        llm_context=llm_context,
     )
 
-    param_overrides = (param_overrides or {}).copy()
     param_overrides.update({"model": model, "tone": tone, "vision_context": vision_context})
     params = get_translation_params(resolved_provider, overrides=param_overrides)
     chunk_size = params["chunk_size"]
@@ -119,7 +132,7 @@ def translate_blocks(
             params,
             chunk_index,
             fallback_on_error,
-            mode,
+            resolved_mode,
         )
 
         apply_translation_results(
@@ -131,6 +144,7 @@ def translate_blocks(
             glossary,
             target_language,
             use_tm,
+            llm_context=llm_context,
         )
 
         chunk_duration = time.perf_counter() - chunk_started
@@ -154,25 +168,26 @@ def translate_blocks(
 
 
 async def translate_blocks_async(
-    blocks: list[dict] | tuple[dict, ...],
+    blocks: list[dict],
     target_language: str,
     source_language: str | None = None,
-    use_tm: bool = True,
     provider: str | None = None,
     model: str | None = None,
     api_key: str | None = None,
     base_url: str | None = None,
+    use_tm: bool = True,
     tone: str | None = None,
     vision_context: bool = True,
     smart_layout: bool = True,
     param_overrides: dict | None = None,
     on_progress: Callable[[dict], Any] | None = None,
+    mode: str | None = None,
 ) -> dict:
     """Translate text blocks using LLM (Asynchronous)."""
-    mode = settings.translate_llm_mode.lower()
+    resolved_mode = (mode or settings.translate_llm_mode).lower()
     fallback_on_error = settings.llm_fallback_on_error
 
-    if mode == "mock":
+    if resolved_mode == "mock":
         resolved_provider = "mock"
         translator = MockTranslator()
     else:
@@ -184,13 +199,21 @@ async def translate_blocks_async(
     source_lang = source_language or settings.source_language
 
     # Apply alignment
-    blocks_list = align_bilingual_blocks(blocks_list, source_lang, target_language)
+    if resolved_mode != "mock":
+        blocks_list = align_bilingual_blocks(blocks_list, source_lang, target_language)
 
     preferred_terms = load_preferred_terms(source_lang, target_language, use_tm)
     use_placeholders = resolved_provider != "ollama"
 
     param_overrides = (param_overrides or {}).copy()
     refresh = param_overrides.get("refresh", False)
+
+    llm_context = {
+        "provider": resolved_provider,
+        "model": model,
+        "tone": tone,
+        "vision_context": vision_context,
+    }
 
     translated_texts, pending, local_cache = prepare_pending_blocks(
         blocks_list,
@@ -200,6 +223,7 @@ async def translate_blocks_async(
         use_placeholders,
         preferred_terms,
         refresh=refresh,
+        llm_context=llm_context,
     )
 
     param_overrides.update({"model": model, "tone": tone, "vision_context": vision_context})
@@ -229,7 +253,7 @@ async def translate_blocks_async(
         use_placeholders,
         params,
         fallback_on_error,
-        mode,
+        resolved_mode,
         translated_texts,
         local_cache,
         glossary,
@@ -237,13 +261,13 @@ async def translate_blocks_async(
         tone,
         vision_context,
         on_progress,
+        llm_context=llm_context,
     )
 
     if tasks:
         # Wrap tasks with a semaphore if it's Ollama to prevent overloading
         final_tasks = tasks
         if resolved_provider == "ollama":
-            # Ollama usually benefits from lower concurrency to maximize throughput per request
             sem = asyncio.Semaphore(2)
 
             async def sem_wrapped_task(task):
@@ -252,7 +276,6 @@ async def translate_blocks_async(
 
             final_tasks = [sem_wrapped_task(t) for t in tasks]
 
-        # Use a shared httpx.AsyncClient for connection pooling if supported
         if hasattr(translator, "set_async_client"):
             async with httpx.AsyncClient(timeout=settings.ollama_timeout) as client:
                 translator.set_async_client(client)

@@ -36,9 +36,9 @@ def build_ollama_batch_prompt(
     hint = get_language_hint(target_language)
     example = get_language_example(target_language)
     language_guard = (
-        f"【絕對指令】輸出的每一行、各區塊內容都「必須」使用目標語言 {label}。嚴禁出現原文、引導語或解釋。"
+        f"【絕對指令】輸出的每一行、各區塊內容都「必須」使用目標語言 {label}。嚴禁出現原文、引導語或任何解釋標籤（如 [SOURCE_TEXT:]）。"
         if strict
-        else f"輸出的每個區塊內容必須使用目標語言 {label}。"
+        else f"輸出的每個區塊內容必須使用目標語言 {label}。請直接輸出翻譯後的文字，不要包含任何標籤。"
     )
 
     blocks_lines: list[str] = []
@@ -107,13 +107,20 @@ def parse_ollama_batch_response(text: str, count: int) -> list[str] | None:
         return None
 
     translated = [""] * count
+    # Regex to strip common leaked tags
+    TAG_PATTERN = re.compile(r"\[(?:SOURCE_TEXT|EXISTING_TRANSLATION|ORIGINAL|TRANSLATED|Correction|Target):\s*.*?\]", re.IGNORECASE)
+
     for idx_str, content in matches:
         try:
             idx = int(idx_str)
         except ValueError:
             continue
         if 0 <= idx < count:
-            translated[idx] = content.strip()
+            # Clean content: remove leaked tags and trim
+            cleaned = TAG_PATTERN.sub("", content).strip()
+            # Remove repeated block markers if LLM nested them
+            cleaned = re.sub(r"<<<BLOCK:\d+>>>|<<<END>>>", "", cleaned).strip()
+            translated[idx] = cleaned
 
     if any(item == "" for item in translated):
         return None

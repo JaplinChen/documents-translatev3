@@ -26,3 +26,24 @@
         @apply min-w-max;
     }
 }
+
+@media (max-width: 640px) {
+    .app {
+        @apply p-4;
+    }
+
+    .panel {
+        @apply p-4 rounded-xl;
+    }
+
+    .main-grid {
+        gap: 1rem;
+    }
+}
+
+/* === Accessibility: Keyboard Navigation === */
+:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+    border-radius: var(--radius-sm);
+}

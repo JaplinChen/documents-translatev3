@@ -132,7 +132,8 @@ export function EditorPanel({
                                     editorRefs={editorRefs}
                                     onBlockSelect={(checked) => onBlockSelect(block._uid, checked)}
                                     onBlockChange={(val) => onBlockChange(block._uid, val)}
-                                    onOutputModeChange={(val) => onOutputModeChange(block._uid, val)}
+                                    onEditorInput={(idx, val) => onBlockChange(block._uid, val)}
+                                    onOutputModeChange={(idx, val) => onOutputModeChange(block._uid, val)}
                                     onAddGlossary={() => onAddGlossary(block)}
                                     onAddMemory={() => onAddMemory(block)}
                                 />

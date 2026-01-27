@@ -1,6 +1,7 @@
 import asyncio
 import time
 import shutil
+import os
 from pathlib import Path
 from fastapi import FastAPI, BackgroundTasks
 from fastapi.middleware.cors import CORSMiddleware
@@ -48,6 +49,22 @@ app.include_router(style_router)
 app.include_router(export_router)
 
 
+@app.post("/api/admin/reset-cache")
+async def reset_cache():
+    """Nuclear reset: Delete all databases and exports."""
+    data_dir = Path("data")
+    count = 0
+    if data_dir.exists():
+        for item in data_dir.glob("**/*"):
+            if item.is_file() and (item.suffix in (".db", ".json", ".pptx", ".docx") or "cache" in item.name):
+                try:
+                    os.remove(item)
+                    count += 1
+                except Exception:
+                    pass
+    return {"status": "success", "deleted_files": count}
+
+
 async def cleanup_exports_task():
     """Background task to remove old export files (older than 1 hour)."""
     export_dir = Path("data/exports")
@@ -58,8 +75,6 @@ async def cleanup_exports_task():
                 for item in export_dir.iterdir():
                     if item.is_file() and now - item.stat().st_mtime > 1800:
                         item.unlink()
-                        # Try to remove corresponding json/pptx if it exists 
-                        # (unlink handles single file, this loop will catch both eventually)
         except Exception as e:
             print(f"Cleanup error: {e}")
         await asyncio.sleep(1800)  # Run every 30 mins
@@ -81,5 +96,4 @@ def health_check():
 
 if __name__ == "__main__":
     import uvicorn
-
     uvicorn.run("backend.main:app", host="0.0.0.0", port=5002, reload=True)

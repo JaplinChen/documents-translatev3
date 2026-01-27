@@ -20,10 +20,11 @@
         position: absolute;
         resize: both;
         overflow: auto;
-        min-width: 400px;
-        min-height: 300px;
-        max-width: 95vw;
-        max-height: 90vh;
+        min-width: 600px;
+        width: min(1000px, 96vw);
+        min-height: 400px;
+        max-width: 98vw;
+        max-height: 95vh;
     }
 
     .modal.is-draggable .modal-header.draggable-handle {

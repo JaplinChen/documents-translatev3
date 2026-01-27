@@ -22,12 +22,14 @@ from backend.services.translate_chunk_cache import (
 from backend.services.translate_chunk_dispatch import (
     dispatch_translate,
     dispatch_translate_async,
+)
+from backend.services.translate_retry import (
+    has_language_mismatch,
     fallback_mock,
     fallback_mock_async,
     retry_for_language,
     retry_for_language_async,
 )
-from backend.services.translate_retry import has_language_mismatch
 
 LOGGER = logging.getLogger(__name__)
 
@@ -120,6 +122,7 @@ def translate_chunk(
                 vision_context,
                 params,
                 dispatch_translate,
+                mode=mode,
             )
 
             chunk_texts = [item.get("translated_text", "") for item in result["blocks"]]
@@ -217,6 +220,7 @@ async def translate_chunk_async(
                 vision_context,
                 params,
                 dispatch_translate_async,
+                mode=mode,
             )
 
             chunk_texts = [item.get("translated_text", "") for item in result["blocks"]]

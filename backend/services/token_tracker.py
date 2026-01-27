@@ -86,12 +86,16 @@ def _load_usage_history() -> list[dict]:
         return []
 
 
-def _save_usage_history(history: list[dict]) -> None:
-    """Save usage history to JSON file."""
-    USAGE_FILE.parent.mkdir(parents=True, exist_ok=True)
-    with open(USAGE_FILE, "w", encoding="utf-8") as f:
-        json.dump(history, f, ensure_ascii=False, indent=2)
+import threading
 
+def _save_usage_history_bg(history: list[dict]) -> None:
+    """Save usage history to JSON file in a background thread to avoid blocking."""
+    try:
+        USAGE_FILE.parent.mkdir(parents=True, exist_ok=True)
+        with open(USAGE_FILE, "w", encoding="utf-8") as f:
+            json.dump(history, f, ensure_ascii=False, indent=2)
+    except Exception:
+        pass
 
 def record_usage(
     provider: str,
@@ -123,7 +127,9 @@ def record_usage(
     if len(history) > 1000:
         history = history[-1000:]
 
-    _save_usage_history(history)
+    # Use a thread to save to avoid 504 timeouts on heavy loads
+    thread = threading.Thread(target=_save_usage_history_bg, args=(history,))
+    thread.start()
 
     return usage
 

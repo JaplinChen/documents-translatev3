@@ -5,7 +5,10 @@ import sqlite3
 from collections.abc import Iterable
 from pathlib import Path
 
-DB_PATH = Path(__file__).resolve().parents[2] / "data" / "translation_memory.db"
+import os
+
+# Ensure we use the centralized data volume at /app/data
+DB_PATH = Path("data/translation_memory.db")
 
 # Module-level initialization flag for performance
 _DB_INITIALIZED = False
@@ -35,35 +38,43 @@ CREATE TABLE IF NOT EXISTS tm (
 
 
 def _ensure_db() -> None:
-    """Initialize DB only once per process for better performance."""
+    """Initialize DB only once per process, but self-heal if the file is missing."""
     global _DB_INITIALIZED
-    if _DB_INITIALIZED:
+    # Check if we think we are initialized AND the file actually exists on disk.
+    # If the file was deleted (e.g. by a cache reset), we MUST re-initialize.
+    if _DB_INITIALIZED and DB_PATH.exists():
         return
+    
     DB_PATH.parent.mkdir(parents=True, exist_ok=True)
     with sqlite3.connect(DB_PATH) as conn:
         conn.executescript(SCHEMA_SQL)
     _DB_INITIALIZED = True
 
 
-def _hash_text(source_lang: str, target_lang: str, text: str) -> str:
+def _hash_text(source_lang: str, target_lang: str, text: str, context: dict | None = None) -> str:
     payload = f"{source_lang}|{target_lang}|{text}"
+    if context:
+        ctx_str = "|".join([str(context.get(k, "")) for k in ["provider", "model", "tone"]])
+        payload += f"||{ctx_str}"
     return hashlib.sha256(payload.encode("utf-8")).hexdigest()
 
 
-def lookup_tm(source_lang: str, target_lang: str, text: str) -> str | None:
+def lookup_tm(source_lang: str, target_lang: str, text: str, context: dict | None = None) -> str | None:
     _ensure_db()
-    key = _hash_text(source_lang, target_lang, text)
+    key = _hash_text(source_lang, target_lang, text, context=context)
     with sqlite3.connect(DB_PATH) as conn:
         cur = conn.execute("SELECT target_text FROM tm WHERE hash = ?", (key,))
         row = cur.fetchone()
     return row[0] if row else None
 
 
-def save_tm(source_lang: str, target_lang: str, text: str, translated: str) -> None:
+def save_tm(
+    source_lang: str, target_lang: str, text: str, translated: str, context: dict | None = None
+) -> None:
     if not text:
         return
     _ensure_db()
-    key = _hash_text(source_lang, target_lang, text)
+    key = _hash_text(source_lang, target_lang, text, context=context)
     with sqlite3.connect(DB_PATH) as conn:
         conn.execute(
             "INSERT OR REPLACE INTO tm (source_lang, target_lang, source_text, target_text, hash) "
@@ -289,6 +300,20 @@ def delete_glossary(entry_id: int) -> int:
         return cur.rowcount
 
 
+def batch_delete_glossary(ids: list[int]) -> int:
+    if not ids:
+        return 0
+    _ensure_db()
+    with sqlite3.connect(DB_PATH) as conn:
+        # Use executemany for efficiency
+        cur = conn.executemany(
+            "DELETE FROM glossary WHERE id = ?",
+            [(entry_id,) for entry_id in ids]
+        )
+        conn.commit()
+        return cur.rowcount
+
+
 def upsert_tm(entry: dict) -> None:
     _ensure_db()
     with sqlite3.connect(DB_PATH) as conn:
@@ -315,6 +340,19 @@ def delete_tm(entry_id: int) -> int:
         cur = conn.execute(
             "DELETE FROM tm WHERE id = ?",
             (entry_id,),
+        )
+        conn.commit()
+        return cur.rowcount
+
+
+def batch_delete_tm(ids: list[int]) -> int:
+    if not ids:
+        return 0
+    _ensure_db()
+    with sqlite3.connect(DB_PATH) as conn:
+        cur = conn.executemany(
+            "DELETE FROM tm WHERE id = ?",
+            [(entry_id,) for entry_id in ids]
         )
         conn.commit()
         return cur.rowcount

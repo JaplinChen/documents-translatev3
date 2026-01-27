@@ -40,6 +40,7 @@ def prepare_pending_blocks(
     use_placeholders: bool,
     preferred_terms: list[tuple[str, str]],
     refresh: bool = False,
+    llm_context: dict | None = None,
 ) -> tuple[list[str | None], list[tuple[int, dict]], dict[str, str]]:
     """Prepare blocks for translation, checking cache and TM."""
     local_cache: dict[str, str] = {}
@@ -49,34 +50,35 @@ def prepare_pending_blocks(
     print(f"[HELPER_DEBUG] prepare_pending start. blocks={len(blocks_list)}, refresh={refresh}, use_tm={use_tm}", flush=True)
 
     for index, block in enumerate(blocks_list):
-        key = cache_key(block)
+        key = cache_key(block, context=llm_context)
         if not key:
             translated_texts[index] = ""
             continue
         
-        # Debug Trace
-        # print(f"[HELPER_TRACE] Block {index}: key={key[:10]}..., in_local={key in local_cache}", flush=True)
-
-        if key in local_cache:
-            if not use_placeholders and has_placeholder(local_cache[key]):
+        # If refreshing, we MUST skip ALL caches (local and TM)
+        if not refresh:
+            if key in local_cache:
+                if not use_placeholders and has_placeholder(local_cache[key]):
+                    continue
+                translated_texts[index] = local_cache[key]
                 continue
-            translated_texts[index] = local_cache[key]
-            continue
-        # If refreshing, skip TM lookup
-        if source_lang and source_lang != "auto" and use_tm and not refresh:
-            tm_hit = lookup_tm(
-                source_lang=source_lang,
-                target_lang=target_language,
-                text=key,
-            )
-            if (
-                tm_hit is not None
-                and tm_respects_terms(key, tm_hit, preferred_terms)
-                and not (not use_placeholders and has_placeholder(tm_hit))
-            ):
-                translated_texts[index] = tm_hit
-                local_cache[key] = tm_hit
-                continue
+            
+            if source_lang and source_lang != "auto" and use_tm:
+                tm_hit = lookup_tm(
+                    source_lang=source_lang,
+                    target_lang=target_language,
+                    text=block.get("source_text", "").strip(),
+                    context=llm_context,
+                )
+                if (
+                    tm_hit is not None
+                    and tm_respects_terms(key, tm_hit, preferred_terms)
+                    and not (not use_placeholders and has_placeholder(tm_hit))
+                ):
+                    translated_texts[index] = tm_hit
+                    local_cache[key] = tm_hit
+                    continue
+                    
         pending.append((index, block))
 
     return translated_texts, pending, local_cache
@@ -118,6 +120,7 @@ async def process_chunk_async(
     glossary,
     use_tm,
     on_progress: Callable[[dict], Any] | None = None,
+    llm_context: dict | None = None,
 ):
     """Helper to process a single chunk asynchronously."""
     chunk_started = time.perf_counter()
@@ -150,6 +153,7 @@ async def process_chunk_async(
         glossary,
         target_language,
         use_tm,
+        llm_context=llm_context,
     )
 
     if on_progress:
@@ -206,6 +210,7 @@ def create_async_chunk_tasks(
     tone,
     vision_context,
     on_progress,
+    llm_context: dict | None = None,
 ):
     """Create async tasks for processing chunks."""
     tasks = []
@@ -237,6 +242,7 @@ def create_async_chunk_tasks(
                 glossary,
                 use_tm,
                 on_progress,
+                llm_context=llm_context,
             )
         )
     return tasks

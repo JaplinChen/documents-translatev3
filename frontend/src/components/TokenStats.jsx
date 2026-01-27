@@ -1,7 +1,6 @@
 import { useState, useEffect } from "react";
 import { useTranslation } from "react-i18next";
 import { API_BASE } from "../constants";
-import { Activity, Database, X, ChevronDown, Cpu } from "lucide-react";
 
 /**
  * Token Usage Statistics Display Component
@@ -16,7 +15,7 @@ export default function TokenStats({ className = "" }) {
     const fetchStats = async () => {
         try {
             const res = await fetch(`${API_BASE}/api/token-stats`);
-            if (!res.ok) throw new Error("API offset");
+            if (!res.ok) throw new Error("API error");
             const data = await res.json();
             setStats(data);
         } catch (error) {
@@ -29,6 +28,7 @@ export default function TokenStats({ className = "" }) {
 
     useEffect(() => {
         fetchStats();
+        // Refresh every 60 seconds
         const interval = setInterval(fetchStats, 60000);
         return () => clearInterval(interval);
     }, []);
@@ -45,7 +45,7 @@ export default function TokenStats({ className = "" }) {
     };
 
     const formatCost = (cost) => {
-        if (cost < 0.01 && cost > 0) return "< $0.01";
+        if (cost < 0.01 && cost > 0) return t("components.token_stats.cost_tiny");
         return `$${cost.toFixed(2)}`;
     };
 
@@ -56,26 +56,20 @@ export default function TokenStats({ className = "" }) {
                 onClick={() => setExpanded(!expanded)}
                 title={t("components.token_stats.title")}
             >
-                <Database size={16} className="token-icon text-slate-500" />
+                <span className="token-icon">🔢</span>
                 <span className="token-count">{formatNumber(session.total_tokens)}</span>
                 {hasUsage && <span className="token-cost">{formatCost(session.estimated_cost_usd)}</span>}
-                <ChevronDown size={14} className={`text-slate-400 transition-transform ${expanded ? "rotate-180" : ""}`} />
             </button>
 
             {expanded && (
                 <div className="token-stats-dropdown animate-in fade-in slide-in-from-top-2 duration-200">
                     <div className="token-stats-header">
-                        <h4 className="flex items-center gap-2">
-                            <Activity size={16} />
-                            {t("components.token_stats.title")}
-                        </h4>
-                        <button className="close-btn" onClick={() => setExpanded(false)}>
-                            <X size={16} />
-                        </button>
+                        <h4>{t("components.token_stats.title")}</h4>
+                        <button className="close-btn" onClick={() => setExpanded(false)}>×</button>
                     </div>
 
                     <div className="token-stats-section">
-                        <h5>{t("components.token_stats.session_title")}</h5>
+                        <h5>📊 {t("components.token_stats.session_title")}</h5>
                         <div className="stats-grid">
                             <div className="stat-item">
                                 <span className="stat-label">{t("components.token_stats.input_tokens")}</span>
@@ -94,13 +88,21 @@ export default function TokenStats({ className = "" }) {
                                 <span className="stat-value cost">{formatCost(session.estimated_cost_usd)}</span>
                             </div>
                         </div>
+                        <p className="stat-hint">{t("components.token_stats.request_count")}：{session.request_count}</p>
+                    </div>
+
+                    <div className="token-stats-section">
+                        <h5>📈 {t("components.token_stats.all_time_title")}</h5>
+                        <div className="stats-row">
+                            <span>{formatNumber(all_time.total_tokens)} Tokens</span>
+                            <span>{formatCost(all_time.estimated_cost_usd)}</span>
+                            <span>{all_time.request_count} {t("components.token_stats.request_count")}</span>
+                        </div>
                     </div>
 
                     {session.models_used && session.models_used.length > 0 && (
                         <div className="token-stats-section">
-                            <h5 className="flex items-center gap-1">
-                                <Cpu size={12} /> {t("components.token_stats.models_used")}
-                            </h5>
+                            <h5>🤖 {t("components.token_stats.models_used")}</h5>
                             <div className="model-tags">
                                 {session.models_used.map((model, i) => (
                                     <span key={i} className="model-tag">{model}</span>

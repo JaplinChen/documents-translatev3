@@ -4,6 +4,7 @@ This module contains cache-related functions for translation chunks.
 """
 
 from __future__ import annotations
+from typing import Callable
 
 from backend.services.translation_cache import cache
 
@@ -44,7 +45,8 @@ def translate_and_cache_blocks(
     tone: str | None,
     vision_context: bool,
     params: dict,
-    dispatch_func,
+    dispatch_func: Callable,
+    mode: str = "direct",
 ) -> dict:
     """Translate uncached blocks and update cache."""
     blocks_to_translate = [chunk_blocks[i] for i in uncached_indices]
@@ -59,6 +61,7 @@ def translate_and_cache_blocks(
         placeholder_tokens,
         tone,
         vision_context,
+        mode=mode,
     )
 
     res_blocks = result.get("blocks", [])
@@ -93,7 +96,8 @@ async def translate_and_cache_blocks_async(
     tone: str | None,
     vision_context: bool,
     params: dict,
-    dispatch_func,
+    dispatch_func: Callable,
+    mode: str = "direct",
 ) -> dict:
     """Translate uncached blocks and update cache (Async)."""
     blocks_to_translate = [chunk_blocks[i] for i in uncached_indices]
@@ -108,6 +112,7 @@ async def translate_and_cache_blocks_async(
         placeholder_tokens,
         tone,
         vision_context,
+        mode=mode,
     )
 
     res_blocks = result.get("blocks", [])

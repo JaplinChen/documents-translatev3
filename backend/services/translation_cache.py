@@ -21,7 +21,7 @@ class TranslationCache:
         if self._initialized:
             return
 
-        self.db_path = Path("backend/data/cache.db")
+        self.db_path = Path("data/cache.db")
         self.db_path.parent.mkdir(parents=True, exist_ok=True)
         self._init_db()
         self._initialized = True

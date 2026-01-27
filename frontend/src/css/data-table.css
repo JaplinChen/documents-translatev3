@@ -7,11 +7,11 @@
     }
 
     .data-table.is-glossary .data-row {
-        grid-template-columns: 100px 100px minmax(120px, 1.5fr) minmax(120px, 1.5fr) 80px 120px;
+        grid-template-columns: 40px 80px 80px minmax(120px, 1.5fr) minmax(120px, 1.5fr) 60px 140px;
     }
 
     .data-table.is-tm .data-row {
-        grid-template-columns: 100px 100px minmax(120px, 1fr) minmax(120px, 1fr) 120px;
+        grid-template-columns: 40px 80px 80px minmax(120px, 1fr) minmax(120px, 1fr) 140px;
     }
 
     .data-header {

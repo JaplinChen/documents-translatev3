@@ -33,6 +33,7 @@ def dispatch_translate(
     placeholder_tokens,
     tone,
     vision_context,
+    mode: str = "direct",
 ):
     """Dispatch to correct translator sync."""
     if provider == "ollama":
@@ -45,6 +46,7 @@ def dispatch_translate(
             placeholder_tokens,
             tone,
             vision_context,
+            mode=mode,
         )
     return translate_standard(
         translator,
@@ -55,6 +57,7 @@ def dispatch_translate(
         placeholder_tokens,
         tone,
         vision_context,
+        mode=mode,
     )
 
 
@@ -68,6 +71,7 @@ async def dispatch_translate_async(
     placeholder_tokens,
     tone,
     vision_context,
+    mode: str = "direct",
 ):
     """Dispatch to correct translator async."""
     if provider == "ollama":
@@ -80,6 +84,7 @@ async def dispatch_translate_async(
             placeholder_tokens,
             tone,
             vision_context,
+            mode=mode,
         )
     return await translate_standard_async(
         translator,
@@ -90,6 +95,7 @@ async def dispatch_translate_async(
         placeholder_tokens,
         tone,
         vision_context,
+        mode=mode,
     )
 
 
@@ -102,6 +108,7 @@ def translate_ollama(
     placeholder_tokens,
     tone,
     vision_context,
+    mode: str = "direct",
 ):
     """Handle Ollama-specific translation."""
     prompt = build_ollama_batch_prompt(chunk_blocks, target_language)
@@ -117,6 +124,7 @@ def translate_ollama(
             preferred_terms=preferred_terms,
             placeholder_tokens=placeholder_tokens,
             language_hint=custom_hint,
+            mode=mode,
         )
         result = coerce_contract(result, chunk_blocks, target_language)
     else:
@@ -135,6 +143,7 @@ async def translate_ollama_async(
     placeholder_tokens,
     tone,
     vision_context,
+    mode: str = "direct",
 ):
     """Handle Ollama-specific translation (Async)."""
     prompt = build_ollama_batch_prompt(chunk_blocks, target_language)
@@ -150,6 +159,7 @@ async def translate_ollama_async(
             preferred_terms=preferred_terms,
             placeholder_tokens=placeholder_tokens,
             language_hint=custom_hint,
+            mode=mode,
         )
         result = coerce_contract(result, chunk_blocks, target_language)
     else:
@@ -168,6 +178,7 @@ def translate_standard(
     placeholder_tokens,
     tone,
     vision_context,
+    mode: str = "direct",
 ):
     """Handle standard translation."""
     custom_hint = build_custom_hint(target_language, tone, vision_context)
@@ -178,6 +189,7 @@ def translate_standard(
         preferred_terms=preferred_terms,
         placeholder_tokens=placeholder_tokens,
         language_hint=custom_hint,
+        mode=mode,
     )
     result = coerce_contract(result, chunk_blocks, target_language)
     validate_contract(result)
@@ -193,6 +205,7 @@ async def translate_standard_async(
     placeholder_tokens,
     tone,
     vision_context,
+    mode: str = "direct",
 ):
     """Handle standard translation (Async)."""
     custom_hint = build_custom_hint(target_language, tone, vision_context)
@@ -203,6 +216,7 @@ async def translate_standard_async(
         preferred_terms=preferred_terms,
         placeholder_tokens=placeholder_tokens,
         language_hint=custom_hint,
+        mode=mode,
     )
     result = coerce_contract(result, chunk_blocks, target_language)
     validate_contract(result)
@@ -217,119 +231,4 @@ def build_custom_hint(target_language: str, tone: str | None, vision_context: bo
     return f"{hint}\n{tone_hint}\n{vision_hint}".strip()
 
 
-def retry_for_language(
-    translator,
-    provider,
-    chunk_blocks,
-    target_language,
-    context,
-    preferred_terms,
-    placeholder_tokens,
-    chunk_texts,
-):
-    """Retry translation due to language mismatch."""
-    if provider == "ollama":
-        strict_prompt = build_ollama_batch_prompt(chunk_blocks, target_language, strict=True)
-        strict_output = translator.translate_plain(strict_prompt)
-        strict_texts = parse_ollama_batch_response(strict_output, len(chunk_blocks))
-        if strict_texts is not None:
-            result = build_contract(chunk_blocks, target_language, strict_texts)
-            validate_contract(result)
-            return result
-        raise ValueError("Ollama 重試語言失敗")
-
-    strict_context = build_language_retry_context(context, chunk_texts, target_language)
-    result = translator.translate(
-        chunk_blocks,
-        target_language,
-        context=strict_context,
-        preferred_terms=preferred_terms,
-        placeholder_tokens=placeholder_tokens,
-    )
-    result = coerce_contract(result, chunk_blocks, target_language)
-    validate_contract(result)
-
-    new_texts = [item.get("translated_text", "") for item in result["blocks"]]
-    if has_language_mismatch(new_texts, target_language):
-        raise ValueError(f"重試翻譯後語言仍不符合目標語言 ({target_language})")
-
-    return result
-
-
-async def retry_for_language_async(
-    translator,
-    provider,
-    chunk_blocks,
-    target_language,
-    context,
-    preferred_terms,
-    placeholder_tokens,
-    chunk_texts,
-):
-    """Retry translation due to language mismatch (Async)."""
-    if provider == "ollama":
-        strict_prompt = build_ollama_batch_prompt(chunk_blocks, target_language, strict=True)
-        strict_output = await translator.translate_plain_async(strict_prompt)
-        strict_texts = parse_ollama_batch_response(strict_output, len(chunk_blocks))
-        if strict_texts is not None:
-            result = build_contract(chunk_blocks, target_language, strict_texts)
-            validate_contract(result)
-            return result
-        raise ValueError("Ollama 重試語言失敗 (async)")
-
-    strict_context = build_language_retry_context(context, chunk_texts, target_language)
-    result = await translator.translate_async(
-        chunk_blocks,
-        target_language,
-        context=strict_context,
-        preferred_terms=preferred_terms,
-        placeholder_tokens=placeholder_tokens,
-    )
-    result = coerce_contract(result, chunk_blocks, target_language)
-    validate_contract(result)
-
-    new_texts = [item.get("translated_text", "") for item in result["blocks"]]
-    if has_language_mismatch(new_texts, target_language):
-        raise ValueError(f"重試翻譯後語言仍不符合目標語言 ({target_language})")
-
-    return result
-
-
-def fallback_mock(
-    chunk_blocks,
-    target_language,
-    context,
-    preferred_terms,
-    placeholder_tokens,
-):
-    """Fallback to mock translator."""
-    result = MockTranslator().translate(
-        chunk_blocks,
-        target_language,
-        context=context,
-        preferred_terms=preferred_terms,
-        placeholder_tokens=placeholder_tokens,
-    )
-    result = coerce_contract(result, chunk_blocks, target_language)
-    validate_contract(result)
-    return result
-
-
-async def fallback_mock_async(
-    chunk_blocks,
-    target_language,
-    context,
-    preferred_terms,
-    placeholder_tokens,
-):
-    """Fallback to mock translator (Async)."""
-    result = await MockTranslator().translate_async(
-        chunk_blocks,
-        target_language,
-        context=context,
-        preferred_terms=preferred_terms,
-        placeholder_tokens=placeholder_tokens,
-    )
-    result = coerce_contract(result, chunk_blocks, target_language)
-    validate_contract(result)
     return result

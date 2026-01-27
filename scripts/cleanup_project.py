@@ -7,7 +7,7 @@ from pathlib import Path
 TARGETS = {
     "CACHE": [
         "frontend/dist",
-        "backend/__pycache__",
+        "**/*/__pycache__",
         ".pytest_cache",
         ".mypy_cache",
         "**/.DS_Store",
@@ -17,14 +17,27 @@ TARGETS = {
         "*.tar",
         "install_log.txt",
         "backend/test_zip_dup.py",
+        "backend_logs.txt",
+        "data/.update.lock",
+        "data/.last_update_hash",
     ],
     "DEBUG_SCRIPTS": [
         "debug_ollama_connection.py",
+        "debug_nuclear.py",
+        "backend/debug_nuclear.py",
+        "probe_contracts.py",
+        "probe_flow.py",
         "check_env.py",
         "build.cmd",
     ],
+    "ORPHANED_TESTS": [
+        "test_api_flow.py",
+        "test_final_quality.py",
+        "test_regex.py",
+    ],
     "LOGS": [
         "*.log",
+        "**/*.log",
         "*.tmp",
         "*.bak",
     ]

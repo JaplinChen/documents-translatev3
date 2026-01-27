@@ -118,6 +118,7 @@ def apply_translation_results(
     glossary: dict | None,
     target_language: str,
     use_tm: bool,
+    llm_context: dict | None = None,
 ) -> None:
     """Apply translation results to output list.
 
@@ -145,21 +146,169 @@ def apply_translation_results(
         translated_text = translated.get("translated_text", "")
         translated_text = restore_placeholders(translated_text, mapping)
 
+        # [GLOBAL_STITCH_PATCH] Ensure Bilingual Consistency (VI Preservation)
+        # If source text has Vietnamese but the translation (LLM output) missing it, prepend it back.
+        source_text = original[1].get("source_text", "").strip()
+        from backend.services.language_detect import _VI_DIACRITIC_RE, _CJK_RE
+        src_vi_parts = _VI_DIACRITIC_RE.findall(source_text)
+        if len(src_vi_parts) >= 2: # Significant VI characteristic
+            # Check if translated text also has Vietnamese
+            if not _VI_DIACRITIC_RE.search(translated_text):
+                # Extract the prefix VI part from source_text (usually before the CJK/Chinese begins)
+                cjk_match = _CJK_RE.search(source_text)
+                if cjk_match:
+                    vi_prefix = source_text[:cjk_match.start()].strip()
+                else:
+                    # If no CJK, maybe it's all VI and LLM translated it all.
+                    vi_prefix = source_text # Just take the whole thing
+                
+                if vi_prefix and not vi_prefix in translated_text:
+                    translated_text = f"{vi_prefix} {translated_text}"
+
         if glossary:
             translated_text = apply_glossary(translated_text, glossary)
 
         translated_texts[original[0]] = translated_text
-        key = cache_key(original[1])
+        key = cache_key(original[1], context=llm_context)
 
         if (
             use_tm
             and not has_placeholder(translated_text)
             and matches_target_language(translated_text, target_language)
         ):
+            source_text = original[1].get("source_text", "").strip()
             cache[key] = translated_text
             save_tm(
-                source_lang=settings.source_language,
+                source_lang=settings.source_language if settings.source_language != "auto" else "unknown",
                 target_lang=target_language,
-                text=key,
+                text=source_text,
                 translated=translated_text,
+                context=llm_context,
             )
+
+def retry_for_language(
+    translator,
+    provider,
+    chunk_blocks,
+    target_language,
+    context,
+    preferred_terms,
+    placeholder_tokens,
+    chunk_texts,
+):
+    """Retry translation due to language mismatch."""
+    from backend.services.llm_contract import build_contract, validate_contract, coerce_contract
+    from backend.services.translate_prompt import build_ollama_batch_prompt, parse_ollama_batch_response
+
+    if provider == "ollama":
+        strict_prompt = build_ollama_batch_prompt(chunk_blocks, target_language, strict=True)
+        strict_output = translator.translate_plain(strict_prompt)
+        strict_texts = parse_ollama_batch_response(strict_output, len(chunk_blocks))
+        if strict_texts is not None:
+            result = build_contract(chunk_blocks, target_language, strict_texts)
+            validate_contract(result)
+            return result
+        raise ValueError("Ollama 重試語言失敗")
+
+    strict_context = build_language_retry_context(context, chunk_texts, target_language)
+    result = translator.translate(
+        chunk_blocks,
+        target_language,
+        context=strict_context,
+        preferred_terms=preferred_terms,
+        placeholder_tokens=placeholder_tokens,
+    )
+    result = coerce_contract(result, chunk_blocks, target_language)
+    validate_contract(result)
+
+    new_texts = [item.get("translated_text", "") for item in result["blocks"]]
+    if has_language_mismatch(new_texts, target_language):
+        raise ValueError(f"重試翻譯後語言仍不符合目標語言 ({target_language})")
+
+    return result
+
+
+async def retry_for_language_async(
+    translator,
+    provider,
+    chunk_blocks,
+    target_language,
+    context,
+    preferred_terms,
+    placeholder_tokens,
+    chunk_texts,
+):
+    """Retry translation due to language mismatch (Async)."""
+    from backend.services.llm_contract import build_contract, validate_contract, coerce_contract
+    from backend.services.translate_prompt import build_ollama_batch_prompt, parse_ollama_batch_response
+
+    if provider == "ollama":
+        strict_prompt = build_ollama_batch_prompt(chunk_blocks, target_language, strict=True)
+        strict_output = await translator.translate_plain_async(strict_prompt)
+        strict_texts = parse_ollama_batch_response(strict_output, len(chunk_blocks))
+        if strict_texts is not None:
+            result = build_contract(chunk_blocks, target_language, strict_texts)
+            validate_contract(result)
+            return result
+        raise ValueError("Ollama 重試語言失敗 (async)")
+
+    strict_context = build_language_retry_context(context, chunk_texts, target_language)
+    result = await translator.translate_async(
+        chunk_blocks,
+        target_language,
+        context=strict_context,
+        preferred_terms=preferred_terms,
+        placeholder_tokens=placeholder_tokens,
+    )
+    result = coerce_contract(result, chunk_blocks, target_language)
+    validate_contract(result)
+
+    new_texts = [item.get("translated_text", "") for item in result["blocks"]]
+    if has_language_mismatch(new_texts, target_language):
+        raise ValueError(f"重試翻譯後語言仍不符合目標語言 ({target_language})")
+
+    return result
+
+
+def fallback_mock(
+    chunk_blocks,
+    target_language,
+    context,
+    preferred_terms,
+    placeholder_tokens,
+):
+    """Fallback to mock translator."""
+    from backend.services.llm_clients import MockTranslator
+    from backend.services.llm_contract import coerce_contract, validate_contract
+    result = MockTranslator().translate(
+        chunk_blocks,
+        target_language,
+        context=context,
+        preferred_terms=preferred_terms,
+        placeholder_tokens=placeholder_tokens,
+    )
+    result = coerce_contract(result, chunk_blocks, target_language)
+    validate_contract(result)
+    return result
+
+
+async def fallback_mock_async(
+    chunk_blocks,
+    target_language,
+    context,
+    preferred_terms,
+    placeholder_tokens,
+):
+    """Fallback to mock translator (Async)."""
+    from backend.services.llm_clients import MockTranslator
+    from backend.services.llm_contract import coerce_contract, validate_contract
+    result = await MockTranslator().translate_async(
+        chunk_blocks,
+        target_language,
+        context=context,
+        preferred_terms=preferred_terms,
+        placeholder_tokens=placeholder_tokens,
+    )
+    result = coerce_contract(result, chunk_blocks, target_language)
+    validate_contract(result)
+    return result

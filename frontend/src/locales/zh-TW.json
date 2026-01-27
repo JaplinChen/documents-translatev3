@@ -1,6 +1,6 @@
 {
     "app": {
-        "title": "文件翻譯與校正控制台"
+        "title": "文件翻譯與校正"
     },
     "nav": {
         "title": "引導導航",
@@ -11,7 +11,8 @@
         "step4": "完成下載",
         "manage": "管理",
         "settings": "設定",
-        "history": "歷史紀錄"
+        "history": "歷史紀錄",
+        "status": "狀態"
     },
     "sidebar": {
         "mode": {
@@ -120,7 +121,12 @@
             "estimated_cost": "預估成本",
             "request_count": "請求次數",
             "all_time_title": "累計統計",
-            "models_used": "使用模型"
+            "models_used": "使用模型",
+            "cost_tiny": "< $0.01"
+        },
+        "shortcuts": {
+            "title": "⌨️ 快捷鍵說明",
+            "confirm": "我知道了"
         },
         "block_card": {
             "apply": "套用",
@@ -228,7 +234,12 @@
             "dash": "虛線",
             "dot": "點線",
             "dashdot": "點虛線",
-            "solid": "實線"
+            "solid": "實線",
+            "sensitivity_label": "相似度閾值 (Sensitivity)",
+            "sensitivity_loose": "寬鬆 (改寫多)",
+            "sensitivity_strict": "嚴謹 (僅校對)",
+            "theme_title": "主題色彩規範",
+            "line_style_title": "線條樣式"
         },
         "llm": {
             "api_key": "API Key",
@@ -265,9 +276,9 @@
     "manage": {
         "title": "資料管理",
         "tabs": {
-            "glossary": "翻譯對照表",
-            "preserve": "保留術語",
-            "tm": "翻譯記憶"
+            "glossary": "對照表",
+            "preserve": "術語",
+            "tm": "記憶"
         },
         "actions": {
             "seed": "載入資料",
@@ -279,8 +290,8 @@
             "delete": "刪除",
             "save": "保存",
             "cancel": "取消",
-            "convert_preserve": "轉為保留術語",
-            "convert_glossary": "轉為術語"
+            "convert_preserve": "轉術語",
+            "convert_glossary": "轉對照表"
         },
         "fields": {
             "source_text": "來源文字",

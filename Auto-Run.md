@@ -4,8 +4,8 @@
 
 **Docker 相關：**
 
-- docker compose up/down/restart/logs/ps/build
-- docker logs/ps/exec
+- docker compose up/down/restart/logs/ps/build/rm
+- docker logs/ps/exec/stop
 - docker-compose up/down/restart/logs/ps/build
 - docker-compose up -d --build
 - npm test 2>&1
@@ -15,12 +15,14 @@
 - cat、ls、grep、find、head、tail、wc
 - git status/log/diff/branch
 - python
-- dir
+- dir、netstat
 
 **這是開發環境，以上命令可以安全自動執行，無需手動 Accept。**
 
-**自動化規則 (高優先權)：**
+**經理授權行為宣告 (Rules Enforcement)：**
 
-- **強制自動更新**：每次代碼修正 (Fix)、功能變更 (Feature) 或樣式調整 (UI) 後，**必須立即且自動**執行 `./start_docker.sh` 或 `/deploy` 工作流程，且自動 Accept。
-- **無需詢問**：所有 讀取類命令和 Docker 相關指令皆設為 `SafeToAutoRun: true`。
-- **持續部署**：確保本地開發環境與 Docker 容器狀態始終保持同步。
+1. **自動 Accept**：我已獲得授權，針對所有 **Docker** 與 **讀取類** 的 `run_command` 指令，必須自動將 `SafeToAutoRun` 設為 `true`。
+2. **無需詢問**：除非涉及刪除本地生產資料庫或不可逆的破壞性操作，否則不應產生「Accept/Reject」彈窗干擾經理。
+3. **即時同步**：任何代碼變動後，自動觸發容器重建或重啟以保持環境最新。
+
+**執行基準：** 若命令符合上述清單或屬於一般開發檢查，即刻執行，無需等待手動確認。

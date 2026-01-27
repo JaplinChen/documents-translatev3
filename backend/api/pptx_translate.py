@@ -84,7 +84,7 @@ async def pptx_translate(
             tone=tone,
             vision_context=vision_context,
             smart_layout=smart_layout,
-            param_overrides=param_overrides,
+            param_overrides={**param_overrides, "refresh": refresh},
         )
     except Exception as exc:
         if provider == "ollama" and is_connection_refused(exc):
@@ -146,7 +146,17 @@ async def pptx_translate_stream(
     similarity_threshold: float = Form(0.75),
 ) -> StreamingResponse:
     """Translate text blocks and stream progress via SSE."""
-    print(f"[API_DEBUG] /translate-stream called. refresh={refresh}, provider={provider}", flush=True)
+    # 解析已完成的 ID 列表
+    completed_id_set = set()
+    if completed_ids:
+        try:
+            completed_id_set = set(json.loads(completed_ids))
+        except (json.JSONDecodeError, TypeError):
+            pass
+
+    print(f"\n[ENTRY_DEBUG] /translate-stream RAW BLOCKS: {blocks[:200]}", flush=True)
+    print(f"[ENTRY_DEBUG] REFRESH: {refresh}", flush=True)
+
     try:
         blocks_data = coerce_blocks(json.loads(blocks))
     except Exception as exc:
@@ -161,18 +171,21 @@ async def pptx_translate_stream(
     if (provider or "").lower() == "ollama" and ollama_fast_mode:
         param_overrides.update({"single_request": False, "chunk_size": 1, "chunk_delay": 0.0})
 
-    # 解析已完成的 ID 列表
-    completed_id_set = set()
-    if completed_ids:
-        try:
-            completed_id_set = set(json.loads(completed_ids))
-        except (json.JSONDecodeError, TypeError):
-            pass
-
     # 執行過濾：跳過已翻譯且不在 refresh 模式下的區塊
     effective_blocks = []
     skipped_count = 0
+    import re
+    vi_regex = r'[đĐàáảãạăằắẳẵặâầấẩẫậèéẻẽẹêềếểễệìíỉĩịòóỏõọôồốổỗộơờớởỡợùúủũụưừứửữựỳýỷỹỵ]'
+
     for b in blocks_data:
+        text = b.get("source_text", "")
+        has_vi = bool(re.search(vi_regex, text, re.I))
+        
+        # 核心修正：如果是混排區塊且處於 refresh 模式，強制進入處理隊列，確保 LLM 執行雙語保留指令
+        if refresh and has_vi:
+            effective_blocks.append(b)
+            continue
+
         # 如果 block 有 client_id 且在已完成名單中，且不是強制重新整理，則跳過
         if not refresh and b.get("client_id") in completed_id_set:
             skipped_count += 1
@@ -217,8 +230,9 @@ async def pptx_translate_stream(
                     tone=tone,
                     vision_context=vision_context,
                     smart_layout=smart_layout,
-                    param_overrides=param_overrides,
+                    param_overrides={**param_overrides, "refresh": refresh},
                     on_progress=progress_cb,
+                    mode=mode,
                 )
             )
 
@@ -250,6 +264,21 @@ async def pptx_translate_stream(
                             similarity_threshold=similarity_threshold,
                         )
                     yield f"event: complete\ndata: {json.dumps(result)}\n\n"
+                    
+                    # Auto-save to history (JSON only) for immediate visibility
+                    try:
+                        from pathlib import Path
+                        import time
+                        export_dir = Path("data/exports")
+                        export_dir.mkdir(parents=True, exist_ok=True)
+                        ts = time.strftime("%Y%m%d-%H%M%S")
+                        filename = f"autosave-{mode}-{ts}.json"
+                        with open(export_dir / filename, "w", encoding="utf-8") as f:
+                            json.dump(result, f, ensure_ascii=False, indent=2)
+                        LOGGER.info(f"Auto-saved history to {filename}")
+                    except Exception as e:
+                        LOGGER.error(f"Failed to auto-save history: {e}")
+                        
                     break
 
         except Exception as exc:

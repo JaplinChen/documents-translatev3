@@ -3,6 +3,10 @@ from __future__ import annotations
 import json
 import re
 from pathlib import Path
+from langdetect import detect, DetectorFactory
+
+# Set seed for consistent langdetect results
+DetectorFactory.seed = 0
 
 
 def _load_preserve_terms() -> list[dict]:
@@ -83,16 +87,50 @@ def is_technical_terms_only(text: str) -> bool:
         return False
         
     # Patterns: 
-    is_all_caps = all(re.match(r"^[A-Z0-9_\-]+$", w) and len(w) <= 30 for w in words)
+    # Employee ID or code patterns: #00661, ABC-1234, ID-999, etc.
+    is_all_caps_or_id = all((re.match(r"^[#A-Z0-9_\-]+$", w) or re.match(r"^#\d+$", w)) and len(w) <= 30 for w in words)
     is_mixed_case = all(re.match(r"^[A-Z][a-z]*[A-Z][a-zA-Z]*$", w) and len(w) <= 30 for w in words)
     is_title_case = all(re.match(r"^[A-Z][a-z]+$", w) for w in words)
     is_pure_lower = all(re.match(r"^[a-z]+$", w) for w in words)
 
-    if is_all_caps or is_mixed_case:
+    if is_all_caps_or_id or is_mixed_case:
         return True
     
-    # TitleCase or pure lower is only filtered if very short
-    if (is_title_case or is_pure_lower) and word_count <= 1:
+    # TitleCase or pure lower is only filtered if very short (<= 3 chars)
+    if (is_title_case or is_pure_lower) and word_count <= 1 and len(cleaned) <= 3:
         return True
+
+    return False
+
+def is_garbage_text(text: str) -> bool:
+    """Detect if the text is likely non-human language (UUIDs, long hex, code)."""
+    if not text or len(text.strip()) < 5:
+        return False
+    
+    cleaned = text.strip()
+    # UUID pattern
+    if re.match(r'^[a-fA-F0-9\-]{32,}$', cleaned):
+        return True
+    
+    # Hex pattern
+    if re.match(r'^0x[a-fA-F0-9]+$', cleaned) and len(cleaned) > 10:
+        return True
+
+    # High entropy / Random character check
+    if len(cleaned) > 20:
+        alphas = sum(c.isalpha() for c in cleaned)
+        if alphas / len(cleaned) < 0.2: # Mostly symbols or numbers
+            return True
+
+    try:
+        # Simple langdetect check to see if it's identifiable
+        # Note: langdetect can be slow, so we only use it for longer strings
+        if len(cleaned) > 50:
+            lang = detect(cleaned)
+            # If it's totally unidentifiable, detect() might throw or return 'und'
+            if lang == 'und':
+                return True
+    except:
+        pass
 
     return False

@@ -31,34 +31,33 @@ export default function ShortcutsHelp({ onClose }) {
     return (
         <div className="modal-backdrop" onClick={handleClose}>
             <div className="modal shortcuts-modal" onClick={(e) => e.stopPropagation()}>
-                <div className="modal-header">
-                    <h3>⌨️ 快捷鍵說明</h3>
-                    <button className="icon-btn ghost" type="button" onClick={handleClose}>×</button>
-                </div>
-                <div className="modal-body">
-                    {Object.entries(groupedShortcuts).map(([category, shortcuts]) => (
-                        <div key={category} className="shortcut-category">
-                            <h4>{categories[category] || category}</h4>
-                            <div className="shortcut-list">
-                                {shortcuts.map((shortcut, idx) => (
-                                    <div key={idx} className="shortcut-item">
-                                        <div className="shortcut-keys">
-                                            {shortcut.keys.map((key, i) => (
-                                                <span key={i}>
-                                                    <kbd>{key}</kbd>
-                                                    {i < shortcut.keys.length - 1 && <span className="key-sep">+</span>}
-                                                </span>
-                                            ))}
-                                        </div>
-                                        <span className="shortcut-action">{shortcut.action}</span>
+                <div className="help-content">
+                    <div className="help-header">
+                        <h3>{t("components.shortcuts.title")}</h3>
+                        <button className="icon-btn ghost" type="button" onClick={handleClose}>×</button>
+                    </div>
+                    <div className="help-body">
+                        <div className="shortcuts-grid">
+                            {SHORTCUTS.map((shortcut, index) => (
+                                <div key={index} className="shortcut-item">
+                                    <div className="shortcut-keys">
+                                        {shortcut.keys.map((key, i) => (
+                                            <span key={i} className="key-wrapper">
+                                                <kbd className="key">{key}</kbd>
+                                                {i < shortcut.keys.length - 1 && <span className="key-sep">+</span>}
+                                            </span>
+                                        ))}
                                     </div>
-                                ))}
-                            </div>
+                                    <div className="shortcut-desc">
+                                        {t(shortcut.translationKey)}
+                                    </div>
+                                </div>
+                            ))}
                         </div>
-                    ))}
-                </div>
-                <div className="modal-footer">
-                    <button className="btn primary" onClick={handleClose}>我知道了</button>
+                    </div>
+                    <div className="help-footer">
+                        <button className="btn primary" onClick={handleClose}>{t("components.shortcuts.confirm")}</button>
+                    </div>
                 </div>
             </div>
         </div>

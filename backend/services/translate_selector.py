@@ -137,4 +137,5 @@ def get_translation_params(provider: str, overrides: dict | None = None) -> dict
         "model": overrides.get("model", settings.ollama_model),
         "tone": overrides.get("tone"),
         "vision_context": overrides.get("vision_context", True),
+        "refresh": overrides.get("refresh", False),
     }

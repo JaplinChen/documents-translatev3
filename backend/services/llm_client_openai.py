@@ -36,6 +36,7 @@ class OpenAITranslator:
         preferred_terms: list[tuple[str, str]] | None = None,
         placeholder_tokens: list[str] | None = None,
         language_hint: str | None = None,
+        mode: str = "direct",
     ) -> dict:
         """Translate blocks using OpenAI API (Synchronous)."""
         contract_example = load_contract_example()
@@ -47,6 +48,7 @@ class OpenAITranslator:
             preferred_terms,
             placeholder_tokens,
             language_hint,
+            mode=mode,
         )
 
         system_message = self._get_system_message()
@@ -94,6 +96,7 @@ class OpenAITranslator:
         preferred_terms: list[tuple[str, str]] | None = None,
         placeholder_tokens: list[str] | None = None,
         language_hint: str | None = None,
+        mode: str = "direct",
     ) -> dict:
         """Translate blocks using OpenAI API (Asynchronous)."""
         contract_example = load_contract_example()
@@ -105,6 +108,7 @@ class OpenAITranslator:
             preferred_terms,
             placeholder_tokens,
             language_hint,
+            mode=mode,
         )
 
         system_message = self._get_system_message()

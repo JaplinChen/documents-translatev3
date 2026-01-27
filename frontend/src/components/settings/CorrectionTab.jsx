@@ -79,7 +79,7 @@ function CorrectionTab({
                         <div className="flex items-center justify-between mb-4">
                             <div className="flex items-center gap-2">
                                 <Sliders size={18} className="text-indigo-500" />
-                                <span className="text-sm font-bold text-slate-700">相似度閾值 (Sensitivity)</span>
+                                <span className="text-sm font-bold text-slate-700">{t("settings.correction.sensitivity_label")}</span>
                             </div>
                             <span className="text-xs font-black text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded-full">
                                 {Math.round(similarityThreshold * 100)}%
@@ -93,8 +93,8 @@ function CorrectionTab({
                             onChange={(e) => setSimilarityThreshold(parseFloat(e.target.value))}
                         />
                         <div className="flex justify-between mt-2 text-[10px] text-slate-400 font-bold uppercase tracking-wider">
-                            <span>寬鬆 (改寫多)</span>
-                            <span>嚴謹 (僅校對)</span>
+                            <span>{t("settings.correction.sensitivity_loose")}</span>
+                            <span>{t("settings.correction.sensitivity_strict")}</span>
                         </div>
                     </div>
 
@@ -102,14 +102,14 @@ function CorrectionTab({
                     <div className="bg-white rounded-2xl p-5 border border-slate-100 shadow-sm">
                         <div className="flex items-center gap-2 mb-5">
                             <Palette size={18} className="text-pink-500" />
-                            <span className="text-sm font-bold text-slate-700">主題色彩規範</span>
+                            <span className="text-sm font-bold text-slate-700">{t("settings.correction.theme_title")}</span>
                         </div>
 
                         <div className="grid grid-cols-3 gap-4">
                             {[
-                                { id: 'fill', label: '底色', val: fillColor, setter: setFillColor },
-                                { id: 'text', label: '文字', val: textColor, setter: setTextColor },
-                                { id: 'line', label: '外框', val: lineColor, setter: setLineColor }
+                                { id: 'fill', label: t("settings.correction.fill_color"), val: fillColor, setter: setFillColor },
+                                { id: 'text', label: t("settings.correction.text_color"), val: textColor, setter: setTextColor },
+                                { id: 'line', label: t("settings.correction.border_color"), val: lineColor, setter: setLineColor }
                             ].map(item => (
                                 <div key={item.id} className="flex flex-col items-center gap-3">
                                     <div className="relative group">

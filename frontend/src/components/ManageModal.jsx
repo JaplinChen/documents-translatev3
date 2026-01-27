@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useDraggableModal } from "../hooks/useDraggableModal";
 import { API_BASE } from "../constants";
-import { X, Save, Edit, Trash2, Plus, Lock, FileText, Check, RotateCcw } from "lucide-react";
+import { X, Save, Edit, Trash2, Plus, Lock, Table, Check, RotateCcw } from "lucide-react";
 import { IconButton } from "./common/IconButton";
 import PreserveTermsTab from "./manage/PreserveTermsTab";
 import HistoryTab from "./manage/HistoryTab";
@@ -42,6 +42,7 @@ export default function ManageModal({
         target_text: "",
         priority: 0
     });
+    const [selectedIds, setSelectedIds] = useState([]);
 
     useEffect(() => {
         if (!open) return;
@@ -49,6 +50,7 @@ export default function ManageModal({
         setEditingOriginal(null);
         setDraft(null);
         setSaving(false);
+        setSelectedIds([]);
         setNewEntry((prev) => ({
             ...prev,
             source_lang: defaultSourceLang || "vi",
@@ -144,6 +146,59 @@ export default function ManageModal({
         setNewEntry((prev) => ({ ...prev, source_text: "", target_text: "", priority: 0 }));
     };
 
+    const handleBatchDelete = async () => {
+        if (!selectedIds.length) return;
+        if (!window.confirm(`確定要刪除選取的 ${selectedIds.length} 筆資料嗎？`)) return;
+
+        try {
+            const endpoint = isGlossary ? "glossary" : "memory";
+            const res = await fetch(`${API_BASE}/api/tm/${endpoint}/batch`, {
+                method: "DELETE",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ ids: selectedIds })
+            });
+            if (res.ok) {
+                setSelectedIds([]);
+                onSeed(); // Refresh list
+            }
+        } catch (err) {
+            console.error(err);
+        }
+    };
+
+    const handleBatchConvert = async () => {
+        if (!selectedIds.length) return;
+        const msg = isGlossary ? "轉為術語" : "轉為對照表";
+        if (!window.confirm(`確定要將選取的 ${selectedIds.length} 筆資料${msg}嗎？（原記錄將自動刪除）`)) return;
+
+        setSaving(true);
+        try {
+            for (const id of selectedIds) {
+                const item = items.find(i => i.id === id);
+                if (item) {
+                    if (isGlossary) await onConvertToPreserveTerm(item);
+                    else await onConvertToGlossary(item);
+                }
+            }
+            setSelectedIds([]);
+            onSeed();
+        } catch (err) {
+            console.error(err);
+        } finally {
+            setSaving(false);
+        }
+    };
+
+    const handleSelectRow = (id, checked) => {
+        if (checked) setSelectedIds(prev => [...prev, id]);
+        else setSelectedIds(prev => prev.filter(i => i !== id));
+    };
+
+    const handleSelectAll = (checked) => {
+        if (checked) setSelectedIds(items.map(i => i.id));
+        else setSelectedIds([]);
+    };
+
     return (
         <div className="modal-backdrop">
             <div className="modal is-draggable" ref={modalRef} style={{ top: position.top, left: position.left }}>
@@ -164,26 +219,24 @@ export default function ManageModal({
                         <PreserveTermsTab onClose={onClose} />
                     ) : (
                         <>
-                            <div className="action-row">
-                                <button className="btn ghost" type="button" onClick={onSeed}>{t("manage.actions.seed")}</button>
-                                {tab === "glossary" ? (
-                                    <>
-                                        <button className="btn ghost" type="button" onClick={() => handleExport(`${API_BASE}/api/tm/glossary/export`)}>{t("manage.actions.export_csv")}</button>
-                                        <label className="btn ghost">
-                                            {t("manage.actions.import_csv")}
-                                            <input type="file" accept=".csv" className="hidden-input" onChange={(event) => handleImport(event, `${API_BASE}/api/tm/glossary/import`, onSeed)} />
-                                        </label>
-                                        <button className="btn danger" type="button" onClick={onClearGlossary}>{t("manage.actions.clear_all")}</button>
-                                    </>
-                                ) : (
-                                    <>
-                                        <button className="btn ghost" type="button" onClick={() => handleExport(`${API_BASE}/api/tm/memory/export`)}>{t("manage.actions.export_csv")}</button>
-                                        <label className="btn ghost">
-                                            {t("manage.actions.import_csv")}
-                                            <input type="file" accept=".csv" className="hidden-input" onChange={(event) => handleImport(event, `${API_BASE}/api/tm/memory/import`, onSeed)} />
-                                        </label>
-                                        <button className="btn danger" type="button" onClick={onClearMemory}>{t("manage.actions.clear_all")}</button>
-                                    </>
+                            <div className="action-row flex items-center justify-between gap-2">
+                                <div className="flex gap-2">
+                                    <button className="btn ghost" type="button" onClick={onSeed}>{t("manage.actions.seed")}</button>
+                                    <button className="btn ghost" type="button" onClick={() => handleExport(`${API_BASE}/api/tm/${isGlossary ? "glossary" : "memory"}/export`)}>{t("manage.actions.export_csv")}</button>
+                                    <label className="btn ghost">
+                                        {t("manage.actions.import_csv")}
+                                        <input type="file" accept=".csv" className="hidden-input" onChange={(event) => handleImport(event, `${API_BASE}/api/tm/${isGlossary ? "glossary" : "memory"}/import`, onSeed)} />
+                                    </label>
+                                    <button className="btn danger" type="button" onClick={isGlossary ? onClearGlossary : onClearMemory}>{t("manage.actions.clear_all")}</button>
+                                </div>
+                                {selectedIds.length > 0 && (
+                                    <div className="batch-actions flex gap-2 animate-in fade-in slide-in-from-right-2">
+                                        <span className="text-xs font-bold text-slate-400 self-center mr-2">已選取 {selectedIds.length} 筆</span>
+                                        <button className="btn ghost compact !text-blue-600" onClick={handleBatchConvert}>
+                                            {isGlossary ? "轉術語" : "轉為對照表"}
+                                        </button>
+                                        <button className="btn ghost compact !text-red-500" onClick={handleBatchDelete}>批次刪除</button>
+                                    </div>
                                 )}
                             </div>
                             <div className="create-row">
@@ -196,18 +249,14 @@ export default function ManageModal({
                                     </select>
                                     <input className="text-input col-span-3" value={newEntry.source_text} placeholder={t("manage.fields.source_text")} onChange={(e) => setNewEntry((prev) => ({ ...prev, source_text: e.target.value }))} />
                                     <input className="text-input col-span-3" value={newEntry.target_text} placeholder={t("manage.fields.target_text")} onChange={(e) => setNewEntry((prev) => ({ ...prev, target_text: e.target.value }))} />
-                                    {isGlossary ? (
-                                        <>
-                                            <input className="text-input col-span-1 text-center px-1" type="number" value={newEntry.priority} placeholder={t("manage.fields.priority")} onChange={(e) => setNewEntry((prev) => ({ ...prev, priority: e.target.value }))} />
-                                            <button className="btn primary col-span-1 h-9 min-h-[2.25rem] px-0 w-full flex items-center justify-center p-0" type="button" onClick={handleCreate} title={t("manage.actions.add")}>
-                                                <Plus size={18} />
-                                            </button>
-                                        </>
-                                    ) : (
-                                        <button className="btn primary col-span-2 h-9 min-h-[2.25rem] w-full flex items-center justify-center gap-1" type="button" onClick={handleCreate}>
-                                            <Plus size={18} /> {t("manage.actions.add")}
+                                    <div className="col-span-2 flex gap-1">
+                                        {isGlossary && (
+                                            <input className="text-input w-12 text-center !px-1" type="number" value={newEntry.priority} placeholder="0" onChange={(e) => setNewEntry((prev) => ({ ...prev, priority: e.target.value }))} />
+                                        )}
+                                        <button className={`btn primary flex-1 h-9 min-h-[2.25rem] flex items-center justify-center p-0`} type="button" onClick={handleCreate} title={t("manage.actions.add")}>
+                                            <Plus size={18} />
                                         </button>
-                                    )}
+                                    </div>
                                 </div>
                             </div>
                             <DataTable
@@ -216,12 +265,15 @@ export default function ManageModal({
                                 editingKey={editingKey}
                                 draft={draft}
                                 saving={saving}
+                                selectedIds={selectedIds}
                                 makeKey={makeKey}
                                 setDraft={setDraft}
                                 onEdit={handleEdit}
                                 onSave={handleSave}
                                 onCancel={handleCancel}
                                 onDelete={handleDelete}
+                                onSelectRow={handleSelectRow}
+                                onSelectAll={handleSelectAll}
                                 onConvertToGlossary={onConvertToGlossary}
                                 onConvertToPreserveTerm={onConvertToPreserveTerm}
                                 t={t}
@@ -235,13 +287,18 @@ export default function ManageModal({
     );
 }
 
-function DataTable({ items, isGlossary, editingKey, draft, saving, makeKey, setDraft, onEdit, onSave, onCancel, onDelete, onConvertToGlossary, onConvertToPreserveTerm, t }) {
+function DataTable({ items, isGlossary, editingKey, draft, saving, selectedIds, makeKey, setDraft, onEdit, onSave, onCancel, onDelete, onSelectRow, onSelectAll, onConvertToGlossary, onConvertToPreserveTerm, t }) {
 
     if (items.length === 0) return <div className="data-empty">{t("manage.empty")}</div>;
+
+    const allSelected = items.length > 0 && selectedIds.length === items.length;
 
     return (
         <div className={`data-table ${isGlossary ? "is-glossary" : "is-tm"}`}>
             <div className="data-row data-header">
+                <div className="data-cell w-10 shrink-0 flex items-center justify-center">
+                    <input type="checkbox" checked={allSelected} onChange={(e) => onSelectAll(e.target.checked)} />
+                </div>
                 <div className="data-cell">{t("manage.table.source_lang")}</div>
                 <div className="data-cell">{t("manage.table.target_lang")}</div>
                 <div className="data-cell">{t("manage.table.source")}</div>
@@ -253,8 +310,12 @@ function DataTable({ items, isGlossary, editingKey, draft, saving, makeKey, setD
                 const rowKey = makeKey(item);
                 const isEditing = editingKey === rowKey;
                 const row = isEditing ? draft || item : item;
+                const isSelected = selectedIds.includes(item.id);
                 return (
-                    <div className="data-row" key={`tm-${idx}`}>
+                    <div className={`data-row ${isSelected ? "is-selected" : ""}`} key={`tm-${idx}`}>
+                        <div className="data-cell w-10 shrink-0 flex items-center justify-center">
+                            <input type="checkbox" checked={isSelected} onChange={(e) => onSelectRow(item.id, e.target.checked)} />
+                        </div>
                         <div className="data-cell">
                             {isEditing ? <input className="data-input" value={row.source_lang || ""} onChange={(e) => setDraft((prev) => ({ ...prev, source_lang: e.target.value }))} /> : row.source_lang}
                         </div>
@@ -281,11 +342,9 @@ function DataTable({ items, isGlossary, editingKey, draft, saving, makeKey, setD
                             ) : (
                                 <>
                                     <IconButton icon={Edit} size="sm" onClick={() => onEdit(item)} title={t("manage.actions.edit")} />
-                                    {isGlossary && (
-                                        <IconButton icon={Lock} size="sm" onClick={() => onConvertToPreserveTerm(item)} title={t("manage.actions.convert_preserve")} />
-                                    )}
+                                    <IconButton icon={Lock} size="sm" onClick={() => onConvertToPreserveTerm(item)} title={t("manage.actions.convert_preserve")} />
                                     {!isGlossary && (
-                                        <IconButton icon={FileText} size="sm" onClick={() => onConvertToGlossary(item)} title={t("manage.actions.convert_glossary")} />
+                                        <IconButton icon={Table} size="sm" onClick={() => onConvertToGlossary(item)} title={t("manage.actions.convert_glossary")} />
                                     )}
                                     <IconButton icon={Trash2} variant="danger" size="sm" onClick={() => handleDelete(item)} title={t("manage.actions.delete")} />
                                 </>

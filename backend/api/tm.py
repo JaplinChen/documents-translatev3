@@ -4,6 +4,8 @@ from fastapi import APIRouter, File, Response, UploadFile
 from pydantic import BaseModel
 
 from backend.services.translation_memory import (
+    batch_delete_glossary,
+    batch_delete_tm,
     clear_tm,
     delete_glossary,
     delete_tm,
@@ -19,10 +21,21 @@ router = APIRouter(prefix="/api/tm")
 
 
 class GlossaryEntry(BaseModel):
+    """
+    Glossary entry data structure for translation consistency.
+
+    Attributes:
+        source_lang: The source language code (e.g., 'vi').
+        target_lang: The target language code (e.g., 'zh-TW').
+        source_text: The term in the source language.
+        target_text: The corresponding translation in the target language.
+        priority: Relative priority for matching (default is 0).
+    """
+    model_config = {"extra": "ignore"}
     source_lang: str
     target_lang: str
     source_text: str
-    target_text: str
+    target_text: str | None = ""
     priority: int | None = 0
 
 
@@ -30,11 +43,25 @@ class GlossaryDelete(BaseModel):
     id: int
 
 
+class BatchDelete(BaseModel):
+    ids: list[int]
+
+
 class MemoryEntry(BaseModel):
+    """
+    Translation memory entry for reuse of previous translations.
+
+    Attributes:
+        source_lang: The source language code.
+        target_lang: The target language code.
+        source_text: Original source segment.
+        target_text: Translated target segment.
+    """
+    model_config = {"extra": "ignore"}
     source_lang: str
     target_lang: str
     source_text: str
-    target_text: str
+    target_text: str | None = ""
 
 
 class MemoryDelete(BaseModel):
@@ -67,6 +94,15 @@ async def tm_glossary(limit: int = 200) -> dict:
 
 @router.post("/glossary")
 async def tm_glossary_upsert(entry: GlossaryEntry) -> dict:
+    """
+    Create or update a glossary entry.
+
+    Args:
+        entry: The glossary entry data.
+
+    Returns:
+        A dictionary with the operation status.
+    """
     upsert_glossary(entry.model_dump())
     return {"status": "ok"}
 
@@ -93,6 +129,12 @@ async def tm_glossary_delete(entry: GlossaryDelete) -> dict:
     return {"deleted": deleted}
 
 
+@router.delete("/glossary/batch")
+async def tm_glossary_batch_delete(payload: BatchDelete) -> dict:
+    deleted = batch_delete_glossary(payload.ids)
+    return {"deleted": deleted}
+
+
 @router.get("/memory")
 async def tm_memory(limit: int = 200) -> dict:
     return {"items": get_tm(limit=limit)}
@@ -107,6 +149,12 @@ async def tm_memory_upsert(entry: MemoryEntry) -> dict:
 @router.delete("/memory")
 async def tm_memory_delete(entry: MemoryDelete) -> dict:
     deleted = delete_tm(entry.id)
+    return {"deleted": deleted}
+
+
+@router.delete("/memory/batch")
+async def tm_memory_batch_delete(payload: BatchDelete) -> dict:
+    deleted = batch_delete_tm(payload.ids)
     return {"deleted": deleted}
 
 

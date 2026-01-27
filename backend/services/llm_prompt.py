@@ -22,9 +22,11 @@ def build_prompt(
     preferred_terms: list[tuple[str, str]] | None = None,
     placeholder_tokens: list[str] | None = None,
     language_hint: str | None = None,
+    mode: str = "direct",
 ) -> str:
     input_payload = {
         "target_language": target_language,
+        "mode": mode,
         "blocks": list(blocks),
         "contract_schema_example": contract_example,
     }

@@ -1,19 +1,21 @@
 import React from "react";
+import { useTranslation } from "react-i18next";
 
 export function Header({ status, onOpenSettings, onOpenManage }) {
+    const { t } = useTranslation();
     return (
         <header className="hero">
             <div className="hero-content">
                 <p className="kicker">Document Translation Console</p>
-                <h1>文件翻譯與校正控制台</h1>
+                <h1>{t("app.title")}</h1>
                 <p className="subtitle">
-                    上傳文件、抽取文字、調整翻譯，再輸出具有校正樣式的檔案。
+                    {t("nav.subtitle")}
                 </p>
             </div>
 
             <div className="header-actions-group">
                 <div className="status">
-                    <span className="status-label">狀態</span>
+                    <span className="status-label">{t("nav.status") || "Status"}</span>
                     <span className="status-value">{status}</span>
                 </div>
 
@@ -22,7 +24,7 @@ export function Header({ status, onOpenSettings, onOpenManage }) {
                         className="btn-icon-action text-primary border-primary"
                         type="button"
                         onClick={onOpenSettings}
-                        title="設定"
+                        title={t("nav.settings")}
                     >
                         ⚙
                     </button>
@@ -30,7 +32,7 @@ export function Header({ status, onOpenSettings, onOpenManage }) {
                         className="btn-icon-action"
                         type="button"
                         onClick={onOpenManage}
-                        title="術語與翻譯記憶"
+                        title={t("manage.title")}
                     >
                         📚
                     </button>

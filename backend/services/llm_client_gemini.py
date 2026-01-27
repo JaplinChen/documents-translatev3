@@ -37,6 +37,7 @@ class GeminiTranslator:
         preferred_terms: list[tuple[str, str]] | None = None,
         placeholder_tokens: list[str] | None = None,
         language_hint: str | None = None,
+        mode: str = "direct",
     ) -> dict:
         """Translate blocks using Gemini API (Synchronous)."""
         contract_example = load_contract_example()
@@ -48,10 +49,14 @@ class GeminiTranslator:
             preferred_terms,
             placeholder_tokens,
             language_hint,
+            mode=mode,
         )
 
+        system_message = self._get_system_message()
+        full_prompt = f"{system_message}\n\n[TASK START]\n{prompt}"
+
         payload = {
-            "contents": [{"role": "user", "parts": [{"text": prompt}]}],
+            "contents": [{"role": "user", "parts": [{"text": full_prompt}]}],
             "generationConfig": {"temperature": 0, "responseMimeType": "application/json"},
         }
 
@@ -78,6 +83,7 @@ class GeminiTranslator:
         preferred_terms: list[tuple[str, str]] | None = None,
         placeholder_tokens: list[str] | None = None,
         language_hint: str | None = None,
+        mode: str = "direct",
     ) -> dict:
         """Translate blocks using Gemini API (Asynchronous)."""
         contract_example = load_contract_example()
@@ -89,10 +95,14 @@ class GeminiTranslator:
             preferred_terms,
             placeholder_tokens,
             language_hint,
+            mode=mode,
         )
 
+        system_message = self._get_system_message()
+        full_prompt = f"{system_message}\n\n[TASK START]\n{prompt}"
+        
         payload = {
-            "contents": [{"role": "user", "parts": [{"text": prompt}]}],
+            "contents": [{"role": "user", "parts": [{"text": full_prompt}]}],
             "generationConfig": {"temperature": 0, "responseMimeType": "application/json"},
         }
 

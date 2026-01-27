@@ -74,8 +74,33 @@ export default function HistoryTab({ onLoadFile }) {
         }
     };
 
+    const handleResetAll = async () => {
+        if (!window.confirm(t("history.confirm_reset_all", "警告：這將永久刪除所有翻譯記憶庫 (TM)、用語集快取以及歷史匯出檔案。是否確定執行？"))) return;
+        try {
+            const res = await fetch(`${API_BASE}/api/admin/reset-cache`, { method: "POST" });
+            if (res.ok) {
+                const data = await res.json();
+                alert(t("history.reset_success", "清理完成，已刪除 {{count}} 個檔案", { count: data.deleted_files }));
+                fetchHistory();
+            }
+        } catch (e) {
+            console.error(e);
+        }
+    };
+
     return (
         <div className="history-tab-content">
+            <div className="flex justify-between items-center mb-4 px-4 py-2 bg-amber-50 border border-amber-100 rounded-lg">
+                <div className="text-sm text-amber-800 font-medium flex items-center gap-2">
+                    ⚠️ {t("history.reset_warning", "管理提示：若想徹底重新翻譯或清除庫存，請點擊右側按鈕")}
+                </div>
+                <button
+                    className="btn btn-sm danger flex items-center gap-1 py-1 h-8"
+                    onClick={handleResetAll}
+                >
+                    🗑️ {t("history.reset_all", "清理所有快取與檔案")}
+                </button>
+            </div>
             {loading ? (
                 <div className="p-4 text-center text-slate-500">{t("common.loading", "Loading...")}</div>
             ) : items.length === 0 ? (

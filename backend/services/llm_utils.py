@@ -17,8 +17,29 @@ def safe_json_loads(content: str) -> dict:
         raise ValueError("LLM response is not valid JSON")
 
 
-def cache_key(block: dict) -> str:
-    return block.get("source_text", "").strip()
+def cache_key(block: dict, context: dict | None = None) -> str:
+    """Generate a cache key based on text and optional LLM context."""
+    text = block.get("source_text", "").strip()
+    if not text:
+        return ""
+    if not context:
+        return text
+
+    # Context-aware hashing: if user changes model or tone, cache should be different
+    # Focus on parameters that meaningfully change the translation output
+    ctx_str = "|".join(
+        [
+            str(context.get("provider", "")),
+            str(context.get("model", "")),
+            str(context.get("tone", "")),
+            str(context.get("vision_context", True)),
+        ]
+    )
+    import hashlib
+
+    # We use a combined hash to prevent key collisions and keep keys compact
+    payload = f"{text}||{ctx_str}"
+    return hashlib.sha256(payload.encode("utf-8")).hexdigest()
 
 
 def chunked(items: list[tuple[int, dict]], size: int) -> Iterable[list[tuple[int, dict]]]:

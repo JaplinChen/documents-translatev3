@@ -20,15 +20,19 @@ export default function BlockCard({
 }) {
     const { t } = useTranslation();
     const outputMode = resolveOutputMode(block);
-
-
+    const isBilingual = mode === "bilingual" || block.mode === "bilingual";
+    const isCorrection = mode === "correction" || block.mode === "correction";
 
     return (
-        <div className={`block-card ${block.selected === false ? "is-muted" : ""} ${block.isTranslating ? "is-translating" : ""}`}>
+        <div className={`block-card 
+            ${block.selected === false ? "is-muted" : ""} 
+            ${block.isTranslating ? "is-translating" : ""}
+            ${isBilingual ? "is-bilingual" : ""}
+        `}>
             <div className="block-meta">
                 <span className="block-number">#{index + 1}</span>
                 <label className="select-box">
-                    <input type="checkbox" checked={block.selected !== false} onChange={(e) => onBlockSelect(index, e.target.checked)} />
+                    <input type="checkbox" checked={block.selected !== false} onChange={(e) => onBlockSelect(e.target.checked)} />
                     <span>{t("components.block_card.apply")}</span>
                 </label>
                 <span>{t("components.block_card.slide")} {block.slide_index}</span>
@@ -37,13 +41,15 @@ export default function BlockCard({
                     <span className="pill">{`R${block.row_no}C${block.col_no}`}</span>
                 )}
                 <span className="pill">{block.block_type}</span>
+                {isBilingual && <span className="pill bg-indigo-100 text-indigo-700 border border-indigo-200">Bilingual</span>}
+                {isCorrection && <span className="pill bg-violet-100 text-violet-700 border border-violet-200">Correction</span>}
                 {block.isTranslating ? (
                     <span className="status-pill is-running">{t("components.block_card.translating")}</span>
                 ) : block.updatedAt ? (
                     <span className="status-pill">{t("components.block_card.updated_at", { time: block.updatedAt })}</span>
                 ) : null}
                 {mode === "correction" && block.correction_temp ? (
-                    <span className="status-pill">暫存</span>
+                    <span className="status-pill bg-emerald-50 text-emerald-600">暫存</span>
                 ) : null}
 
                 <div className="block-meta-tools ml-auto flex gap-1">
@@ -62,7 +68,12 @@ export default function BlockCard({
                         <span className="field-label">{t("components.block_card.source")}</span>
                         {mode === "correction" && (
                             <label className="toggle-check">
-                                <input type="checkbox" checked={outputMode === "source"} onChange={() => onOutputModeChange(index, "source")} />
+                                <input
+                                    type="checkbox"
+                                    checked={outputMode === "source"}
+                                    onChange={() => onOutputModeChange("source")}
+                                    disabled={block.isTranslating}
+                                />
                                 <span>{t("components.block_card.output")}</span>
                             </label>
                         )}
@@ -77,32 +88,25 @@ export default function BlockCard({
                         <span className="field-label">{t("components.block_card.target")}</span>
                         {mode === "correction" && (
                             <label className="toggle-check">
-                                <input type="checkbox" checked={outputMode === "translated"} onChange={() => onOutputModeChange(index, "translated")} />
+                                <input
+                                    type="checkbox"
+                                    checked={outputMode === "translated"}
+                                    onChange={() => onOutputModeChange("translated")}
+                                    disabled={block.isTranslating}
+                                />
                                 <span>{t("components.block_card.output")}</span>
                             </label>
                         )}
                     </div>
                     {/* Target Content - filled height */}
-                    {mode === "correction" ? (
-                        <div
-                            className="correction-editor flex-1 h-full overflow-y-auto border border-slate-300 rounded p-2"
-                            contentEditable
-                            role="textbox"
-                            aria-multiline="true"
-                            suppressContentEditableWarning
-                            ref={(node) => { editorRefs.current[index] = node; }}
-                            onInput={(e) => onEditorInput(index, e)}
-                        >
-                            {block.translated_text || ""}
-                        </div>
-                    ) : (
-                        <textarea
-                            className="textarea flex-1 h-full"
-                            value={block.translated_text || ""}
-                            onChange={(e) => onBlockChange(index, e.target.value)}
-                            placeholder={t("components.block_card.placeholder")}
-                        />
-                    )}
+                    <textarea
+                        className={`${isCorrection ? "correction-editor" : "textarea"} flex-1 h-full focus:ring-2 focus:ring-blue-100 outline-none resize-none`}
+                        value={block.translated_text || ""}
+                        onChange={(e) => onBlockChange(e.target.value)}
+                        placeholder={t("components.block_card.placeholder")}
+                        disabled={block.isTranslating}
+                        ref={(node) => { if (editorRefs.current) editorRefs.current[block._uid] = node; }}
+                    />
                 </div>
             </div>
         </div>

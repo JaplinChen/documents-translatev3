@@ -1,4 +1,4 @@
-import React, { useEffect, useRef } from "react";
+import React, { useEffect, useLayoutEffect, useRef } from "react";
 import { useTranslation } from "react-i18next";
 import SettingsModal from "./components/SettingsModal";
 import ManageModal from "./components/ManageModal";
@@ -35,6 +35,19 @@ function App() {
   // --- Logic Hooks ---
   const tm = useTerminology();
   const processor = useDocumentProcessor();
+
+  useLayoutEffect(() => {
+    try {
+      const raw = localStorage.getItem("ui_store");
+      if (!raw) return;
+      const parsed = JSON.parse(raw);
+      const state = parsed?.state || parsed;
+      if (state?.manageTab) ui.setManageTab(state.manageTab);
+      if (state?.manageOpen) ui.setManageOpen(true);
+    } catch {
+      // Ignore storage errors
+    }
+  }, []);
 
   usePanelResize(leftPanelRef, fileStore.blocks.length);
 

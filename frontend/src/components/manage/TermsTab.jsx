@@ -41,6 +41,12 @@ export default function TermsTab() {
         { from: "", to: "aliases" },
     ]);
     const [errorMsg, setErrorMsg] = useState("");
+    const [showLanguages, setShowLanguages] = useState(false);
+    const [showImport, setShowImport] = useState(false);
+    const [compactTable, setCompactTable] = useState(false);
+    const [showCreate, setShowCreate] = useState(false);
+    const [showColPanel, setShowColPanel] = useState(false);
+    const [importStep, setImportStep] = useState(1);
     const [visibleCols, setVisibleCols] = useState(() => {
         try {
             const saved = localStorage.getItem("terms_visible_cols");
@@ -67,6 +73,15 @@ export default function TermsTab() {
             };
         }
     });
+    const colLabels = {
+        term: "術語",
+        category: "分類",
+        status: "狀態",
+        languages: "語言",
+        aliases: "別名",
+        note: "備註",
+        created_by: "建立者",
+    };
 
     const toggleSelectAll = (checked) => {
         if (checked) setSelectedIds(terms.map((t) => t.id));
@@ -150,18 +165,60 @@ export default function TermsTab() {
         await upsert();
     };
 
+    const setVisibleColsSafe = (next) => {
+        const nextState = { ...next };
+        const hasAny = Object.values(nextState).some(Boolean);
+        if (!hasAny) {
+            nextState.term = true;
+        }
+        setVisibleCols(nextState);
+        localStorage.setItem("terms_visible_cols", JSON.stringify(nextState));
+        return nextState;
+    };
+
+    const setPreset = (preset) => {
+        if (preset === "basic") {
+            return setVisibleColsSafe({
+                term: true,
+                category: true,
+                status: true,
+                languages: true,
+                aliases: false,
+                note: false,
+                created_by: false,
+            });
+        }
+        if (preset === "advanced") {
+            return setVisibleColsSafe({
+                term: true,
+                category: true,
+                status: true,
+                languages: true,
+                aliases: true,
+                note: true,
+                created_by: true,
+            });
+        }
+        return setVisibleColsSafe(
+            Object.keys(visibleCols).reduce(
+                (acc, key) => ({ ...acc, [key]: true }),
+                {}
+            )
+        );
+    };
+
     return (
-        <div className="modal-body">
-            <div className="action-row flex items-center justify-between gap-2">
-                <div className="flex gap-2 items-center">
+        <div className="space-y-4 max-h-[70vh] overflow-auto pr-1">
+            <div className="action-row flex items-center justify-between gap-3 bg-slate-50/70 border border-slate-200/70 rounded-2xl px-4 py-3 sticky top-0 z-20">
+                <div className="flex flex-wrap gap-2 items-center">
                     <input
-                        className="text-input w-48"
+                        className="text-input w-52"
                         placeholder="搜尋術語/別名"
                         value={filters.q}
                         onChange={(e) => setFilters((p) => ({ ...p, q: e.target.value }))}
                     />
                     <select
-                        className="select-input w-32"
+                        className="select-input w-36"
                         value={filters.category_id}
                         onChange={(e) => setFilters((p) => ({ ...p, category_id: e.target.value }))}
                     >
@@ -171,7 +228,7 @@ export default function TermsTab() {
                         ))}
                     </select>
                     <select
-                        className="select-input w-28"
+                        className="select-input w-32"
                         value={filters.status}
                         onChange={(e) => setFilters((p) => ({ ...p, status: e.target.value }))}
                     >
@@ -180,7 +237,7 @@ export default function TermsTab() {
                         <option value="inactive">inactive</option>
                     </select>
                     <input
-                        className="text-input w-28"
+                        className="text-input w-36"
                         placeholder="缺語言 e.g. en"
                         value={filters.missing_lang}
                         onChange={(e) => setFilters((p) => ({ ...p, missing_lang: e.target.value }))}
@@ -188,71 +245,106 @@ export default function TermsTab() {
                 </div>
                 <div className="flex gap-2 items-center">
                     <button className="btn ghost" type="button" onClick={exportCsv}>匯出 CSV</button>
-                    <label className="btn ghost">
+                    <button className="btn ghost" type="button" onClick={() => {
+                        setShowImport(true);
+                        setImportStep(1);
+                    }}>
                         匯入 CSV
-                        <input type="file" accept=".csv" className="hidden-input" onChange={(e) => setImportFile(e.target.files?.[0] || null)} />
-                    </label>
-                    <button className="btn ghost" type="button" onClick={handlePreview} disabled={!importFile}>預覽</button>
+                    </button>
                 </div>
             </div>
 
-            {importFile && (
-                <div className="mt-2 p-2 border border-slate-200 rounded-lg">
-                    <div className="text-xs text-slate-500 mb-1">欄位映射（可選）</div>
-                    <div className="grid grid-cols-12 gap-2">
-                        {mappingRows.map((row, idx) => (
-                            <React.Fragment key={`${row.to}-${idx}`}>
-                                <input
-                                    className="text-input col-span-5"
-                                    placeholder="CSV 欄位名稱"
-                                    value={row.from}
-                                    onChange={(e) => updateMappingRow(idx, "from", e.target.value)}
-                                />
-                                <input
-                                    className="text-input col-span-5"
-                                    placeholder="系統欄位（term/category/lang_zh-TW）"
-                                    value={row.to}
-                                    onChange={(e) => updateMappingRow(idx, "to", e.target.value)}
-                                />
-                                <button
-                                    className="btn ghost compact col-span-2"
-                                    type="button"
-                                    onClick={() => removeMappingRow(idx)}
-                                >
-                                    刪除
-                                </button>
-                            </React.Fragment>
-                        ))}
-                    </div>
-                    <div className="mt-2 flex gap-2">
-                        <button className="btn ghost compact" type="button" onClick={addMappingRow}>新增映射</button>
-                        <button className="btn ghost compact" type="button" onClick={() => setMappingText(JSON.stringify(buildMappingFromRows()))}>套用為 JSON</button>
-                        <button className="btn ghost compact" type="button" onClick={() => setMappingRows([])}>清空映射</button>
-                    </div>
-                    <div className="text-xs text-slate-400 mt-2">如需直接貼 JSON，可在下方輸入</div>
-                    <textarea
-                        className="text-input w-full h-20 mt-1"
-                        value={mappingText}
-                        onChange={(e) => setMappingText(e.target.value)}
-                        placeholder='{"術語":"term","分類":"category","中文":"lang_zh-TW"}'
-                    />
-                    <div className="flex gap-2 mt-2">
-                        <button className="btn primary" type="button" onClick={handleImport}>確認匯入</button>
-                        {preview?.summary && (
-                            <span className="text-xs text-slate-500">
-                                總筆數 {preview.summary.total}｜有效 {preview.summary.valid}｜錯誤 {preview.summary.invalid}
-                            </span>
+            {showImport && (
+                <div className="fixed inset-0 z-40 flex items-center justify-center bg-black/20">
+                    <div className="w-[720px] max-h-[80vh] overflow-auto bg-white rounded-2xl border border-slate-200 shadow-xl p-5">
+                        <div className="flex items-center justify-between mb-3">
+                            <div className="text-sm font-bold text-slate-700">CSV 匯入（步驟 {importStep}/3）</div>
+                            <button className="btn ghost compact" type="button" onClick={() => setShowImport(false)}>關閉</button>
+                        </div>
+                        {importStep === 1 && (
+                            <div className="space-y-3">
+                                <label className="btn ghost w-fit">
+                                    選擇 CSV
+                                    <input type="file" accept=".csv" className="hidden-input" onChange={(e) => setImportFile(e.target.files?.[0] || null)} />
+                                </label>
+                                <div className="text-xs text-slate-500">選擇檔案後進入欄位對應</div>
+                                <button className="btn primary" type="button" onClick={() => setImportStep(2)} disabled={!importFile}>下一步</button>
+                            </div>
+                        )}
+                        {importStep === 2 && (
+                            <div className="space-y-3">
+                                <div className="text-xs text-slate-500">欄位對應（可選）</div>
+                                <div className="grid grid-cols-12 gap-2 max-h-48 overflow-auto pr-1">
+                                    {mappingRows.map((row, idx) => (
+                                        <React.Fragment key={`${row.to}-${idx}`}>
+                                            <input
+                                                className="text-input col-span-5"
+                                                placeholder="CSV 欄位名稱"
+                                                value={row.from}
+                                                onChange={(e) => updateMappingRow(idx, "from", e.target.value)}
+                                            />
+                                            <input
+                                                className="text-input col-span-5"
+                                                placeholder="系統欄位（term/category/lang_zh-TW）"
+                                                value={row.to}
+                                                onChange={(e) => updateMappingRow(idx, "to", e.target.value)}
+                                            />
+                                            <button
+                                                className="btn ghost compact col-span-2"
+                                                type="button"
+                                                onClick={() => removeMappingRow(idx)}
+                                            >
+                                                刪除
+                                            </button>
+                                        </React.Fragment>
+                                    ))}
+                                </div>
+                                <div className="flex gap-2">
+                                    <button className="btn ghost compact" type="button" onClick={addMappingRow}>新增對應</button>
+                                    <button className="btn ghost compact" type="button" onClick={() => setMappingText(JSON.stringify(buildMappingFromRows()))}>套用為 JSON</button>
+                                    <button className="btn ghost compact" type="button" onClick={() => setMappingRows([])}>清空對應</button>
+                                </div>
+                                <div className="flex gap-2">
+                                    <button className="btn ghost" type="button" onClick={() => setImportStep(1)}>上一步</button>
+                                    <button className="btn primary" type="button" onClick={async () => {
+                                        await handlePreview();
+                                        setImportStep(3);
+                                    }}>下一步</button>
+                                </div>
+                            </div>
+                        )}
+                        {importStep === 3 && (
+                            <div className="space-y-3">
+                                <div className="text-xs text-slate-500">預覽結果</div>
+                                {preview?.summary && (
+                                    <div className="text-xs text-slate-600">
+                                        總筆數 {preview.summary.total}｜有效 {preview.summary.valid}｜錯誤 {preview.summary.invalid}
+                                    </div>
+                                )}
+                                <div className="flex gap-2">
+                                    <button className="btn ghost" type="button" onClick={() => setImportStep(2)}>上一步</button>
+                                    <button className="btn primary" type="button" onClick={handleImport}>確認匯入</button>
+                                </div>
+                                {importResult && (
+                                    <div className="text-xs text-slate-600">
+                                        匯入完成：成功 {importResult.imported} 筆，失敗 {importResult.failed?.length || 0} 筆
+                                    </div>
+                                )}
+                            </div>
                         )}
                     </div>
-                    {importResult && (
-                        <div className="mt-2 text-xs text-slate-600">
-                            匯入完成：成功 {importResult.imported} 筆，失敗 {importResult.failed?.length || 0} 筆
-                        </div>
-                    )}
                 </div>
             )}
 
-            <div className="create-row mt-3">
+            <div className="p-4 border border-slate-200 rounded-2xl bg-white shadow-sm">
+                <div className="flex items-center justify-between mb-2">
+                    <div className="text-sm font-bold text-slate-700">新增 / 編輯術語</div>
+                    <button className="btn ghost compact" type="button" onClick={() => setShowCreate((v) => !v)}>
+                        {showCreate ? "收合" : "展開"}
+                    </button>
+                </div>
+                {showCreate && (
+                <div className="space-y-2">
                 <div className="create-fields grid grid-cols-12 gap-2 w-full items-center">
                     <input className="text-input col-span-3" value={form.term} placeholder="術語" onChange={(e) => setForm((p) => ({ ...p, term: e.target.value }))} />
                     <select className="select-input col-span-2" value={form.category_id || ""} onChange={(e) => setForm((p) => ({ ...p, category_id: e.target.value }))}>
@@ -274,32 +366,42 @@ export default function TermsTab() {
                     <input className="text-input col-span-3" value={form.aliases} placeholder="別名 (| 分隔)" onChange={(e) => setForm((p) => ({ ...p, aliases: e.target.value }))} />
                     <input className="text-input col-span-3" value={form.note} placeholder="備註" onChange={(e) => setForm((p) => ({ ...p, note: e.target.value }))} />
                     <div className="col-span-1 flex gap-1">
-                        <button className="btn primary flex-1" type="button" onClick={handleUpsert}>{editingId ? "更新" : "新增"}</button>
+                        <button className="btn primary flex-1 text-lg" type="button" onClick={handleUpsert}>
+                            {editingId ? "更新" : "+"}
+                        </button>
                     </div>
                 </div>
-            </div>
-            {errorMsg && (
-                <div className="mt-2 text-xs text-rose-600">{errorMsg}</div>
-            )}
-
-            <div className="mt-2 p-2 border border-slate-200 rounded-lg">
-                <div className="flex items-center justify-between mb-2">
-                    <div className="text-sm font-bold">語言欄位</div>
-                    <button className="btn ghost compact" type="button" onClick={addLanguage}>新增語言</button>
-                </div>
-                <div className="space-y-2">
-                    {form.languages.map((lang, idx) => (
-                        <div key={`${lang.lang_code}-${idx}`} className="grid grid-cols-12 gap-2">
-                            <input className="text-input col-span-3" value={lang.lang_code} placeholder="lang_code" onChange={(e) => updateLanguage(idx, "lang_code", e.target.value)} />
-                            <input className="text-input col-span-8" value={lang.value} placeholder="value" onChange={(e) => updateLanguage(idx, "value", e.target.value)} />
-                            <button className="btn ghost compact col-span-1" type="button" onClick={() => removeLanguage(idx)}>刪除</button>
+                {errorMsg && (
+                    <div className="mt-2 text-xs text-rose-600">{errorMsg}</div>
+                )}
+                <div className="mt-3 p-3 border border-slate-200 rounded-xl bg-slate-50/50">
+                    <div className="flex items-center justify-between mb-2">
+                        <div className="text-sm font-bold">語言欄位</div>
+                        <div className="flex gap-2">
+                            <button className="btn ghost compact" type="button" onClick={() => setShowLanguages((v) => !v)}>
+                                {showLanguages ? "收合" : "展開"}
+                            </button>
+                            <button className="btn ghost compact" type="button" onClick={addLanguage}>新增語言</button>
                         </div>
-                    ))}
+                    </div>
+                    {showLanguages && (
+                        <div className="space-y-2">
+                            {form.languages.map((lang, idx) => (
+                                <div key={`${lang.lang_code}-${idx}`} className="grid grid-cols-12 gap-2">
+                                    <input className="text-input col-span-3" value={lang.lang_code} placeholder="lang_code" onChange={(e) => updateLanguage(idx, "lang_code", e.target.value)} />
+                                    <input className="text-input col-span-8" value={lang.value} placeholder="value" onChange={(e) => updateLanguage(idx, "value", e.target.value)} />
+                                    <button className="btn ghost compact col-span-1" type="button" onClick={() => removeLanguage(idx)}>刪除</button>
+                                </div>
+                            ))}
+                        </div>
+                    )}
                 </div>
+                </div>
+                )}
             </div>
 
             {selectedIds.length > 0 && (
-                <div className="batch-actions flex gap-2 mt-3">
+                <div className="batch-actions flex flex-wrap gap-2 mt-3">
                     <button className="btn ghost compact" onClick={() => batchUpdate({ status: "active" })}>批次啟用</button>
                     <button className="btn ghost compact" onClick={() => batchUpdate({ status: "inactive" })}>批次停用</button>
                     <select className="select-input w-36" value={batchCategory} onChange={(e) => setBatchCategory(e.target.value)}>
@@ -323,28 +425,89 @@ export default function TermsTab() {
                 </div>
             )}
 
-            <div className="data-table is-glossary mt-3">
-                <div className="flex flex-wrap gap-2 mb-2 text-xs text-slate-600">
-                    {Object.keys(visibleCols).map((key) => (
-                        <label key={key} className="flex items-center gap-1">
-                            <input
-                                type="checkbox"
-                                checked={visibleCols[key]}
-                                onChange={(e) =>
-                                    setVisibleCols((p) => {
-                                        const next = { ...p, [key]: e.target.checked };
-                                        localStorage.setItem(
-                                            "terms_visible_cols",
-                                            JSON.stringify(next)
-                                        );
-                                        return next;
-                                    })
-                                }
-                            />
-                            {key}
-                        </label>
-                    ))}
+            <div className={`data-table is-glossary mt-3 ${compactTable ? "text-xs" : "text-sm"}`}>
+                <div className="flex items-center justify-between mb-2 sticky top-[72px] bg-white/90 backdrop-blur px-2 py-2 rounded-xl border border-slate-200/60">
+                    <div className="flex flex-wrap gap-2 text-xs text-slate-600 items-center">
+                        <button className="btn ghost compact !text-blue-600 font-bold" type="button" onClick={() => setShowColPanel((v) => !v)}>
+                            顯示欄位
+                        </button>
+                        {!showColPanel && (
+                            <span className="text-xs text-slate-400">勾選後立即生效</span>
+                        )}
+                    </div>
+                    <label className="flex items-center gap-2 text-xs text-slate-600">
+                        <input type="checkbox" checked={compactTable} onChange={(e) => setCompactTable(e.target.checked)} />
+                        緊湊模式
+                    </label>
                 </div>
+                {showColPanel && (
+                    <div className="w-full mt-2 mb-3 bg-white rounded-2xl border border-slate-200 shadow-sm p-4">
+                        <div className="flex items-center justify-between mb-2">
+                            <div className="text-sm font-bold">顯示欄位</div>
+                            <button className="btn ghost compact" type="button" onClick={() => setShowColPanel(false)}>關閉</button>
+                        </div>
+                        <div className="text-xs text-slate-500 mb-3">勾選後立即生效，至少保留一欄</div>
+                        <div className="flex flex-wrap gap-2 mb-3">
+                            <button className="btn ghost compact" type="button" onClick={() => setPreset("basic")}>基本</button>
+                            <button className="btn ghost compact" type="button" onClick={() => setPreset("advanced")}>進階</button>
+                            <button className="btn ghost compact" type="button" onClick={() => setPreset("all")}>全部</button>
+                        </div>
+                        <div className="text-xs font-bold text-slate-500 mb-2">常用</div>
+                        <div className="grid grid-cols-2 gap-2 mb-3">
+                            {["term", "category", "status", "languages"].map((key) => (
+                                <label key={key} className="flex items-center gap-2 border border-slate-200 rounded-lg px-2 py-1">
+                                    <input
+                                        type="checkbox"
+                                        checked={visibleCols[key]}
+                                        onChange={(e) =>
+                                            setVisibleColsSafe({ ...visibleCols, [key]: e.target.checked })
+                                        }
+                                    />
+                                    {colLabels[key]}
+                                </label>
+                            ))}
+                        </div>
+                        <div className="text-xs font-bold text-slate-500 mb-2">進階</div>
+                        <div className="grid grid-cols-2 gap-2 mb-3">
+                            {["aliases", "note", "created_by"].map((key) => (
+                                <label key={key} className="flex items-center gap-2 border border-slate-200 rounded-lg px-2 py-1">
+                                    <input
+                                        type="checkbox"
+                                        checked={visibleCols[key]}
+                                        onChange={(e) =>
+                                            setVisibleColsSafe({ ...visibleCols, [key]: e.target.checked })
+                                        }
+                                    />
+                                    {colLabels[key]}
+                                    {key === "aliases" && <span className="text-[10px] text-slate-400">多個以 | 分隔</span>}
+                                </label>
+                            ))}
+                        </div>
+                        <div className="text-xs font-bold text-slate-500 mb-2">表頭預覽</div>
+                        <div className="text-[11px] text-slate-600 mb-3">
+                            {Object.keys(visibleCols)
+                                .filter((k) => visibleCols[k])
+                                .map((k) => colLabels[k])
+                                .join(" / ")}
+                        </div>
+                        <div className="flex gap-2">
+                            <button className="btn ghost compact" type="button" onClick={() => {
+                                setPreset("basic");
+                            }}>恢復預設</button>
+                            <button className="btn ghost compact" type="button" onClick={() => {
+                                setPreset("all");
+                            }}>全選</button>
+                            <button className="btn ghost compact" type="button" onClick={() => {
+                                setVisibleColsSafe(
+                                    Object.keys(visibleCols).reduce(
+                                        (acc, key) => ({ ...acc, [key]: false }),
+                                        {}
+                                    )
+                                );
+                            }}>全不選</button>
+                        </div>
+                    </div>
+                )}
                 <div className="data-row data-header">
                     <div className="data-cell w-10 shrink-0 flex items-center justify-center">
                         <input type="checkbox" checked={terms.length > 0 && selectedIds.length === terms.length} onChange={(e) => toggleSelectAll(e.target.checked)} />

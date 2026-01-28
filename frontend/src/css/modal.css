@@ -28,17 +28,17 @@
     }
 
     .modal.is-draggable.is-manage {
-        overflow: hidden;
-        height: 85vh;
+        overflow: auto;
+        height: auto;
     }
 
     .modal.is-draggable.is-manage .modal-body {
-        @apply flex flex-col min-h-0 overflow-hidden;
+        @apply flex flex-col min-h-0 overflow-auto;
         flex: 1 1 auto;
     }
 
     .modal.is-draggable.is-manage .manage-body {
-        @apply flex flex-col min-h-0 overflow-hidden;
+        @apply flex flex-col min-h-0 overflow-auto;
         flex: 1 1 auto;
     }
 

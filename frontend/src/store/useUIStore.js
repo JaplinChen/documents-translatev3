@@ -1,7 +1,8 @@
 import { create } from 'zustand';
+import { persist } from 'zustand/middleware';
 import { APP_STATUS } from '../constants';
 
-export const useUIStore = create((set) => ({
+export const useUIStore = create(persist((set) => ({
     // --- Global Status ---
     status: "",
     appStatus: APP_STATUS.IDLE,
@@ -61,4 +62,10 @@ export const useUIStore = create((set) => ({
     setLastMemoryAt: (timestamp) => set({ lastMemoryAt: timestamp }),
     lastPreserveAt: null,
     setLastPreserveAt: (timestamp) => set({ lastPreserveAt: timestamp }),
+}), {
+    name: "ui_store",
+    partialize: (state) => ({
+        manageOpen: state.manageOpen,
+        manageTab: state.manageTab,
+    }),
 }));

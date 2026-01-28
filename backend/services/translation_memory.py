@@ -7,6 +7,7 @@ from collections.abc import Iterable
 from pathlib import Path
 
 from backend.services.language_detect import detect_language
+
 # Ensure we use the centralized data volume at /app/data
 DB_PATH = Path("data/translation_memory.db")
 
@@ -108,21 +109,21 @@ def _ensure_db() -> None:
         conn.executescript(SCHEMA_SQL)
         # Deduplicate existing glossary rows before adding unique index.
         conn.execute(
-            (
+
                 "DELETE FROM glossary "
                 "WHERE id NOT IN ("
                 "  SELECT MAX(id) FROM glossary "
                 "  GROUP BY source_lang, target_lang, source_text"
                 ")"
-            )
+
         )
         # Enforce uniqueness by source/target/source_text.
         conn.execute(
-            (
+
                 "CREATE UNIQUE INDEX IF NOT EXISTS "
                 "idx_glossary_unique "
                 "ON glossary (source_lang, target_lang, source_text)"
-            )
+
         )
     _DB_INITIALIZED = True
 

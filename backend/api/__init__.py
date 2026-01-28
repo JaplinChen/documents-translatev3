@@ -8,6 +8,7 @@ from backend.api.pptx_translate import router as pptx_translate_router
 from backend.api.preserve_terms import router as preserve_terms_router
 from backend.api.prompts import router as prompt_router
 from backend.api.style import router as style_router
+from backend.api.terms import router as terms_router
 from backend.api.tm import router as tm_router
 from backend.api.token_stats import router as token_stats_router
 from backend.api.xlsx import router as xlsx_router
@@ -20,6 +21,7 @@ __all__ = [
     "tm_router",
     "prompt_router",
     "preserve_terms_router",
+    "terms_router",
     "token_stats_router",
     "export_router",
     "xlsx_router",

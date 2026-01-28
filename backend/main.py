@@ -17,6 +17,7 @@ from backend.api import (
     preserve_terms_router,
     prompt_router,
     style_router,
+    terms_router,
     tm_router,
     token_stats_router,
     xlsx_router,
@@ -40,6 +41,7 @@ app.include_router(tm_router)
 app.include_router(llm_router)
 app.include_router(prompt_router)
 app.include_router(preserve_terms_router)
+app.include_router(terms_router)
 app.include_router(token_stats_router)
 app.include_router(xlsx_router)
 app.include_router(pdf_router)

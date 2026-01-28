@@ -6,6 +6,7 @@ import { API_BASE } from "../constants";
 import { X, Save, Edit, Trash2, Plus, Lock, Table, Check, RotateCcw } from "lucide-react";
 import { IconButton } from "./common/IconButton";
 import PreserveTermsTab from "./manage/PreserveTermsTab";
+import TermsTab from "./manage/TermsTab";
 import HistoryTab from "./manage/HistoryTab";
 import { useSettingsStore } from "../store/useSettingsStore";
 import { useUIStore } from "../store/useUIStore";
@@ -239,6 +240,7 @@ export default function ManageModal({
                 </div>
                 <div className="modal-tabs">
                     <button className={`tab-btn ${tab === "glossary" ? "is-active" : ""}`} type="button" onClick={() => setTab("glossary")}>{t("manage.tabs.glossary")}</button>
+                    <button className={`tab-btn ${tab === "terms" ? "is-active" : ""}`} type="button" onClick={() => setTab("terms")}>術語資料</button>
                     <button className={`tab-btn ${tab === "preserve" ? "is-active" : ""}`} type="button" onClick={() => setTab("preserve")}>{t("manage.tabs.preserve")}</button>
                     <button className={`tab-btn ${tab === "tm" ? "is-active" : ""}`} type="button" onClick={() => setTab("tm")}>{t("manage.tabs.tm")}</button>
                     <button className={`tab-btn ${tab === "history" ? "is-active" : ""}`} type="button" onClick={() => setTab("history")}>{t("nav.history", "History")}</button>
@@ -246,6 +248,8 @@ export default function ManageModal({
                 <div className={`modal-body ${tab === "history" ? "" : "manage-body"}`}>
                     {tab === "history" ? (
                         <HistoryTab onLoadFile={onLoadFile} />
+                    ) : tab === "terms" ? (
+                        <TermsTab />
                     ) : tab === "preserve" ? (
                         <PreserveTermsTab onClose={onClose} />
                     ) : (

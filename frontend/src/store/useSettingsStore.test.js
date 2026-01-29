@@ -158,7 +158,7 @@ describe('useSettingsStore', () => {
 
             await useSettingsStore.getState().detectModels();
 
-            expect(useSettingsStore.getState().llmStatus).toBe('請先輸入 API Key');
+            expect(useSettingsStore.getState().llmStatus).toEqual({ key: 'settings.status.api_key_missing' });
         });
 
         it('should call API and set models on success', async () => {
@@ -182,7 +182,7 @@ describe('useSettingsStore', () => {
 
             await useSettingsStore.getState().detectModels();
 
-            expect(useSettingsStore.getState().llmStatus).toBe('模型偵測失敗');
+            expect(useSettingsStore.getState().llmStatus).toEqual({ key: 'settings.status.models_detect_failed' });
         });
     });
 });

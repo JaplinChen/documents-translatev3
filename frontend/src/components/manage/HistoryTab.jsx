@@ -114,14 +114,16 @@ export default function HistoryTab({ onLoadFile }) {
         }
     };
 
+    const gridTemplateColumns = "1fr 130px 80px 140px";
+
     return (
         <div className="history-tab-content">
-            <div className="flex justify-between items-center mb-4 px-4 py-2 bg-amber-50 border border-amber-100 rounded-lg">
+            <div className="flex justify-between items-center mb-4 px-4 py-3 bg-amber-50/50 border border-amber-100 rounded-2xl">
                 <div className="text-sm text-amber-800 font-medium flex items-center gap-2">
-                    ⚠️ {t("history.reset_warning")}
+                    <span className="text-lg">⚠️</span> {t("history.reset_warning")}
                 </div>
-                <div className="flex items-center gap-3">
-                    <label className="flex items-center gap-2 text-xs text-amber-800">
+                <div className="flex items-center gap-4">
+                    <label className="flex items-center gap-2 text-xs text-amber-800 cursor-pointer">
                         <input
                             type="checkbox"
                             checked={compactTable}
@@ -138,68 +140,71 @@ export default function HistoryTab({ onLoadFile }) {
                         緊湊模式
                     </label>
                     <button
-                        className="btn btn-sm danger flex items-center gap-1 py-1 h-8"
+                        className="btn btn-sm danger flex items-center gap-2 py-1 h-9 rounded-xl shadow-sm hover:shadow-md transition-all"
                         onClick={handleResetAll}
                     >
-                        🗑️ {t("history.reset_all")}
+                        <span className="text-lg">🗑️</span> {t("history.reset_all")}
                     </button>
                 </div>
             </div>
             {loading ? (
-                <div className="p-4 text-center text-slate-500">{t("common.loading")}</div>
+                <div className="p-8 text-center text-slate-400 italic">{t("common.loading")}</div>
             ) : items.length === 0 ? (
-                <div className="p-4 text-center text-slate-400">{t("history.empty")}</div>
+                <div className="p-12 text-center text-slate-300 flex flex-col items-center gap-2">
+                    <span className="text-4xl opacity-50">📂</span>
+                    <div>{t("history.empty")}</div>
+                </div>
             ) : (
-                <div className="history-list max-h-[600px] overflow-y-auto">
-                    <table className={`table-sticky w-full text-left ${compactTable ? "is-compact text-xs" : "text-sm"}`}>
-                        <thead className="text-xs text-slate-500 uppercase bg-slate-50 sticky top-0">
-                            <tr>
-                                <th className="px-4 py-2">{t("history.filename")}</th>
-                                <th className="px-4 py-2 w-32">{t("history.date")}</th>
-                                <th className="px-4 py-2 w-20">{t("history.size")}</th>
-                                <th className="px-4 py-2 w-32 text-center">{t("history.actions")}</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {items.map((item, idx) => (
-                                <tr key={idx} className="border-b border-slate-100 hover:bg-slate-50">
-                                    <td className="px-4 py-3 font-medium text-slate-700 truncate max-w-[300px]" title={item.filename}>
-                                        {item.filename}
-                                    </td>
-                                    <td className="px-4 py-3 text-slate-500 text-xs">
-                                        {item.date_str}
-                                    </td>
-                                    <td className="px-4 py-3 text-slate-500 text-xs">
-                                        {(item.size / 1024 / 1024).toFixed(2)} MB
-                                    </td>
-                                    <td className="px-4 py-3 flex gap-2 justify-center">
-                                        <button
-                                            className="action-btn-sm primary"
-                                            onClick={() => handleDownload(item.filename)}
-                                            title={t("common.download")}
-                                        >
-                                            ⬇
-                                        </button>
-                                        <button
-                                            className="action-btn-sm secondary"
-                                            onClick={() => handleLoad(item)}
-                                            disabled={!!loadingFile || getFileExt(item.filename) === "json"}
-                                            title={t("history.load")}
-                                        >
-                                            {loadingFile === item.filename ? "..." : "📂"}
-                                        </button>
-                                        <button
-                                            className="action-btn-sm danger hover:bg-red-100 text-red-600"
-                                            onClick={() => handleDelete(item)}
-                                            title={t("common.delete")}
-                                        >
-                                            🗑️
-                                        </button>
-                                    </td>
-                                </tr>
-                            ))}
-                        </tbody>
-                    </table>
+                <div className={`data-table is-history mt-2 ${compactTable ? "is-compact text-xs" : "text-sm"}`}>
+                    <div className="data-row data-header" style={{ gridTemplateColumns }}>
+                        <div className="data-cell">{t("history.filename")}</div>
+                        <div className="data-cell">{t("history.date")}</div>
+                        <div className="data-cell">{t("history.size")}</div>
+                        <div className="data-cell data-actions justify-center">{t("history.actions")}</div>
+                    </div>
+                    <div className="max-h-[500px] overflow-y-auto custom-scrollbar">
+                        {items.map((item, idx) => (
+                            <div key={idx} className="data-row" style={{ gridTemplateColumns }}>
+                                <div className="data-cell font-medium text-slate-700 truncate" title={item.filename}>
+                                    {item.filename}
+                                </div>
+                                <div className="data-cell text-slate-500 text-xs">
+                                    {item.date_str}
+                                </div>
+                                <div className="data-cell text-slate-500 text-xs text-right pr-8">
+                                    {(item.size / 1024 / 1024).toFixed(2)} MB
+                                </div>
+                                <div className="data-cell data-actions flex gap-2 justify-center">
+                                    <button
+                                        className="action-btn-sm success"
+                                        onClick={() => handleDownload(item.filename)}
+                                        title={t("common.download")}
+                                    >
+                                        <img src="https://emojicdn.elk.sh/⬇️?style=apple" className="w-5 h-5 object-contain" alt="Download" />
+                                    </button>
+                                    <button
+                                        className="action-btn-sm primary"
+                                        onClick={() => handleLoad(item)}
+                                        disabled={!!loadingFile || getFileExt(item.filename) === "json"}
+                                        title={t("history.load")}
+                                    >
+                                        {loadingFile === item.filename ? (
+                                            <span className="animate-spin text-sm">⌛</span>
+                                        ) : (
+                                            <img src="https://emojicdn.elk.sh/📂?style=apple" className="w-5 h-5 object-contain" alt="Load" />
+                                        )}
+                                    </button>
+                                    <button
+                                        className="action-btn-sm danger"
+                                        onClick={() => handleDelete(item)}
+                                        title={t("common.delete")}
+                                    >
+                                        <img src="https://emojicdn.elk.sh/🗑️?style=apple" className="w-5 h-5 object-contain" alt="Delete" />
+                                    </button>
+                                </div>
+                            </div>
+                        ))}
+                    </div>
                 </div>
             )}
         </div>

@@ -4,7 +4,7 @@ import { API_BASE, APP_STATUS } from "../constants";
 import { useFileStore } from "../store/useFileStore";
 import { useSettingsStore } from "../store/useSettingsStore";
 import { useUIStore } from "../store/useUIStore";
-import { useProcessorUtils } from "./useProcessorUtils";
+import { readErrorDetail, buildBlockUid, resolveOutputMode } from "../utils/appHelpers";
 
 export function useDocumentProcessor() {
     const { t } = useTranslation();
@@ -21,7 +21,6 @@ export function useDocumentProcessor() {
 
     const useTm = useSettingsStore(s => s.useTm);
     const { fillColor, textColor, lineColor, lineDash } = correction;
-    const { readErrorDetail, buildBlockUid, resolveOutputMode } = useProcessorUtils();
 
     const getFileType = () => {
         if (!file) return null;

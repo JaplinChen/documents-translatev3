@@ -1,17 +1,8 @@
 import React, { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { CustomSelect } from "../common/CustomSelect";
+import { DEFAULT_FONT_MAPPING } from "../../constants";
 
-// Initial default mapping (aligned with backend)
-const DEFAULT_MAPPING = {
-    "vi": ["Arial", "Segoe UI", "Calibri"],
-    "th": ["Leelawadee UI", "Tahoma", "Arial"],
-    "ar": ["Arial", "Segoe UI"],
-    "he": ["Arial", "Segoe UI"],
-    "ja": ["Meiryo", "Yu Gothic", "MS PGothic"],
-    "ko": ["Malgun Gothic", "Gulim"],
-    "en": ["Arial", "Calibri", "Segoe UI"],
-};
 
 export function FontSettings({ fontMapping, setFontMapping }) {
     const { t } = useTranslation();
@@ -63,7 +54,7 @@ export function FontSettings({ fontMapping, setFontMapping }) {
 
     const handleReset = () => {
         if (window.confirm(t("settings.fonts.reset_confirm"))) {
-            setFontMapping(DEFAULT_MAPPING);
+            setFontMapping(DEFAULT_FONT_MAPPING);
         }
     };
 
@@ -181,5 +172,3 @@ export function FontSettings({ fontMapping, setFontMapping }) {
         </div>
     );
 }
-
-export const DEFAULT_FONT_MAPPING = DEFAULT_MAPPING;

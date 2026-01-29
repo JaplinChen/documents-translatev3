@@ -42,7 +42,7 @@ export function Sidebar({
                 <div className={`accordion-section ${openSections.step1 ? "is-open" : ""} ${isFileSelected ? "is-done" : ""}`}>
                     <div className="accordion-header" onClick={() => toggleSection("step1")}>
                         <div className="flex items-center gap-2">
-                            <span className={`flex items-center justify-center w-6 h-6 rounded-full text-[11px] font-bold ${isFileSelected ? "bg-blue-100 text-blue-600" : "bg-slate-200 text-slate-500"}`}>{isFileSelected ? "✓" : "1"}</span>
+                            <span className={`step-number ${openSections.step1 ? "is-active" : ""} ${isFileSelected ? "is-done" : ""}`}>{isFileSelected ? "✓" : "1"}</span>
                             <span className="step-label">{t("nav.step1")}</span>
                         </div>
                         <span className="accordion-indicator">▼</span>
@@ -83,7 +83,7 @@ export function Sidebar({
                 <div className={`accordion-section ${openSections.step3 ? "is-open" : ""} ${hasTranslation ? "is-done" : ""}`}>
                     <div className="accordion-header" onClick={() => toggleSection("step3")}>
                         <div className="flex items-center gap-2">
-                            <span className={`flex items-center justify-center w-6 h-6 rounded-full text-[11px] font-bold ${hasTranslation ? "bg-blue-100 text-blue-600" : "bg-slate-200 text-slate-500"}`}>{hasTranslation ? "✓" : "3"}</span>
+                            <span className={`step-number ${openSections.step3 ? "is-active" : ""} ${hasTranslation ? "is-done" : ""}`}>{hasTranslation ? "✓" : "3"}</span>
                             <span className="step-label">{t("nav.step3")}</span>
                         </div>
                         <span className="accordion-indicator">▼</span>
@@ -110,7 +110,7 @@ export function Sidebar({
                 <div className={`accordion-section ${openSections.step4 ? "is-open" : ""} ${isFinished ? "is-done" : ""}`}>
                     <div className="accordion-header" onClick={() => toggleSection("step4")}>
                         <div className="flex items-center gap-2">
-                            <span className={`flex items-center justify-center w-6 h-6 rounded-full text-[11px] font-bold ${isFinished ? "bg-blue-100 text-blue-600" : "bg-slate-200 text-slate-500"}`}>{isFinished ? "✓" : "4"}</span>
+                            <span className={`step-number ${openSections.step4 ? "is-active" : ""} ${isFinished ? "is-done" : ""}`}>{isFinished ? "✓" : "4"}</span>
                             <span className="step-label">{t("nav.step4")}</span>
                         </div>
                         <span className="accordion-indicator">▼</span>

@@ -3,12 +3,25 @@
 
     /* Data Table */
     .data-table {
-        @apply border border-slate-200/80 rounded-2xl bg-white shadow-sm;
+        border: 1px solid var(--border-soft);
+        border-radius: var(--radius-lg);
+        background-color: var(--bg-card);
+        @apply shadow-sm;
         overflow: visible;
     }
 
+    .unified-data-row {
+        display: grid;
+        align-items: center;
+        border-bottom: 1px solid var(--border-soft);
+        background-color: var(--bg-card);
+        transition: background-color 0.15s ease;
+    }
+
     .data-header {
-        @apply bg-slate-50 border-b border-slate-300 font-bold text-xs uppercase tracking-wider text-slate-500;
+        background-color: var(--bg-sidebar);
+        border-bottom: 1px solid var(--border-strong);
+        @apply font-bold text-xs uppercase tracking-wider text-slate-500;
         position: sticky;
         top: 0;
         z-index: 10;
@@ -51,17 +64,20 @@
         @apply text-[10px] text-slate-400;
     }
 
-    .data-row {
-        @apply grid border-b border-slate-300 last:border-b-0 transition-colors duration-150 bg-white;
+    .unified-data-row:not(.data-header):nth-child(even) {
+        background-color: var(--bg-sidebar);
     }
 
-    .table-sticky tbody tr:hover {
-        @apply bg-blue-100 transition-colors duration-75;
+    .unified-data-row:not(.data-header):hover {
+        background-color: rgba(220, 252, 231, 0.5) !important;
+        /* 淺綠色 + 透明度 50% */
+        @apply transition-colors duration-75;
     }
 
-    .table-sticky.is-compact th,
-    .table-sticky.is-compact td {
-        @apply py-2 text-xs;
+    .unified-data-row.is-selected {
+        background-color: #eff6ff !important;
+        /* var(--accent-soft) */
+        box-shadow: inset 4px 0 0 0 #3b82f6 !important;
     }
 
     .data-cell {
@@ -70,46 +86,53 @@
         word-break: break-word;
     }
 
-    .data-cell.data-actions {
-        @apply flex items-center px-4;
+    /* Tooltip / Action Buttons */
+    .action-btn-sm {
+        @apply w-8 h-8 rounded-lg flex items-center justify-center text-lg transition-all duration-200 cursor-pointer;
+        background-color: transparent !important;
+        border: none !important;
+        box-shadow: none !important;
+        color: var(--text-muted);
     }
 
-    .col-resizer {
-        position: absolute;
-        right: -2px;
-        top: 0;
-        width: 6px;
-        height: 100%;
-        cursor: col-resize;
+    .action-btn-sm:hover {
+        background-color: var(--bg-hover) !important;
+        transform: scale(1.1);
     }
 
-    .data-header .data-cell:hover .col-resizer,
-    .data-header .data-cell:focus-within .col-resizer {
-        background: rgba(59, 130, 246, 0.12);
+    .action-btn-sm.primary {
+        @apply text-blue-600;
     }
 
-    .data-row .data-cell+.data-cell {
-        @apply border-l border-slate-300;
+    .action-btn-sm.primary:hover {
+        @apply bg-blue-50/50 !important;
     }
 
-    .data-row:not(.data-header):nth-of-type(even) {
-        @apply bg-slate-100/70;
+    .action-btn-sm.danger {
+        @apply text-rose-500;
     }
 
-    .data-row:not(.data-header):hover,
-    .data-row:not(.data-header):nth-of-type(even):hover {
-        @apply bg-blue-100 transition-colors duration-75;
+    .action-btn-sm.danger:hover {
+        @apply bg-rose-50/50 !important;
     }
 
-    .data-row.is-zebra {
+    .action-btn-sm.success {
+        @apply text-emerald-600;
+    }
+
+    .action-btn-sm.success:hover {
+        @apply bg-emerald-50/50 !important;
+    }
+
+    .unified-data-row.is-zebra {
         background-color: rgba(226, 232, 240, 0.7);
     }
 
-    .data-row.is-zebra .data-cell {
+    .unified-data-row.is-zebra .data-cell {
         background-color: transparent;
     }
 
-    .data-row:not(.data-header) .data-cell.data-actions {
+    .unified-data-row:not(.data-header) .data-cell.data-actions {
         @apply justify-end gap-2;
     }
 
@@ -131,26 +154,6 @@
 
     .data-table.is-compact .data-header .data-cell {
         @apply py-2;
-    }
-
-    .action-btn-sm {
-        @apply w-8 h-8 rounded-lg flex items-center justify-center text-lg transition-all duration-200 hover:bg-slate-100;
-    }
-
-    .action-btn-sm.primary {
-        @apply text-blue-600 hover:bg-blue-50;
-    }
-
-    .action-btn-sm.danger {
-        @apply text-rose-500 hover:bg-rose-50;
-    }
-
-    .action-btn-sm.success {
-        @apply text-emerald-600 hover:bg-emerald-50;
-    }
-
-    .action-btn-sm.ghost {
-        @apply text-slate-400 hover:bg-slate-100 hover:text-slate-600;
     }
 
     .data-input {

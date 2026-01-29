@@ -1,0 +1,45 @@
+.quality-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--spacing-xs);
+    padding: 4px 10px;
+    border-radius: var(--radius-lg);
+    font-size: 12px;
+    font-weight: 500;
+    border-width: 1px;
+    border-style: solid;
+}
+
+.quality-badge-compact {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    font-size: 11px;
+    font-weight: 600;
+    border-width: 1px;
+    border-style: solid;
+}
+
+.quality-badge.excellent,
+.quality-badge-compact.excellent {
+    background-color: var(--state-done-bg);
+    color: var(--state-done-text);
+    border-color: #86efac;
+}
+
+.quality-badge.fair,
+.quality-badge-compact.fair {
+    background-color: var(--correction-fill);
+    color: #854d0e;
+    border-color: #fde047;
+}
+
+.quality-badge.poor,
+.quality-badge-compact.poor {
+    background-color: #fee2e2;
+    color: #991b1b;
+    border-color: #fca5a5;
+}

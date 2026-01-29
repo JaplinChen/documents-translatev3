@@ -26,14 +26,14 @@
     .panel-left {
         @apply border-r shadow-none p-5;
         border-color: var(--glass-border);
-        background: rgba(241, 245, 249, 0.6);
+        background: var(--bg-sidebar);
         backdrop-filter: blur(var(--glass-blur));
         height: calc(100vh - 12rem);
     }
 
     .panel-right {
         @apply gap-4 p-6;
-        background: rgba(255, 255, 255, 0.5);
+        background: var(--glass-bg);
         backdrop-filter: blur(var(--glass-blur));
         height: calc(100vh - 12rem);
     }
@@ -276,16 +276,31 @@
         }
     }
 
-    @keyframes card-pulse {
+    /* Step Indicators */
+    .step-number {
+        @apply flex items-center justify-center w-6 h-6 rounded-full text-[11px] font-bold;
+        background-color: var(--state-pending-bg);
+        color: var(--state-pending-text);
+        transition: all var(--transition-base);
+    }
 
-        0%,
-        100% {
-            transform: scale(1);
-        }
+    .step-number.is-active {
+        background-color: var(--state-active-bg);
+        color: var(--state-active-text);
+        box-shadow: 0 0 0 2px var(--state-active-bg);
+    }
 
-        50% {
-            transform: scale(0.998);
-        }
+    .step-number.is-done {
+        background-color: var(--state-done-bg);
+        color: var(--state-done-text);
+    }
+
+    .accordion-section {
+        @apply border-b border-transparent transition-all;
+    }
+
+    .accordion-section.is-done {
+        /* Optional: distinct border or background for completed sections */
     }
 }
 

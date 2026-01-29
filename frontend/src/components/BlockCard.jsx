@@ -1,5 +1,5 @@
 import { useTranslation } from "react-i18next";
-import { resolveOutputMode, extractLanguageLines, normalizeText } from "../utils";
+import { resolveOutputMode, normalizeText } from "../utils/appHelpers";
 
 /**
  * Single block card for displaying/editing translation block

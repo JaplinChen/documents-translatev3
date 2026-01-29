@@ -26,25 +26,25 @@ export const OLLAMA_BASE_URLS = [
 export const DEFAULT_LLM_PROVIDER = "ollama";
 
 /**
- * Language options for dropdowns
+ * Language options for dropdowns (Unified with labelKey)
  */
 export const LANGUAGE_OPTIONS = [
-    { code: "auto", label: "自動" },
-    { code: "zh-TW", label: "繁體中文" },
-    { code: "zh-CN", label: "简体中文" },
-    { code: "en", label: "English" },
-    { code: "vi", label: "Tiếng Việt" },
-    { code: "ja", label: "日本語" },
-    { code: "ko", label: "한국어" },
-    { code: "th", label: "ไทย" },
-    { code: "id", label: "Bahasa Indonesia" },
-    { code: "ms", label: "Bahasa Melayu" },
-    { code: "de", label: "Deutsch" },
-    { code: "fr", label: "Français" },
-    { code: "es", label: "Español" },
-    { code: "pt", label: "Português" },
-    { code: "ru", label: "Русский" },
-    { code: "ar", label: "العربية" }
+    { code: "auto", labelKey: "language.options.auto", label: "自動 (Auto)" },
+    { code: "zh-TW", labelKey: "language.options.zh_tw", label: "繁體中文" },
+    { code: "zh-CN", labelKey: "language.options.zh_cn", label: "简体中文" },
+    { code: "en", labelKey: "language.options.en", label: "English" },
+    { code: "vi", labelKey: "language.options.vi", label: "Tiếng Việt" },
+    { code: "ja", labelKey: "language.options.ja", label: "日本語" },
+    { code: "ko", labelKey: "language.options.ko", label: "한국어" },
+    { code: "th", labelKey: "language.options.th", label: "ไทย" },
+    { code: "id", labelKey: "language.options.id", label: "Bahasa Indonesia" },
+    { code: "ms", labelKey: "language.options.ms", label: "Bahasa Melayu" },
+    { code: "de", labelKey: "language.options.de", label: "Deutsch" },
+    { code: "fr", labelKey: "language.options.fr", label: "Français" },
+    { code: "es", labelKey: "language.options.es", label: "Español" },
+    { code: "pt", labelKey: "language.options.pt", label: "Português" },
+    { code: "ru", labelKey: "language.options.ru", label: "Русский" },
+    { code: "ar", labelKey: "language.options.ar", label: "العربية" }
 ];
 
 /**
@@ -66,7 +66,6 @@ export const FRAME_MODE_OPTIONS = [
 
 /**
  * Application Processing Status Enum
- * Used for deterministic UI state management independent of display language
  */
 export const APP_STATUS = {
     IDLE: "idle",
@@ -77,4 +76,17 @@ export const APP_STATUS = {
     TRANSLATION_COMPLETED: "translation_completed",
     EXPORT_COMPLETED: "export_completed",
     ERROR: "error"
+};
+
+/**
+ * Default Font Mapping (aligned with backend)
+ */
+export const DEFAULT_FONT_MAPPING = {
+    "vi": ["Arial", "Segoe UI", "Calibri"],
+    "th": ["Leelawadee UI", "Tahoma", "Arial"],
+    "ar": ["Arial", "Segoe UI"],
+    "he": ["Arial", "Segoe UI"],
+    "ja": ["Meiryo", "Yu Gothic", "MS PGothic"],
+    "ko": ["Malgun Gothic", "Gulim"],
+    "en": ["Arial", "Calibri", "Segoe UI"],
 };

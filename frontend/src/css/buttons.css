@@ -1,60 +1,103 @@
 /* === Button Styles === */
 @layer components {
     .btn {
-        @apply inline-flex items-center justify-center gap-2 h-11 px-6 rounded-full font-bold text-sm;
-        @apply border border-slate-300 bg-white text-slate-700 cursor-pointer transition-all duration-200;
-        @apply hover:bg-slate-50 hover:border-slate-400 hover:shadow-lg hover:-translate-y-0.5 active:translate-y-0;
+        @apply inline-flex items-center justify-center gap-2 h-11 px-6 font-bold text-sm;
+        border-radius: var(--radius-2xl);
+        border: 1px solid var(--border-strong);
+        background-color: var(--bg-card);
+        color: var(--text-main);
+        cursor: pointer;
+        transition: all var(--transition-base);
+        @apply hover:bg-slate-50 hover:border-slate-400 hover:shadow-lg active:translate-y-0.5;
         @apply disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none;
     }
 
     .btn.primary {
-        @apply bg-blue-600 text-white border-transparent shadow-lg shadow-blue-600/25 hover:bg-blue-700 hover:shadow-blue-600/40;
+        background-color: var(--accent);
+        color: white;
+        border-color: transparent;
+        box-shadow: 0 4px 14px 0 rgba(37, 99, 235, 0.39);
+    }
+
+    .btn.primary:hover {
+        background-color: var(--accent-strong);
+        transform: translateY(-2px);
     }
 
     .btn.ghost {
-        @apply bg-transparent border-transparent text-slate-600 hover:bg-slate-100;
+        background-color: transparent;
+        border-color: transparent;
+        color: var(--text-muted);
+    }
+
+    .btn.ghost:hover {
+        background-color: var(--bg-hover);
+        color: var(--text-heading);
     }
 
     .btn.danger {
-        @apply bg-rose-50 text-rose-600 border-rose-200 hover:bg-rose-100 hover:border-rose-300;
+        background-color: #fff1f2;
+        color: var(--state-error);
+        border-color: #fecdd3;
     }
 
     .btn.compact {
-        @apply h-8 px-3 text-xs rounded-lg;
+        @apply h-8 px-3 text-xs;
+        border-radius: var(--radius-md);
     }
 
     .icon-btn {
-        @apply w-8 h-8 rounded-md flex items-center justify-center;
-        @apply border border-slate-300 bg-white text-slate-600 text-lg cursor-pointer transition-all duration-200 shadow-sm;
-        @apply hover:text-blue-600 hover:border-blue-600 hover:bg-blue-50 hover:shadow-md;
+        @apply w-8 h-8 flex items-center justify-center;
+        border-radius: var(--radius-md);
+        border: 1px solid var(--border-soft);
+        background-color: var(--bg-card);
+        color: var(--text-muted);
+        transition: all var(--transition-base);
+        cursor: pointer;
+    }
+
+    .icon-btn:hover {
+        color: var(--accent);
+        border-color: var(--accent);
+        background-color: var(--accent-soft);
+        transform: scale(1.05);
     }
 
     .btn-icon-action {
-        @apply w-8 h-8 flex items-center justify-center rounded-md text-lg;
-        @apply border border-slate-300 bg-white text-slate-700 cursor-pointer transition-all duration-200 shadow-sm;
-        @apply hover:bg-slate-50 hover:border-slate-400 hover:shadow-md;
+        @apply w-8 h-8 flex items-center justify-center text-lg;
+        border-radius: var(--radius-md);
+        border: 1px solid var(--border-soft);
+        background-color: var(--bg-card);
+        color: var(--text-main);
+        cursor: pointer;
+        transition: all var(--transition-fast);
     }
 
-    .btn-icon-action.text-primary {
-        @apply text-blue-600;
-    }
-
-    .btn-icon-action.border-primary {
-        @apply border-blue-500;
-    }
-
-    .ghost-btn {
-        @apply px-3 py-1.5 text-sm text-slate-500 rounded-lg cursor-pointer transition-all duration-200;
-        @apply hover:bg-slate-100 hover:text-slate-700;
+    .btn-icon-action:hover {
+        background-color: var(--bg-hover);
+        border-color: var(--border-strong);
     }
 
     .text-btn {
-        @apply text-sm text-blue-600 font-medium cursor-pointer transition-all duration-200;
-        @apply hover:text-blue-700 hover:underline;
+        @apply text-sm font-medium cursor-pointer transition-all duration-200;
+        color: var(--accent);
+    }
+
+    .text-btn:hover {
+        color: var(--accent-strong);
+        @apply underline;
     }
 
     .action-btn {
-        @apply px-4 py-2 rounded-xl border border-slate-300 bg-white text-slate-800 text-sm font-bold cursor-pointer transition-all duration-200 shadow-sm;
-        @apply hover:bg-slate-50 hover:border-blue-600 hover:shadow-md;
+        @apply px-4 py-2 font-bold cursor-pointer transition-all duration-200 shadow-sm text-sm;
+        border-radius: var(--radius-md);
+        border: 1px solid var(--border-strong);
+        background-color: var(--bg-card);
+        color: var(--text-heading);
+    }
+
+    .action-btn:hover {
+        border-color: var(--accent);
+        background-color: var(--bg-hover);
     }
 }

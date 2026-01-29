@@ -43,7 +43,7 @@ export function EditorPanel({
             </div>
 
             {blockCount === 0 ? (
-                <div className="empty-state-v2 flex flex-col items-center justify-center h-[calc(100%-80px)] text-center p-8 bg-white/50 animate-in fade-in zoom-in-95 duration-500">
+                <div className="empty-state-v2 flex flex-col items-center justify-center text-center p-8 animate-in fade-in zoom-in-95 duration-500" style={{ height: "calc(100% - var(--spacing-xl) * 2.5)" }}>
                     <div className="w-20 h-20 bg-blue-50 text-blue-500 rounded-3xl flex items-center justify-center mb-6 shadow-xl shadow-blue-500/10 ring-1 ring-blue-100">
                         <FileUp size={40} strokeWidth={1.5} />
                     </div>

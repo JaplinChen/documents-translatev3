@@ -1,12 +1,15 @@
-import React, { useEffect, useLayoutEffect, useRef } from "react";
+import React, { useEffect, useRef } from "react";
 import { useTranslation } from "react-i18next";
-import SettingsModal from "./components/SettingsModal";
-import ManageModal from "./components/ManageModal";
-import { Navbar } from "./components/Navbar";
-import { Sidebar } from "./components/Sidebar";
-import { EditorPanel } from "./components/EditorPanel";
-import { API_BASE, APP_STATUS } from "./constants";
+
+// Constants & Utils
+import { API_BASE, APP_STATUS, LANGUAGE_OPTIONS } from "./constants";
 import { CJK_REGEX, VI_REGEX } from "./utils/regex";
+import { extractLanguageLines } from "./utils/appHelpers";
+
+// Stores
+import { useFileStore } from "./store/useFileStore";
+import { useSettingsStore } from "./store/useSettingsStore";
+import { useUIStore } from "./store/useUIStore";
 
 // Hooks
 import { useTerminology } from "./hooks/useTerminology";
@@ -14,12 +17,12 @@ import { useDocumentProcessor } from "./hooks/useDocumentProcessor";
 import { usePanelResize } from "./hooks/usePanelResize";
 import { useBlockFilter } from "./hooks/useBlockFilter";
 
-// Stores
-import { useFileStore } from "./store/useFileStore";
-import { useSettingsStore } from "./store/useSettingsStore";
-import { useUIStore } from "./store/useUIStore";
-
-import { LANGUAGE_OPTIONS, extractLanguageLines } from "./utils/appHelpers";
+// Components
+import SettingsModal from "./components/SettingsModal";
+import ManageModal from "./components/ManageModal";
+import { Navbar } from "./components/Navbar";
+import { Sidebar } from "./components/Sidebar";
+import { EditorPanel } from "./components/EditorPanel";
 
 function App() {
   const { t } = useTranslation();
@@ -36,18 +39,6 @@ function App() {
   const tm = useTerminology();
   const processor = useDocumentProcessor();
 
-  useLayoutEffect(() => {
-    try {
-      const raw = localStorage.getItem("ui_store");
-      if (!raw) return;
-      const parsed = JSON.parse(raw);
-      const state = parsed?.state || parsed;
-      if (state?.manageTab) ui.setManageTab(state.manageTab);
-      if (state?.manageOpen) ui.setManageOpen(true);
-    } catch {
-      // Ignore storage errors
-    }
-  }, []);
 
   usePanelResize(leftPanelRef, fileStore.blocks.length);
 
@@ -94,6 +85,14 @@ function App() {
     { id: 3, label: t("nav.step3") },
     { id: 4, label: t("nav.step4") }
   ];
+
+  // Helper to resolve translation objects from store
+  const resolveStoreStatus = (status) => {
+    if (!status) return "";
+    if (typeof status === 'string') return status;
+    if (status.key) return t(status.key, status.params);
+    return "";
+  };
 
   return (
     <div className="app">
@@ -186,17 +185,14 @@ function App() {
         llmFastMode={settings.providers[settings.llmProvider]?.fastMode || false}
         setLlmFastMode={(v) => settings.updateProviderSettings(settings.llmProvider, { fastMode: v })}
 
-        llmModels={settings.llmModels} llmStatus={settings.llmStatus}
+        llmModels={settings.llmModels} llmStatus={resolveStoreStatus(settings.llmStatus)}
         onDetect={settings.detectModels}
         onSave={() => {
-          // Auto-saved by store action updates, just close?
-          // But UI shows "Status: saved".
-          // SettingsModal calls onSave manually.
-          settings.setLlmStatus(t("settings.status.saved"));
+          settings.setLlmStatus({ key: "settings.status.saved" });
           ui.setLlmOpen(false);
         }}
         onSaveCorrection={() => {
-          ui.setStatus(t("settings.status.saved"));
+          ui.setStatus({ key: "settings.status.saved" });
           ui.setLlmOpen(false);
         }}
         defaultBaseUrl={
@@ -232,6 +228,7 @@ function App() {
         fontMapping={settings.fontMapping}
         setFontMapping={settings.setFontMapping}
         onSaveOcr={settings.saveOcrSettings}
+        ocrStatus={resolveStoreStatus(settings.ocrStatus)}
       />
 
       <ManageModal

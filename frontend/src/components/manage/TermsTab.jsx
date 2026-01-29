@@ -287,6 +287,16 @@ export default function TermsTab() {
         );
     };
 
+    const handleKeyDown = (e, saveFn, cancelFn) => {
+        if (e.key === "Enter") {
+            e.preventDefault();
+            saveFn();
+        } else if (e.key === "Escape") {
+            e.preventDefault();
+            cancelFn();
+        }
+    };
+
     return (
         <div className="space-y-4 max-h-[70vh] overflow-auto pr-1">
             <div className="action-row flex items-center justify-between gap-3 bg-slate-50/70 border border-slate-200/70 rounded-2xl px-4 py-3 sticky top-0 z-20">
@@ -296,6 +306,7 @@ export default function TermsTab() {
                         placeholder="搜尋術語/別名"
                         value={filters.q}
                         onChange={(e) => setFilters((p) => ({ ...p, q: e.target.value }))}
+                        onKeyDown={(e) => e.key === "Enter" && setFilters((p) => ({ ...p, _refresh: Date.now() }))}
                     />
                     <select
                         className="select-input w-36"
@@ -426,7 +437,13 @@ export default function TermsTab() {
                 {showCreate && (
                     <div className="space-y-2">
                         <div className="create-fields grid grid-cols-12 gap-2 w-full items-center">
-                            <input className="text-input col-span-3" value={form.term} placeholder="術語" onChange={(e) => setForm((p) => ({ ...p, term: e.target.value }))} />
+                            <input
+                                className="text-input col-span-3"
+                                value={form.term}
+                                placeholder="術語"
+                                onChange={(e) => setForm((p) => ({ ...p, term: e.target.value }))}
+                                onKeyDown={(e) => handleKeyDown(e, handleUpsert, resetForm)}
+                            />
                             <select className="select-input col-span-2" value={form.category_id || ""} onChange={(e) => setForm((p) => ({ ...p, category_id: e.target.value }))}>
                                 <option value="">分類</option>
                                 {categories.map((c) => (
@@ -443,8 +460,8 @@ export default function TermsTab() {
                                 <option value="uppercase">uppercase</option>
                                 <option value="lowercase">lowercase</option>
                             </select>
-                            <input className="text-input col-span-3" value={form.aliases} placeholder="別名 (| 分隔)" onChange={(e) => setForm((p) => ({ ...p, aliases: e.target.value }))} />
-                            <input className="text-input col-span-3" value={form.note} placeholder="備註" onChange={(e) => setForm((p) => ({ ...p, note: e.target.value }))} />
+                            <input className="text-input col-span-3" value={form.aliases} placeholder="別名 (| 分隔)" onChange={(e) => setForm((p) => ({ ...p, aliases: e.target.value }))} onKeyDown={(e) => handleKeyDown(e, handleUpsert, resetForm)} />
+                            <input className="text-input col-span-3" value={form.note} placeholder="備註" onChange={(e) => setForm((p) => ({ ...p, note: e.target.value }))} onKeyDown={(e) => handleKeyDown(e, handleUpsert, resetForm)} />
                             <div className="col-span-1 flex gap-1">
                                 <button className="btn primary flex-1 text-lg" type="button" onClick={handleUpsert}>
                                     {editingId ? "更新" : "+"}
@@ -588,7 +605,7 @@ export default function TermsTab() {
                         </div>
                     </div>
                 )}
-                <div className="data-row data-header" style={{ gridTemplateColumns }}>
+                <div className="unified-data-row data-header" style={{ gridTemplateColumns }}>
                     <div className="data-cell w-10 shrink-0 flex items-center justify-center">
                         <input type="checkbox" checked={terms.length > 0 && selectedIds.length === terms.length} onChange={(e) => toggleSelectAll(e.target.checked)} />
                         <span className="col-resizer" onMouseDown={(e) => startResize("select", e)} />
@@ -607,118 +624,131 @@ export default function TermsTab() {
                     const isEditing = editingId === item.id;
                     const languageText = formatLanguages(isEditing ? form.languages : item.languages);
                     return (
-                    <div
-                        className={`data-row ${idx % 2 === 1 ? "is-zebra" : ""}`}
-                        key={item.id}
-                        style={{
-                            gridTemplateColumns,
-                            backgroundColor: idx % 2 === 1 ? "rgba(226, 232, 240, 0.7)" : undefined,
-                        }}
-                    >
-                        <div className="data-cell w-10 shrink-0 flex items-center justify-center">
-                            <input type="checkbox" checked={selectedIds.includes(item.id)} onChange={(e) => toggleSelect(item.id, e.target.checked)} />
-                        </div>
-                        {visibleCols.term && (
-                            <div className="data-cell">
-                                {isEditing ? (
-                                    <input
-                                        className="data-input !bg-white !border-blue-200 font-bold"
-                                        value={form.term || ""}
-                                        onChange={(e) => setForm((p) => ({ ...p, term: e.target.value }))}
-                                    />
-                                ) : item.term}
+                        <div
+                            className={`unified-data-row ${isSelected ? "is-selected" : ""}`}
+                            key={item.id}
+                            style={{ gridTemplateColumns }}
+                        >
+                            <div className="data-cell w-10 shrink-0 flex items-center justify-center">
+                                <input type="checkbox" checked={selectedIds.includes(item.id)} onChange={(e) => toggleSelect(item.id, e.target.checked)} />
                             </div>
-                        )}
-                        {visibleCols.category && (
-                            <div className="data-cell">
-                                {isEditing ? (
-                                    <select
-                                        className="data-input !bg-white !border-blue-200 font-bold !text-[12px]"
-                                        value={form.category_id || ""}
-                                        onChange={(e) => setForm((p) => ({ ...p, category_id: e.target.value ? parseInt(e.target.value) : null }))}
-                                    >
-                                        <option value="">分類</option>
-                                        {categories.map((c) => (
-                                            <option key={`cat-edit-${c.id}`} value={c.id}>{c.name}</option>
-                                        ))}
-                                    </select>
-                                ) : (
-                                    <CategoryPill name={item.category_name} />
-                                )}
-                            </div>
-                        )}
-                        {visibleCols.status && (
-                            <div className="data-cell">
-                                {isEditing ? (
-                                    <select
-                                        className="data-input !bg-white !border-blue-200 font-bold !text-[12px]"
-                                        value={form.status || "active"}
-                                        onChange={(e) => setForm((p) => ({ ...p, status: e.target.value }))}
-                                    >
-                                        <option value="active">active</option>
-                                        <option value="inactive">inactive</option>
-                                    </select>
-                                ) : (
-                                    <span className={`status-pill ${item.status}`}>{item.status}</span>
-                                )}
-                            </div>
-                        )}
-                        {visibleCols.languages && (
-                            <div className="data-cell">
-                                {isEditing ? (
-                                    <input
-                                        className="data-input !bg-white !border-blue-200 font-bold"
-                                        value={languageText}
-                                        onChange={(e) => setForm((p) => ({ ...p, languages: parseLanguages(e.target.value) }))}
-                                    />
-                                ) : (
-                                    (item.languages || []).map((l) => `${l.lang_code}:${l.value}`).join(" / ")
-                                )}
-                            </div>
-                        )}
-                        {visibleCols.aliases && (
-                            <div className="data-cell">
-                                {isEditing ? (
-                                    <input
-                                        className="data-input !bg-white !border-blue-200 font-bold"
-                                        value={form.aliases || ""}
-                                        onChange={(e) => setForm((p) => ({ ...p, aliases: e.target.value }))}
-                                    />
-                                ) : (
-                                    (item.aliases || []).join(" | ")
-                                )}
-                            </div>
-                        )}
-                        {visibleCols.note && (
-                            <div className="data-cell">
-                                {isEditing ? (
-                                    <input
-                                        className="data-input !bg-white !border-blue-200 font-bold"
-                                        value={form.note || ""}
-                                        onChange={(e) => setForm((p) => ({ ...p, note: e.target.value }))}
-                                    />
-                                ) : (
-                                    item.note || ""
-                                )}
-                            </div>
-                        )}
-                        {visibleCols.created_by && <div className="data-cell">{item.created_by || ""}</div>}
-                        <div className="data-cell data-actions">
-                            {isEditing ? (
-                                <>
-                                    <IconButton icon={Check} variant="action" size="sm" onClick={handleUpsert} title="儲存" />
-                                    <IconButton icon={X} size="sm" onClick={resetForm} title="取消" />
-                                </>
-                            ) : (
-                                <>
-                                    <IconButton icon={Edit} size="sm" onClick={() => startEdit(item)} title="編輯" />
-                                    <IconButton icon={History} size="sm" onClick={() => loadVersions(item.id)} title="版本" />
-                                    <IconButton icon={Trash2} variant="danger" size="sm" onClick={() => remove(item.id)} title="刪除" />
-                                </>
+                            {visibleCols.term && (
+                                <div className="data-cell">
+                                    {isEditing ? (
+                                        <input
+                                            className="data-input !bg-white !border-blue-200 font-bold"
+                                            value={form.term || ""}
+                                            onChange={(e) => setForm((p) => ({ ...p, term: e.target.value }))}
+                                            onKeyDown={(e) => handleKeyDown(e, handleUpsert, resetForm)}
+                                            autoFocus
+                                        />
+                                    ) : item.term}
+                                </div>
                             )}
+                            {visibleCols.category && (
+                                <div className="data-cell">
+                                    {isEditing ? (
+                                        <select
+                                            className="data-input !bg-white !border-blue-200 font-bold !text-[12px]"
+                                            value={form.category_id || ""}
+                                            onChange={(e) => setForm((p) => ({ ...p, category_id: e.target.value ? parseInt(e.target.value) : null }))}
+                                        >
+                                            <option value="">分類</option>
+                                            {categories.map((c) => (
+                                                <option key={`cat-edit-${c.id}`} value={c.id}>{c.name}</option>
+                                            ))}
+                                        </select>
+                                    ) : (
+                                        <CategoryPill name={item.category_name} />
+                                    )}
+                                </div>
+                            )}
+                            {visibleCols.status && (
+                                <div className="data-cell">
+                                    {isEditing ? (
+                                        <select
+                                            className="select-input !h-8 !text-xs !bg-white !border-blue-200 font-bold"
+                                            value={form.status || "active"}
+                                            onChange={(e) => setForm((p) => ({ ...p, status: e.target.value }))}
+                                        >
+                                            <option value="active">active</option>
+                                            <option value="inactive">inactive</option>
+                                        </select>
+                                    ) : (
+                                        <span className={`status-pill ${item.status}`}>{item.status}</span>
+                                    )}
+                                </div>
+                            )}
+                            {visibleCols.languages && (
+                                <div className="data-cell">
+                                    {isEditing ? (
+                                        <input
+                                            className="data-input !bg-white !border-blue-200 font-bold"
+                                            value={languageText}
+                                            onChange={(e) => setForm((p) => ({ ...p, languages: parseLanguages(e.target.value) }))}
+                                            onKeyDown={(e) => handleKeyDown(e, handleUpsert, resetForm)}
+                                        />
+                                    ) : (
+                                        (item.languages || []).map((l) => `${l.lang_code}:${l.value}`).join(" / ")
+                                    )}
+                                </div>
+                            )}
+                            {visibleCols.aliases && (
+                                <div className="data-cell">
+                                    {isEditing ? (
+                                        <input
+                                            className="data-input !bg-white !border-blue-200 font-bold"
+                                            value={form.aliases || ""}
+                                            onChange={(e) => setForm((p) => ({ ...p, aliases: e.target.value }))}
+                                            onKeyDown={(e) => handleKeyDown(e, handleUpsert, resetForm)}
+                                        />
+                                    ) : (
+                                        (item.aliases || []).join(" | ")
+                                    )}
+                                </div>
+                            )}
+                            {visibleCols.note && (
+                                <div className="data-cell">
+                                    {isEditing ? (
+                                        <input
+                                            className="data-input !bg-white !border-blue-200 font-bold"
+                                            value={form.note || ""}
+                                            onChange={(e) => setForm((p) => ({ ...p, note: e.target.value }))}
+                                            onKeyDown={(e) => handleKeyDown(e, handleUpsert, resetForm)}
+                                        />
+                                    ) : (
+                                        item.note || ""
+                                    )}
+                                </div>
+                            )}
+                            {visibleCols.created_by && <div className="data-cell">{item.created_by || ""}</div>}
+                            <div className="data-cell data-actions flex justify-end gap-1">
+                                {isEditing ? (
+                                    <>
+                                        <button className="action-btn-sm success" onClick={handleUpsert} title="儲存">
+                                            <img src="https://emojicdn.elk.sh/✅?style=apple" className="w-5 h-5 object-contain" alt="Save" />
+                                        </button>
+                                        <button className="action-btn-sm" onClick={resetForm} title="取消">
+                                            <img src="https://emojicdn.elk.sh/❌?style=apple" className="w-5 h-5 object-contain" alt="Cancel" />
+                                        </button>
+                                    </>
+                                ) : (
+                                    <>
+                                        <button className="action-btn-sm" onClick={() => startEdit(item)} title="編輯">
+                                            <img src="https://emojicdn.elk.sh/📝?style=apple" className="w-5 h-5 object-contain" alt="Edit" />
+                                        </button>
+                                        <button className="action-btn-sm" onClick={() => loadVersions(item.id)} title="版本">
+                                            <img src="https://emojicdn.elk.sh/📜?style=apple" className="w-5 h-5 object-contain" alt="Version" />
+                                        </button>
+                                        <button className="action-btn-sm danger" onClick={() => remove(item.id)} title="刪除">
+                                            <img src="https://emojicdn.elk.sh/🗑️?style=apple" className="w-5 h-5 object-contain" alt="Delete" />
+                                        </button>
+                                    </>
+                                )}
+                            </div>
                         </div>
-                    </div>
-                )})}
+                    )
+                })}
             </div>
 
             {versions && (

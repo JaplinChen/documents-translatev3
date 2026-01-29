@@ -17,8 +17,13 @@
     }
 
     .select-input {
-        @apply w-full h-11 px-4 pr-10 border border-slate-300 rounded-lg text-sm bg-blue-100/50 text-slate-900 appearance-none;
-        @apply transition-all duration-200 hover:border-blue-400 hover:bg-white;
+        @apply w-full h-11 px-4 pr-10 text-sm appearance-none;
+        border-radius: var(--radius-md);
+        border: 1px solid var(--border-soft);
+        background-color: var(--accent-soft);
+        color: var(--text-heading);
+        @apply transition-all duration-200;
+        @apply hover:border-blue-400 hover:bg-white;
         @apply focus:outline-none focus:border-blue-600 focus:ring-4 focus:ring-blue-600/10;
         /* 強制 Light 方案，修正 Mac/Chrome 選單清單黑色底色問題 */
         color-scheme: light !important;
@@ -30,8 +35,13 @@
     }
 
     .text-input {
-        @apply w-full h-11 px-4 border border-slate-300 rounded-lg text-sm bg-white text-slate-900;
-        @apply transition-all duration-200 hover:border-slate-400;
+        @apply w-full h-11 px-4 text-sm;
+        border-radius: var(--radius-md);
+        border: 1px solid var(--border-soft);
+        background-color: var(--bg-card);
+        color: var(--text-heading);
+        @apply transition-all duration-200;
+        @apply hover:border-slate-400;
         @apply focus:outline-none focus:border-blue-600 focus:ring-4 focus:ring-blue-600/10;
     }
 
@@ -84,7 +94,10 @@
     }
 
     .file-input-label {
-        @apply w-full min-h-[70px] px-4 py-2 border-2 border-dashed border-slate-300 rounded-xl bg-slate-50;
+        @apply w-full min-h-[70px] px-4 py-4;
+        border: 2px dashed var(--border-strong);
+        border-radius: var(--radius-lg);
+        background-color: var(--bg-main);
         @apply flex flex-col items-center justify-center gap-1 cursor-pointer transition-all duration-300;
         @apply hover:bg-white hover:border-blue-500 hover:shadow-xl hover:shadow-blue-500/5;
     }

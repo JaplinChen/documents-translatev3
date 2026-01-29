@@ -12,7 +12,7 @@ export function SidebarStep2({
         <div className={`accordion-section ${open ? "is-open" : ""} ${isExtracted ? "is-done" : ""}`}>
             <div className="accordion-header" onClick={toggle}>
                 <div className="flex items-center gap-2">
-                    <span className={`flex items-center justify-center w-6 h-6 rounded-full text-[11px] font-bold ${isExtracted ? "bg-blue-100 text-blue-600" : "bg-slate-200 text-slate-500"}`}>
+                    <span className={`step-number ${open ? "is-active" : ""} ${isExtracted ? "is-done" : ""}`}>
                         {isExtracted ? "✓" : "2"}
                     </span>
                     <span className="step-label">{t("nav.step2")}</span>

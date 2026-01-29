@@ -30,15 +30,30 @@
     --radius-sm: 6px;
     --radius-md: 10px;
     --radius-lg: 16px;
+    --radius-2xl: 24px;
 
-    /* 陰影規範 */
-    --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
-    --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
-    --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
+    /* 間距規範 */
+    --spacing-xs: 4px;
+    --spacing-sm: 8px;
+    --spacing-base: 16px;
+    --spacing-lg: 24px;
+    --spacing-xl: 32px;
+
+    /* 狀態顏色 (Semantic States) */
+    --state-done-bg: #dcfce7;
+    --state-done-text: #166534;
+    --state-active-bg: #dbeafe;
+    --state-active-text: #1e40af;
+    --state-pending-bg: #f1f5f9;
+    --state-pending-text: #64748b;
+    --state-success: #22c55e;
+    --state-warning: #f59e0b;
+    --state-error: #ef4444;
 
     /* 動畫過渡 */
     --transition-fast: 150ms cubic-bezier(0.4, 0, 0.2, 1);
     --transition-base: 250ms cubic-bezier(0.4, 0, 0.2, 1);
+    --transition-slow: 400ms cubic-bezier(0.4, 0, 0.2, 1);
 
     /* 校正模式顏色 */
     --correction-fill: #fef9c3;
@@ -47,8 +62,10 @@
 
     /* 玻璃擬態 (Glassmorphism) */
     --glass-bg: rgba(255, 255, 255, 0.7);
+    --glass-bg-deep: rgba(255, 255, 255, 0.85);
     --glass-border: rgba(255, 255, 255, 0.3);
     --glass-blur: 12px;
+    --glass-blur-sm: 4px;
     --glass-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.07);
 }
 

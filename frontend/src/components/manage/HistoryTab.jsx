@@ -7,6 +7,14 @@ export default function HistoryTab({ onLoadFile }) {
     const [items, setItems] = useState([]);
     const [loading, setLoading] = useState(false);
     const [loadingFile, setLoadingFile] = useState(null);
+    const [compactTable, setCompactTable] = useState(() => {
+        try {
+            const saved = localStorage.getItem("manage_table_compact_history");
+            return saved ? JSON.parse(saved) : false;
+        } catch {
+            return false;
+        }
+    });
 
     useEffect(() => {
         fetchHistory();
@@ -112,12 +120,30 @@ export default function HistoryTab({ onLoadFile }) {
                 <div className="text-sm text-amber-800 font-medium flex items-center gap-2">
                     ⚠️ {t("history.reset_warning")}
                 </div>
-                <button
-                    className="btn btn-sm danger flex items-center gap-1 py-1 h-8"
-                    onClick={handleResetAll}
-                >
-                    🗑️ {t("history.reset_all")}
-                </button>
+                <div className="flex items-center gap-3">
+                    <label className="flex items-center gap-2 text-xs text-amber-800">
+                        <input
+                            type="checkbox"
+                            checked={compactTable}
+                            onChange={(e) => {
+                                const checked = e.target.checked;
+                                setCompactTable(checked);
+                                try {
+                                    localStorage.setItem("manage_table_compact_history", JSON.stringify(checked));
+                                } catch {
+                                    // 忽略儲存失敗
+                                }
+                            }}
+                        />
+                        緊湊模式
+                    </label>
+                    <button
+                        className="btn btn-sm danger flex items-center gap-1 py-1 h-8"
+                        onClick={handleResetAll}
+                    >
+                        🗑️ {t("history.reset_all")}
+                    </button>
+                </div>
             </div>
             {loading ? (
                 <div className="p-4 text-center text-slate-500">{t("common.loading")}</div>
@@ -125,7 +151,7 @@ export default function HistoryTab({ onLoadFile }) {
                 <div className="p-4 text-center text-slate-400">{t("history.empty")}</div>
             ) : (
                 <div className="history-list max-h-[600px] overflow-y-auto">
-                    <table className="w-full text-sm text-left">
+                    <table className={`table-sticky w-full text-left ${compactTable ? "is-compact text-xs" : "text-sm"}`}>
                         <thead className="text-xs text-slate-500 uppercase bg-slate-50 sticky top-0">
                             <tr>
                                 <th className="px-4 py-2">{t("history.filename")}</th>

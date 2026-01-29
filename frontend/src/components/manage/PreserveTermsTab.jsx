@@ -22,13 +22,34 @@ export default function PreserveTermsTab({ onClose }) {
 
     const [selectedIds, setSelectedIds] = React.useState([]);
     const [visibleCount, setVisibleCount] = React.useState(200);
+    const [compactTable, setCompactTable] = React.useState(() => {
+        try {
+            const saved = localStorage.getItem("manage_table_compact_preserve");
+            return saved ? JSON.parse(saved) : false;
+        } catch {
+            return false;
+        }
+    });
 
     React.useEffect(() => {
         setVisibleCount(200);
     }, [filterText, filterCategory]);
 
-    const categoryKeyMap = { "產品名稱": "product", "技術縮寫": "abbr", "專業術語": "special", "其他": "other", "翻譯術語": "trans" };
-    const getCategoryLabel = (cat) => t(`manage.preserve.categories.${categoryKeyMap[cat] || "other"}`);
+    const categoryKeyMap = {
+        "產品名稱": "product", "產品": "product",
+        "技術縮寫": "abbr", "技術": "abbr",
+        "專業術語": "special", "專業": "special",
+        "翻譯術語": "trans", "翻譯": "trans",
+        "公司名稱": "company", "公司": "company",
+        "網絡術語": "network", "網絡": "network",
+        "其他": "other"
+    };
+    const getCategoryLabel = (cat) => {
+        const key = categoryKeyMap[cat];
+        if (key) return t(`manage.preserve.categories.${key}`);
+        return cat || t("manage.preserve.categories.other");
+    };
+
 
     const handleBatchDelete = async () => {
         if (!selectedIds.length) return;
@@ -112,6 +133,24 @@ export default function PreserveTermsTab({ onClose }) {
             </div>
 
             <div className="manage-scroll-area">
+                <div className="flex justify-end mb-2">
+                    <label className="flex items-center gap-2 text-xs text-slate-600">
+                        <input
+                            type="checkbox"
+                            checked={compactTable}
+                            onChange={(e) => {
+                                const checked = e.target.checked;
+                                setCompactTable(checked);
+                                try {
+                                    localStorage.setItem("manage_table_compact_preserve", JSON.stringify(checked));
+                                } catch {
+                                    // 忽略儲存失敗
+                                }
+                            }}
+                        />
+                        緊湊模式
+                    </label>
+                </div>
                 <PreserveTermsList
                     filteredTerms={visibleTerms} filterText={filterText} filterCategory={filterCategory}
                     editingId={editingId} setEditingId={setEditingId}
@@ -121,6 +160,7 @@ export default function PreserveTermsTab({ onClose }) {
                     handleUpdate={handleUpdate} handleDelete={handleDelete} onConvertToGlossary={handleConvertToGlossary}
                     highlightColor={correctionFillColor}
                     t={t}
+                    compact={compactTable}
                 />
             </div>
         </div>

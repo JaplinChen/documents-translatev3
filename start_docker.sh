@@ -5,7 +5,7 @@
 set -e
 
 echo "================================"
-echo "  PPT Translate - Docker Setup  "
+echo "  Documents-Translate - Docker Setup  "
 echo "================================"
 echo
 
@@ -43,8 +43,8 @@ if [ ! -f .env ]; then
     echo "    Created .env. Please update it with your API keys if needed."
 fi
 
-# Build and start containers
-echo "[3/4] Building and starting Docker containers..."
+# 建置並啟動容器
+echo "[3/4] 建置並啟動 Docker 容器..."
 docker compose up -d --build
 
 # Wait for health check

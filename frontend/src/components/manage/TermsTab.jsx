@@ -1,4 +1,7 @@
-import React, { useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
+import { Check, Edit, History, Trash2, X } from "lucide-react";
+import { IconButton } from "../common/IconButton";
+import { CategoryPill } from "./CategoryPill";
 import { API_BASE } from "../../constants";
 import { useTerms } from "../../hooks/useTerms";
 
@@ -18,6 +21,7 @@ export default function TermsTab() {
         preview,
         setPreview,
         upsert,
+        resetForm,
         remove,
         batchUpdate,
         batchDelete,
@@ -47,6 +51,15 @@ export default function TermsTab() {
     const [showCreate, setShowCreate] = useState(false);
     const [showColPanel, setShowColPanel] = useState(false);
     const [importStep, setImportStep] = useState(1);
+    const [colWidths, setColWidths] = useState(() => {
+        try {
+            const saved = localStorage.getItem("manage_terms_table_cols");
+            return saved ? JSON.parse(saved) : {};
+        } catch {
+            return {};
+        }
+    });
+    const resizingRef = useRef(null);
     const [visibleCols, setVisibleCols] = useState(() => {
         try {
             const saved = localStorage.getItem("terms_visible_cols");
@@ -82,6 +95,44 @@ export default function TermsTab() {
         note: "備註",
         created_by: "建立者",
     };
+
+    useEffect(() => {
+        try {
+            const saved = localStorage.getItem("manage_terms_table_cols");
+            setColWidths(saved ? JSON.parse(saved) : {});
+        } catch {
+            setColWidths({});
+        }
+    }, []);
+
+    const columnKeys = [
+        "select",
+        "term",
+        "category",
+        "status",
+        "languages",
+        "aliases",
+        "note",
+        "created_by",
+        "actions"
+    ].filter((key) => {
+        if (key === "select" || key === "actions") return true;
+        return visibleCols[key];
+    });
+    const baseWidths = {
+        select: "40px",
+        term: "1.4fr",
+        category: "100px",
+        status: "90px",
+        languages: "1fr",
+        aliases: "1.2fr",
+        note: "1.2fr",
+        created_by: "100px",
+        actions: "140px"
+    };
+    const gridTemplateColumns = columnKeys
+        .map((key) => (colWidths?.[key] ? `${colWidths[key]}px` : baseWidths[key]))
+        .join(" ");
 
     const toggleSelectAll = (checked) => {
         if (checked) setSelectedIds(terms.map((t) => t.id));
@@ -148,7 +199,7 @@ export default function TermsTab() {
         setImportResult(result);
         setPreview(null);
     };
-    
+
     const loadVersions = async (termId) => {
         const res = await fetch(`${API_BASE}/api/terms/${termId}/versions`);
         const data = await res.json();
@@ -174,6 +225,35 @@ export default function TermsTab() {
         setVisibleCols(nextState);
         localStorage.setItem("terms_visible_cols", JSON.stringify(nextState));
         return nextState;
+    };
+
+    const startResize = (key, event) => {
+        event.preventDefault();
+        event.stopPropagation();
+        const startX = event.clientX;
+        const currentWidth = event.currentTarget.parentElement?.offsetWidth || 120;
+        resizingRef.current = { key, startX, startWidth: currentWidth };
+        const handleMove = (moveEvent) => {
+            if (!resizingRef.current) return;
+            const delta = moveEvent.clientX - resizingRef.current.startX;
+            const nextWidth = Math.max(60, resizingRef.current.startWidth + delta);
+            setColWidths((prev) => {
+                const next = { ...(prev || {}), [key]: nextWidth };
+                try {
+                    localStorage.setItem("manage_terms_table_cols", JSON.stringify(next));
+                } catch {
+                    // 忽略儲存失敗
+                }
+                return next;
+            });
+        };
+        const handleUp = () => {
+            resizingRef.current = null;
+            document.removeEventListener("mousemove", handleMove);
+            document.removeEventListener("mouseup", handleUp);
+        };
+        document.addEventListener("mousemove", handleMove);
+        document.addEventListener("mouseup", handleUp);
     };
 
     const setPreset = (preset) => {
@@ -344,59 +424,59 @@ export default function TermsTab() {
                     </button>
                 </div>
                 {showCreate && (
-                <div className="space-y-2">
-                <div className="create-fields grid grid-cols-12 gap-2 w-full items-center">
-                    <input className="text-input col-span-3" value={form.term} placeholder="術語" onChange={(e) => setForm((p) => ({ ...p, term: e.target.value }))} />
-                    <select className="select-input col-span-2" value={form.category_id || ""} onChange={(e) => setForm((p) => ({ ...p, category_id: e.target.value }))}>
-                        <option value="">分類</option>
-                        {categories.map((c) => (
-                            <option key={c.id} value={c.id}>{c.name}</option>
-                        ))}
-                    </select>
-                    <select className="select-input col-span-2" value={form.status} onChange={(e) => setForm((p) => ({ ...p, status: e.target.value }))}>
-                        <option value="active">active</option>
-                        <option value="inactive">inactive</option>
-                    </select>
-                    <select className="select-input col-span-2" value={form.case_rule} onChange={(e) => setForm((p) => ({ ...p, case_rule: e.target.value }))}>
-                        <option value="">大小寫規則</option>
-                        <option value="preserve">preserve</option>
-                        <option value="uppercase">uppercase</option>
-                        <option value="lowercase">lowercase</option>
-                    </select>
-                    <input className="text-input col-span-3" value={form.aliases} placeholder="別名 (| 分隔)" onChange={(e) => setForm((p) => ({ ...p, aliases: e.target.value }))} />
-                    <input className="text-input col-span-3" value={form.note} placeholder="備註" onChange={(e) => setForm((p) => ({ ...p, note: e.target.value }))} />
-                    <div className="col-span-1 flex gap-1">
-                        <button className="btn primary flex-1 text-lg" type="button" onClick={handleUpsert}>
-                            {editingId ? "更新" : "+"}
-                        </button>
-                    </div>
-                </div>
-                {errorMsg && (
-                    <div className="mt-2 text-xs text-rose-600">{errorMsg}</div>
-                )}
-                <div className="mt-3 p-3 border border-slate-200 rounded-xl bg-slate-50/50">
-                    <div className="flex items-center justify-between mb-2">
-                        <div className="text-sm font-bold">語言欄位</div>
-                        <div className="flex gap-2">
-                            <button className="btn ghost compact" type="button" onClick={() => setShowLanguages((v) => !v)}>
-                                {showLanguages ? "收合" : "展開"}
-                            </button>
-                            <button className="btn ghost compact" type="button" onClick={addLanguage}>新增語言</button>
+                    <div className="space-y-2">
+                        <div className="create-fields grid grid-cols-12 gap-2 w-full items-center">
+                            <input className="text-input col-span-3" value={form.term} placeholder="術語" onChange={(e) => setForm((p) => ({ ...p, term: e.target.value }))} />
+                            <select className="select-input col-span-2" value={form.category_id || ""} onChange={(e) => setForm((p) => ({ ...p, category_id: e.target.value }))}>
+                                <option value="">分類</option>
+                                {categories.map((c) => (
+                                    <option key={c.id} value={c.id}>{c.name}</option>
+                                ))}
+                            </select>
+                            <select className="select-input col-span-2" value={form.status} onChange={(e) => setForm((p) => ({ ...p, status: e.target.value }))}>
+                                <option value="active">active</option>
+                                <option value="inactive">inactive</option>
+                            </select>
+                            <select className="select-input col-span-2" value={form.case_rule} onChange={(e) => setForm((p) => ({ ...p, case_rule: e.target.value }))}>
+                                <option value="">大小寫規則</option>
+                                <option value="preserve">preserve</option>
+                                <option value="uppercase">uppercase</option>
+                                <option value="lowercase">lowercase</option>
+                            </select>
+                            <input className="text-input col-span-3" value={form.aliases} placeholder="別名 (| 分隔)" onChange={(e) => setForm((p) => ({ ...p, aliases: e.target.value }))} />
+                            <input className="text-input col-span-3" value={form.note} placeholder="備註" onChange={(e) => setForm((p) => ({ ...p, note: e.target.value }))} />
+                            <div className="col-span-1 flex gap-1">
+                                <button className="btn primary flex-1 text-lg" type="button" onClick={handleUpsert}>
+                                    {editingId ? "更新" : "+"}
+                                </button>
+                            </div>
                         </div>
-                    </div>
-                    {showLanguages && (
-                        <div className="space-y-2">
-                            {form.languages.map((lang, idx) => (
-                                <div key={`${lang.lang_code}-${idx}`} className="grid grid-cols-12 gap-2">
-                                    <input className="text-input col-span-3" value={lang.lang_code} placeholder="lang_code" onChange={(e) => updateLanguage(idx, "lang_code", e.target.value)} />
-                                    <input className="text-input col-span-8" value={lang.value} placeholder="value" onChange={(e) => updateLanguage(idx, "value", e.target.value)} />
-                                    <button className="btn ghost compact col-span-1" type="button" onClick={() => removeLanguage(idx)}>刪除</button>
+                        {errorMsg && (
+                            <div className="mt-2 text-xs text-rose-600">{errorMsg}</div>
+                        )}
+                        <div className="mt-3 p-3 border border-slate-200 rounded-xl bg-slate-50/50">
+                            <div className="flex items-center justify-between mb-2">
+                                <div className="text-sm font-bold">語言欄位</div>
+                                <div className="flex gap-2">
+                                    <button className="btn ghost compact" type="button" onClick={() => setShowLanguages((v) => !v)}>
+                                        {showLanguages ? "收合" : "展開"}
+                                    </button>
+                                    <button className="btn ghost compact" type="button" onClick={addLanguage}>新增語言</button>
                                 </div>
-                            ))}
+                            </div>
+                            {showLanguages && (
+                                <div className="space-y-2">
+                                    {form.languages.map((lang, idx) => (
+                                        <div key={`${lang.lang_code}-${idx}`} className="grid grid-cols-12 gap-2">
+                                            <input className="text-input col-span-3" value={lang.lang_code} placeholder="lang_code" onChange={(e) => updateLanguage(idx, "lang_code", e.target.value)} />
+                                            <input className="text-input col-span-8" value={lang.value} placeholder="value" onChange={(e) => updateLanguage(idx, "value", e.target.value)} />
+                                            <button className="btn ghost compact col-span-1" type="button" onClick={() => removeLanguage(idx)}>刪除</button>
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
                         </div>
-                    )}
-                </div>
-                </div>
+                    </div>
                 )}
             </div>
 
@@ -425,7 +505,7 @@ export default function TermsTab() {
                 </div>
             )}
 
-            <div className={`data-table is-glossary mt-3 ${compactTable ? "text-xs" : "text-sm"}`}>
+            <div className={`data-table is-glossary mt-3 ${compactTable ? "is-compact text-xs" : "text-sm"}`}>
                 <div className="flex items-center justify-between mb-2 sticky top-[72px] bg-white/90 backdrop-blur px-2 py-2 rounded-xl border border-slate-200/60">
                     <div className="flex flex-wrap gap-2 text-xs text-slate-600 items-center">
                         <button className="btn ghost compact !text-blue-600 font-bold" type="button" onClick={() => setShowColPanel((v) => !v)}>
@@ -508,43 +588,137 @@ export default function TermsTab() {
                         </div>
                     </div>
                 )}
-                <div className="data-row data-header">
+                <div className="data-row data-header" style={{ gridTemplateColumns }}>
                     <div className="data-cell w-10 shrink-0 flex items-center justify-center">
                         <input type="checkbox" checked={terms.length > 0 && selectedIds.length === terms.length} onChange={(e) => toggleSelectAll(e.target.checked)} />
+                        <span className="col-resizer" onMouseDown={(e) => startResize("select", e)} />
                     </div>
-                    {visibleCols.term && <div className="data-cell">術語</div>}
-                    {visibleCols.category && <div className="data-cell">分類</div>}
-                    {visibleCols.status && <div className="data-cell">狀態</div>}
-                    {visibleCols.languages && <div className="data-cell">語言</div>}
-                    {visibleCols.aliases && <div className="data-cell">別名</div>}
-                    {visibleCols.note && <div className="data-cell">備註</div>}
-                    {visibleCols.created_by && <div className="data-cell">建立者</div>}
-                    <div className="data-cell data-actions">操作</div>
+                    {visibleCols.term && <div className="data-cell">術語<span className="col-resizer" onMouseDown={(e) => startResize("term", e)} /></div>}
+                    {visibleCols.category && <div className="data-cell">分類<span className="col-resizer" onMouseDown={(e) => startResize("category", e)} /></div>}
+                    {visibleCols.status && <div className="data-cell">狀態<span className="col-resizer" onMouseDown={(e) => startResize("status", e)} /></div>}
+                    {visibleCols.languages && <div className="data-cell">語言<span className="col-resizer" onMouseDown={(e) => startResize("languages", e)} /></div>}
+                    {visibleCols.aliases && <div className="data-cell">別名<span className="col-resizer" onMouseDown={(e) => startResize("aliases", e)} /></div>}
+                    {visibleCols.note && <div className="data-cell">備註<span className="col-resizer" onMouseDown={(e) => startResize("note", e)} /></div>}
+                    {visibleCols.created_by && <div className="data-cell">建立者<span className="col-resizer" onMouseDown={(e) => startResize("created_by", e)} /></div>}
+                    <div className="data-cell data-actions">操作<span className="col-resizer" onMouseDown={(e) => startResize("actions", e)} /></div>
                 </div>
                 {loading && <div className="data-empty">載入中...</div>}
-                {!loading && terms.map((item) => (
-                    <div className="data-row" key={item.id}>
+                {!loading && terms.map((item, idx) => {
+                    const isEditing = editingId === item.id;
+                    const languageText = formatLanguages(isEditing ? form.languages : item.languages);
+                    return (
+                    <div
+                        className={`data-row ${idx % 2 === 1 ? "is-zebra" : ""}`}
+                        key={item.id}
+                        style={{
+                            gridTemplateColumns,
+                            backgroundColor: idx % 2 === 1 ? "rgba(226, 232, 240, 0.7)" : undefined,
+                        }}
+                    >
                         <div className="data-cell w-10 shrink-0 flex items-center justify-center">
                             <input type="checkbox" checked={selectedIds.includes(item.id)} onChange={(e) => toggleSelect(item.id, e.target.checked)} />
                         </div>
-                        {visibleCols.term && <div className="data-cell">{item.term}</div>}
-                        {visibleCols.category && <div className="data-cell">{item.category_name || "-"}</div>}
-                        {visibleCols.status && <div className="data-cell">{item.status}</div>}
-                        {visibleCols.languages && (
+                        {visibleCols.term && (
                             <div className="data-cell">
-                                {(item.languages || []).map((l) => `${l.lang_code}:${l.value}`).join(" / ")}
+                                {isEditing ? (
+                                    <input
+                                        className="data-input !bg-white !border-blue-200 font-bold"
+                                        value={form.term || ""}
+                                        onChange={(e) => setForm((p) => ({ ...p, term: e.target.value }))}
+                                    />
+                                ) : item.term}
                             </div>
                         )}
-                        {visibleCols.aliases && <div className="data-cell">{(item.aliases || []).join(" | ")}</div>}
-                        {visibleCols.note && <div className="data-cell">{item.note || ""}</div>}
+                        {visibleCols.category && (
+                            <div className="data-cell">
+                                {isEditing ? (
+                                    <select
+                                        className="data-input !bg-white !border-blue-200 font-bold !text-[12px]"
+                                        value={form.category_id || ""}
+                                        onChange={(e) => setForm((p) => ({ ...p, category_id: e.target.value ? parseInt(e.target.value) : null }))}
+                                    >
+                                        <option value="">分類</option>
+                                        {categories.map((c) => (
+                                            <option key={`cat-edit-${c.id}`} value={c.id}>{c.name}</option>
+                                        ))}
+                                    </select>
+                                ) : (
+                                    <CategoryPill name={item.category_name} />
+                                )}
+                            </div>
+                        )}
+                        {visibleCols.status && (
+                            <div className="data-cell">
+                                {isEditing ? (
+                                    <select
+                                        className="data-input !bg-white !border-blue-200 font-bold !text-[12px]"
+                                        value={form.status || "active"}
+                                        onChange={(e) => setForm((p) => ({ ...p, status: e.target.value }))}
+                                    >
+                                        <option value="active">active</option>
+                                        <option value="inactive">inactive</option>
+                                    </select>
+                                ) : (
+                                    <span className={`status-pill ${item.status}`}>{item.status}</span>
+                                )}
+                            </div>
+                        )}
+                        {visibleCols.languages && (
+                            <div className="data-cell">
+                                {isEditing ? (
+                                    <input
+                                        className="data-input !bg-white !border-blue-200 font-bold"
+                                        value={languageText}
+                                        onChange={(e) => setForm((p) => ({ ...p, languages: parseLanguages(e.target.value) }))}
+                                    />
+                                ) : (
+                                    (item.languages || []).map((l) => `${l.lang_code}:${l.value}`).join(" / ")
+                                )}
+                            </div>
+                        )}
+                        {visibleCols.aliases && (
+                            <div className="data-cell">
+                                {isEditing ? (
+                                    <input
+                                        className="data-input !bg-white !border-blue-200 font-bold"
+                                        value={form.aliases || ""}
+                                        onChange={(e) => setForm((p) => ({ ...p, aliases: e.target.value }))}
+                                    />
+                                ) : (
+                                    (item.aliases || []).join(" | ")
+                                )}
+                            </div>
+                        )}
+                        {visibleCols.note && (
+                            <div className="data-cell">
+                                {isEditing ? (
+                                    <input
+                                        className="data-input !bg-white !border-blue-200 font-bold"
+                                        value={form.note || ""}
+                                        onChange={(e) => setForm((p) => ({ ...p, note: e.target.value }))}
+                                    />
+                                ) : (
+                                    item.note || ""
+                                )}
+                            </div>
+                        )}
                         {visibleCols.created_by && <div className="data-cell">{item.created_by || ""}</div>}
                         <div className="data-cell data-actions">
-                            <button className="btn ghost compact" onClick={() => startEdit(item)}>編輯</button>
-                            <button className="btn ghost compact" onClick={() => loadVersions(item.id)}>版本</button>
-                            <button className="btn ghost compact !text-red-500" onClick={() => remove(item.id)}>刪除</button>
+                            {isEditing ? (
+                                <>
+                                    <IconButton icon={Check} variant="action" size="sm" onClick={handleUpsert} title="儲存" />
+                                    <IconButton icon={X} size="sm" onClick={resetForm} title="取消" />
+                                </>
+                            ) : (
+                                <>
+                                    <IconButton icon={Edit} size="sm" onClick={() => startEdit(item)} title="編輯" />
+                                    <IconButton icon={History} size="sm" onClick={() => loadVersions(item.id)} title="版本" />
+                                    <IconButton icon={Trash2} variant="danger" size="sm" onClick={() => remove(item.id)} title="刪除" />
+                                </>
+                            )}
                         </div>
                     </div>
-                ))}
+                )})}
             </div>
 
             {versions && (
@@ -648,5 +822,23 @@ export default function TermsTab() {
             }
         }
         return "";
+    }
+
+    function formatLanguages(langs) {
+        return (langs || []).map((l) => `${l.lang_code}:${l.value}`).join(" / ");
+    }
+
+    function parseLanguages(text) {
+        return (text || "")
+            .split("/")
+            .map((raw) => raw.trim())
+            .filter(Boolean)
+            .map((chunk) => {
+                const [code, ...rest] = chunk.split(":");
+                const value = rest.join(":").trim();
+                if (!code) return null;
+                return { lang_code: code.trim(), value };
+            })
+            .filter(Boolean);
     }
 }

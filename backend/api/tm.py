@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from fastapi import APIRouter, File, Response, UploadFile
+from fastapi import APIRouter, File, Response, UploadFile, HTTPException
 from pydantic import BaseModel
 
 from backend.services.translation_memory import (
@@ -17,6 +17,10 @@ from backend.services.translation_memory import (
     seed_tm,
     upsert_glossary,
     upsert_tm,
+    list_tm_categories,
+    create_tm_category,
+    update_tm_category,
+    delete_tm_category,
 )
 
 router = APIRouter(prefix="/api/tm")
@@ -25,13 +29,6 @@ router = APIRouter(prefix="/api/tm")
 class GlossaryEntry(BaseModel):
     """
     Glossary entry data structure for translation consistency.
-
-    Attributes:
-        source_lang: The source language code (e.g., 'vi').
-        target_lang: The target language code (e.g., 'zh-TW').
-        source_text: The term in the source language.
-        target_text: The corresponding translation in the target language.
-        priority: Relative priority for matching (default is 0).
     """
     model_config = {"extra": "ignore"}
     source_lang: str
@@ -39,6 +36,7 @@ class GlossaryEntry(BaseModel):
     source_text: str
     target_text: str | None = ""
     priority: int | None = 0
+    category_id: int | None = None
 
 
 class GlossaryDelete(BaseModel):
@@ -52,22 +50,22 @@ class BatchDelete(BaseModel):
 class MemoryEntry(BaseModel):
     """
     Translation memory entry for reuse of previous translations.
-
-    Attributes:
-        source_lang: The source language code.
-        target_lang: The target language code.
-        source_text: Original source segment.
-        target_text: Translated target segment.
     """
     model_config = {"extra": "ignore"}
     source_lang: str
     target_lang: str
     source_text: str
     target_text: str | None = ""
+    category_id: int | None = None
 
 
 class MemoryDelete(BaseModel):
     id: int
+
+
+class CategoryPayload(BaseModel):
+    name: str
+    sort_order: int | None = 0
 
 
 @router.post("/seed")
@@ -100,15 +98,6 @@ async def tm_glossary(limit: int = 200) -> dict:
 
 @router.post("/glossary")
 async def tm_glossary_upsert(entry: GlossaryEntry) -> dict:
-    """
-    Create or update a glossary entry.
-
-    Args:
-        entry: The glossary entry data.
-
-    Returns:
-        A dictionary with the operation status.
-    """
     upsert_glossary(entry.model_dump())
     return {"status": "ok"}
 
@@ -116,7 +105,6 @@ async def tm_glossary_upsert(entry: GlossaryEntry) -> dict:
 @router.post("/glossary/batch")
 async def tm_glossary_batch(entries: list[GlossaryEntry]) -> dict:
     from backend.services.translation_memory import batch_upsert_glossary
-
     batch_upsert_glossary([e.model_dump() for e in entries])
     return {"status": "ok", "count": len(entries)}
 
@@ -124,7 +112,6 @@ async def tm_glossary_batch(entries: list[GlossaryEntry]) -> dict:
 @router.delete("/glossary/clear")
 async def tm_glossary_clear() -> dict:
     from backend.services.translation_memory import clear_glossary
-
     deleted = clear_glossary()
     return {"deleted": deleted}
 
@@ -235,3 +222,34 @@ async def tm_memory_export() -> Response:
             f"{item['source_text']},{item['target_text']}"
         )
     return Response(content="\n".join(lines), media_type="text/csv")
+
+
+# Category endpoints
+
+@router.get("/categories")
+async def tm_category_list() -> dict:
+    return {"items": list_tm_categories()}
+
+
+@router.post("/categories")
+async def tm_category_create(payload: CategoryPayload) -> dict:
+    try:
+        item = create_tm_category(payload.name, payload.sort_order)
+        return {"item": item}
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+
+@router.put("/categories/{category_id}")
+async def tm_category_update(category_id: int, payload: CategoryPayload) -> dict:
+    try:
+        item = update_tm_category(category_id, payload.name, payload.sort_order)
+        return {"item": item}
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+
+@router.delete("/categories/{category_id}")
+async def tm_category_delete(category_id: int) -> dict:
+    delete_tm_category(category_id)
+    return {"status": "ok"}

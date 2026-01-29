@@ -32,7 +32,16 @@ export function useTerms() {
     const loadCategories = async () => {
         const res = await fetch(`${API_BASE}/api/terms/categories`);
         const data = await res.json();
-        setCategories(data.items || []);
+        const next = Array.isArray(data.items) ? data.items : [];
+        next.sort((a, b) => {
+            const ao = Number(a?.sort_order ?? 0);
+            const bo = Number(b?.sort_order ?? 0);
+            if (ao !== bo) return ao - bo;
+            const an = String(a?.name ?? "");
+            const bn = String(b?.name ?? "");
+            return an.localeCompare(bn, "zh-Hant", { numeric: true, sensitivity: "base" });
+        });
+        setCategories(next);
     };
 
     const loadTerms = async () => {

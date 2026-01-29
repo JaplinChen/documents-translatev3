@@ -3,27 +3,20 @@
 
     /* Data Table */
     .data-table {
-        @apply border border-slate-200 rounded-xl;
+        @apply border border-slate-200/80 rounded-2xl bg-white shadow-sm;
         overflow: visible;
     }
 
-    .data-table.is-glossary .data-row {
-        grid-template-columns: 40px 80px 80px minmax(120px, 1.5fr) minmax(120px, 1.5fr) 60px 140px;
-    }
-
-    .data-table.is-tm .data-row {
-        grid-template-columns: 40px 80px 80px minmax(120px, 1fr) minmax(120px, 1fr) 140px;
-    }
-
     .data-header {
-        @apply bg-slate-50 border-b border-slate-200 font-bold text-xs uppercase tracking-wider text-slate-500;
+        @apply bg-slate-50 border-b border-slate-300 font-bold text-xs uppercase tracking-wider text-slate-500;
         position: sticky;
         top: 0;
         z-index: 10;
     }
 
     .data-header .data-cell {
-        @apply py-4 whitespace-nowrap;
+        @apply py-3 whitespace-nowrap;
+        position: relative;
     }
 
     .table-header-sticky {
@@ -59,20 +52,85 @@
     }
 
     .data-row {
-        @apply grid border-b border-slate-200 last:border-b-0 transition-colors duration-150;
+        @apply grid border-b border-slate-300 last:border-b-0 transition-colors duration-150 bg-white;
     }
 
-    .data-row:hover {
-        @apply bg-slate-50/50;
+    .table-sticky tbody tr:hover {
+        @apply bg-blue-100 transition-colors duration-75;
+    }
+
+    .table-sticky.is-compact th,
+    .table-sticky.is-compact td {
+        @apply py-2 text-xs;
     }
 
     .data-cell {
-        @apply px-4 py-4 flex items-center text-sm text-slate-700 overflow-hidden min-h-[56px];
+        @apply px-4 py-3 flex items-center text-sm text-slate-700 overflow-hidden min-h-[52px] leading-snug;
+        box-sizing: border-box;
         word-break: break-word;
     }
 
     .data-cell.data-actions {
-        @apply flex gap-1 items-center justify-end px-2;
+        @apply flex items-center px-4;
+    }
+
+    .col-resizer {
+        position: absolute;
+        right: -2px;
+        top: 0;
+        width: 6px;
+        height: 100%;
+        cursor: col-resize;
+    }
+
+    .data-header .data-cell:hover .col-resizer,
+    .data-header .data-cell:focus-within .col-resizer {
+        background: rgba(59, 130, 246, 0.12);
+    }
+
+    .data-row .data-cell+.data-cell {
+        @apply border-l border-slate-300;
+    }
+
+    .data-row:not(.data-header):nth-of-type(even) {
+        @apply bg-slate-100/70;
+    }
+
+    .data-row:not(.data-header):hover,
+    .data-row:not(.data-header):nth-of-type(even):hover {
+        @apply bg-blue-100 transition-colors duration-75;
+    }
+
+    .data-row.is-zebra {
+        background-color: rgba(226, 232, 240, 0.7);
+    }
+
+    .data-row.is-zebra .data-cell {
+        background-color: transparent;
+    }
+
+    .data-row:not(.data-header) .data-cell.data-actions {
+        @apply justify-end gap-2;
+    }
+
+    /* Table layout grid lines */
+    .table-sticky th,
+    .table-sticky td {
+        @apply border-b border-slate-300;
+        box-sizing: border-box;
+    }
+
+    .table-sticky th:not(:last-child),
+    .table-sticky td:not(:last-child) {
+        @apply border-r border-slate-300;
+    }
+
+    .data-table.is-compact .data-cell {
+        @apply py-2 min-h-[40px] text-xs;
+    }
+
+    .data-table.is-compact .data-header .data-cell {
+        @apply py-2;
     }
 
     .action-btn-sm {
@@ -101,6 +159,19 @@
 
     .data-empty {
         @apply text-center py-8 text-slate-400 text-sm;
+    }
+
+    .status-pill {
+        @apply inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-semibold border;
+        letter-spacing: 0.02em;
+    }
+
+    .status-pill.active {
+        @apply border-emerald-200 text-emerald-700 bg-emerald-50;
+    }
+
+    .status-pill.inactive {
+        @apply border-slate-200 text-slate-500 bg-slate-100;
     }
 
     /* Create Row */

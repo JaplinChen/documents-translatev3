@@ -1,12 +1,12 @@
 from __future__ import annotations
 
 import hashlib
-import json
 import sqlite3
 from collections.abc import Iterable
 from pathlib import Path
 
 from backend.services.language_detect import detect_language
+from backend.services.preserve_terms_repository import list_preserve_terms
 
 # Ensure we use the centralized data volume at /app/data
 DB_PATH = Path("data/translation_memory.db")
@@ -19,25 +19,16 @@ _DB_INITIALIZED = False
 
 
 def _load_preserve_terms() -> tuple[list[dict], float | None]:
-    base_path = Path(__file__).parent.parent
-    possible_paths = [
-        base_path / "data" / "preserve_terms.json",
-        Path("data/preserve_terms.json"),
-    ]
-    latest_mtime: float | None = None
-    latest_terms: list[dict] = []
-    for preserve_file in possible_paths:
-        if not preserve_file.exists():
-            continue
-        try:
-            stat = preserve_file.stat()
-            if latest_mtime is None or stat.st_mtime > latest_mtime:
-                with open(preserve_file, encoding="utf-8") as f:
-                    latest_terms = json.load(f)
-                latest_mtime = stat.st_mtime
-        except Exception:
-            continue
-    return latest_terms, latest_mtime
+    db_path = Path("data/translation_memory.db")
+    try:
+        mtime = db_path.stat().st_mtime if db_path.exists() else None
+    except Exception:
+        mtime = None
+    try:
+        terms = list_preserve_terms()
+    except Exception:
+        terms = []
+    return terms, mtime
 
 
 def _get_preserve_terms() -> list[dict]:
@@ -74,6 +65,12 @@ def _is_preserve_term(text: str, terms: list[dict]) -> bool:
 
 
 SCHEMA_SQL = """
+CREATE TABLE IF NOT EXISTS tm_categories (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  name TEXT NOT NULL UNIQUE,
+  sort_order INTEGER DEFAULT 0
+);
+
 CREATE TABLE IF NOT EXISTS glossary (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   source_lang TEXT NOT NULL,
@@ -81,6 +78,7 @@ CREATE TABLE IF NOT EXISTS glossary (
   source_text TEXT NOT NULL,
   target_text TEXT NOT NULL,
   priority INTEGER DEFAULT 0,
+  category_id INTEGER,
   created_at TEXT DEFAULT CURRENT_TIMESTAMP
 );
 
@@ -90,6 +88,7 @@ CREATE TABLE IF NOT EXISTS tm (
   target_lang TEXT NOT NULL,
   source_text TEXT NOT NULL,
   target_text TEXT NOT NULL,
+  category_id INTEGER,
   hash TEXT NOT NULL UNIQUE,
   created_at TEXT DEFAULT CURRENT_TIMESTAMP
 );
@@ -99,32 +98,42 @@ CREATE TABLE IF NOT EXISTS tm (
 def _ensure_db() -> None:
     """Initialize DB once per process and re-init if the file is missing."""
     global _DB_INITIALIZED
-    # Check if we think we are initialized and the file exists on disk.
-    # If the file was deleted (e.g. by a cache reset), we MUST re-initialize.
     if _DB_INITIALIZED and DB_PATH.exists():
         return
 
     DB_PATH.parent.mkdir(parents=True, exist_ok=True)
     with sqlite3.connect(DB_PATH) as conn:
         conn.executescript(SCHEMA_SQL)
+        
+        # Migration: Add category_id if missing
+        cursor = conn.execute("PRAGMA table_info(glossary)")
+        columns = [row[1] for row in cursor.fetchall()]
+        if "category_id" not in columns:
+            conn.execute("ALTER TABLE glossary ADD COLUMN category_id INTEGER")
+            
+        cursor = conn.execute("PRAGMA table_info(tm)")
+        columns = [row[1] for row in cursor.fetchall()]
+        if "category_id" not in columns:
+            conn.execute("ALTER TABLE tm ADD COLUMN category_id INTEGER")
+
         # Deduplicate existing glossary rows before adding unique index.
         conn.execute(
-
-                "DELETE FROM glossary "
-                "WHERE id NOT IN ("
-                "  SELECT MAX(id) FROM glossary "
-                "  GROUP BY source_lang, target_lang, source_text"
-                ")"
-
+            "DELETE FROM glossary "
+            "WHERE id NOT IN ("
+            "  SELECT MAX(id) FROM glossary "
+            "  GROUP BY source_lang, target_lang, source_text"
+            ")"
         )
         # Enforce uniqueness by source/target/source_text.
         conn.execute(
-
-                "CREATE UNIQUE INDEX IF NOT EXISTS "
-                "idx_glossary_unique "
-                "ON glossary (source_lang, target_lang, source_text)"
-
+            "CREATE UNIQUE INDEX IF NOT EXISTS "
+            "idx_glossary_unique "
+            "ON glossary (source_lang, target_lang, source_text)"
         )
+        
+        # Performance: Add indexes for category lookup and count
+        conn.execute("CREATE INDEX IF NOT EXISTS idx_glossary_category ON glossary (category_id)")
+        conn.execute("CREATE INDEX IF NOT EXISTS idx_tm_category ON tm (category_id)")
     _DB_INITIALIZED = True
 
 
@@ -356,9 +365,10 @@ def get_glossary(limit: int = 200) -> list[dict]:
     with sqlite3.connect(DB_PATH) as conn:
         cur = conn.execute(
             (
-                "SELECT id, source_lang, target_lang, source_text, "
-                "target_text, priority, created_at "
-                "FROM glossary ORDER BY priority DESC, id ASC LIMIT ?"
+                "SELECT g.id, g.source_lang, g.target_lang, g.source_text, "
+                "g.target_text, g.priority, g.category_id, c.name as category_name, g.created_at "
+                "FROM glossary g LEFT JOIN tm_categories c ON g.category_id = c.id "
+                "ORDER BY g.priority DESC, g.id ASC LIMIT ?"
             ),
             (limit,),
         )
@@ -366,7 +376,7 @@ def get_glossary(limit: int = 200) -> list[dict]:
         delete_ids: list[int] = []
         updates: list[tuple[str, int]] = []
         for row in rows:
-            entry_id, source_lang, _, source_text, _, _, _ = row
+            entry_id, source_lang, _, source_text, _, _, _, _, _ = row
             if _is_preserve_term(source_text, preserve_terms):
                 delete_ids.append(entry_id)
                 continue
@@ -379,15 +389,34 @@ def get_glossary(limit: int = 200) -> list[dict]:
                 "DELETE FROM glossary WHERE id = ?",
                 [(entry_id,) for entry_id in delete_ids],
             )
+        update_map = {}
         if updates:
-            conn.executemany(
-                "UPDATE glossary SET source_lang = ? WHERE id = ?",
-                updates,
-            )
+            for lang, entry_id in updates:
+                row = conn.execute(
+                    "SELECT source_text, target_lang FROM glossary WHERE id = ?",
+                    (entry_id,),
+                ).fetchone()
+                if not row:
+                    continue
+                source_text, target_lang = row
+                duplicate = conn.execute(
+                    (
+                        "SELECT id FROM glossary "
+                        "WHERE source_lang = ? AND target_lang = ? AND source_text = ? "
+                        "AND id != ? LIMIT 1"
+                    ),
+                    (lang, target_lang, source_text, entry_id),
+                ).fetchone()
+                if duplicate:
+                    conn.execute("DELETE FROM glossary WHERE id = ?", (entry_id,))
+                    delete_ids.append(entry_id)
+                    continue
+                conn.execute(
+                    "UPDATE glossary SET source_lang = ? WHERE id = ?",
+                    (lang, entry_id),
+                )
+                update_map[entry_id] = lang
             conn.commit()
-            update_map = {entry_id: lang for lang, entry_id in updates}
-        else:
-            update_map = {}
         if delete_ids and not updates:
             conn.commit()
     return [
@@ -398,7 +427,9 @@ def get_glossary(limit: int = 200) -> list[dict]:
             "source_text": row[3],
             "target_text": row[4],
             "priority": row[5],
-            "created_at": row[6],
+            "category_id": row[6],
+            "category_name": row[7],
+            "created_at": row[8],
         }
         for row in rows
         if row[0] not in delete_ids
@@ -410,8 +441,10 @@ def get_tm(limit: int = 200) -> list[dict]:
     with sqlite3.connect(DB_PATH) as conn:
         cur = conn.execute(
             (
-                "SELECT id, source_lang, target_lang, source_text, "
-                "target_text, created_at FROM tm ORDER BY id DESC LIMIT ?"
+                "SELECT t.id, t.source_lang, t.target_lang, t.source_text, "
+                "t.target_text, t.category_id, c.name as category_name, t.created_at "
+                "FROM tm t LEFT JOIN tm_categories c ON t.category_id = c.id "
+                "ORDER BY t.id DESC LIMIT ?"
             ),
             (limit,),
         )
@@ -423,7 +456,9 @@ def get_tm(limit: int = 200) -> list[dict]:
             "target_lang": row[2],
             "source_text": row[3],
             "target_text": row[4],
-            "created_at": row[5],
+            "category_id": row[5],
+            "category_name": row[6],
+            "created_at": row[7],
         }
         for row in rows
     ]
@@ -468,8 +503,8 @@ def upsert_glossary(entry: dict) -> None:
             (
                 "INSERT INTO glossary "
                 "(source_lang, target_lang, source_text, "
-                "target_text, priority) "
-                "VALUES (?, ?, ?, ?, COALESCE(?, 0))"
+                "target_text, priority, category_id) "
+                "VALUES (?, ?, ?, ?, COALESCE(?, 0), ?)"
             ),
             (
                 entry.get("source_lang"),
@@ -477,6 +512,7 @@ def upsert_glossary(entry: dict) -> None:
                 entry_source,
                 entry_target,
                 entry.get("priority", 0),
+                entry.get("category_id"),
             ),
         )
         conn.commit()
@@ -509,8 +545,8 @@ def batch_upsert_glossary(entries: list[dict]) -> None:
                 (
                     "INSERT INTO glossary "
                     "(source_lang, target_lang, source_text, "
-                    "target_text, priority) "
-                    "VALUES (?, ?, ?, ?, COALESCE(?, 0))"
+                    "target_text, priority, category_id) "
+                    "VALUES (?, ?, ?, ?, COALESCE(?, 0), ?)"
                 ),
                 (
                     entry.get("source_lang"),
@@ -518,6 +554,7 @@ def batch_upsert_glossary(entries: list[dict]) -> None:
                     entry_source,
                     entry_target,
                     entry.get("priority", 0),
+                    entry.get("category_id"),
                 ),
             )
         conn.commit()
@@ -567,14 +604,15 @@ def upsert_tm(entry: dict) -> None:
         conn.execute(
             (
                 "INSERT OR REPLACE INTO tm "
-                "(source_lang, target_lang, source_text, target_text, hash) "
-                "VALUES (?, ?, ?, ?, ?)"
+                "(source_lang, target_lang, source_text, target_text, category_id, hash) "
+                "VALUES (?, ?, ?, ?, ?, ?)"
             ),
             (
                 entry.get("source_lang"),
                 entry.get("target_lang"),
                 entry.get("source_text"),
                 entry.get("target_text"),
+                entry.get("category_id"),
                 key,
             ),
         )
@@ -611,3 +649,106 @@ def clear_tm() -> int:
         cur = conn.execute("DELETE FROM tm")
         conn.commit()
         return cur.rowcount
+
+
+# TM Categories functions
+
+def list_tm_categories() -> list[dict]:
+    _ensure_db()
+    with sqlite3.connect(DB_PATH) as conn:
+        conn.row_factory = sqlite3.Row
+        # Get counts from glossary and tm tables
+        query = """
+            SELECT 
+                c.id, 
+                c.name, 
+                c.sort_order,
+                (SELECT COUNT(*) FROM glossary g WHERE g.category_id = c.id) as glossary_count,
+                (SELECT COUNT(*) FROM tm t WHERE t.category_id = c.id) as tm_count
+            FROM tm_categories c
+            ORDER BY c.sort_order, c.id
+        """
+        rows = conn.execute(query).fetchall()
+    return [dict(row) for row in rows]
+
+
+def create_tm_category(name: str, sort_order: int | None = None) -> dict:
+    _ensure_db()
+    name = name.strip()
+    if not name:
+        raise ValueError("分類名稱不可為空")
+    with sqlite3.connect(DB_PATH) as conn:
+        cur = conn.execute(
+            "INSERT INTO tm_categories (name, sort_order) VALUES (?, ?)",
+            (name, sort_order or 0),
+        )
+        conn.commit()
+        return {"id": cur.lastrowid, "name": name, "sort_order": sort_order or 0}
+
+
+def update_tm_category(category_id: int, name: str, sort_order: int | None = None) -> dict:
+    _ensure_db()
+    name = name.strip()
+    if not name:
+        raise ValueError("分類名稱不可為空")
+    with sqlite3.connect(DB_PATH) as conn:
+        # Get old name for syncing
+        old_row = conn.execute("SELECT name FROM tm_categories WHERE id = ?", (category_id,)).fetchone()
+        old_name = old_row[0] if old_row else None
+
+        conn.execute(
+            "UPDATE tm_categories SET name = ?, sort_order = ? WHERE id = ?",
+            (name, sort_order or 0, category_id),
+        )
+        
+        if old_name and old_name != name:
+            # Sync to preserve_terms in same DB
+            conn.execute("UPDATE preserve_terms SET category = ? WHERE category = ?", (name, old_name))
+            
+            # Sync to terms.db if exists
+            terms_db = Path("data/terms.db")
+            if terms_db.exists():
+                try:
+                    with sqlite3.connect(terms_db) as tconn:
+                        tconn.execute("UPDATE categories SET name = ? WHERE name = ?", (name, old_name))
+                        tconn.commit()
+                except Exception as e:
+                    print(f"Error syncing to terms.db: {e}")
+                    
+        conn.commit()
+        return {"id": category_id, "name": name, "sort_order": sort_order or 0}
+
+
+def delete_tm_category(category_id: int) -> None:
+    _ensure_db()
+    with sqlite3.connect(DB_PATH) as conn:
+        # Get name for syncing
+        row = conn.execute("SELECT name FROM tm_categories WHERE id = ?", (category_id,)).fetchone()
+        name = row[0] if row else None
+        
+        # Update items to NULL
+        conn.execute("UPDATE glossary SET category_id = NULL WHERE category_id = ?", (category_id,))
+        conn.execute("UPDATE tm SET category_id = NULL WHERE category_id = ?", (category_id,))
+        
+        if name:
+            # Sync to preserve_terms: set back to '未分類' string
+            conn.execute("UPDATE preserve_terms SET category = '未分類' WHERE category = ?", (name,))
+            
+            # Sync to terms.db Categories table
+            terms_db = Path("data/terms.db")
+            if terms_db.exists():
+                try:
+                    with sqlite3.connect(terms_db) as tconn:
+                        # Find the corresponding category in terms.db by name
+                        trow = tconn.execute("SELECT id FROM categories WHERE name = ?", (name,)).fetchone()
+                        if trow:
+                            tid = trow[0]
+                            # Update terms in terms.db to NULL
+                            tconn.execute("UPDATE terms SET category_id = NULL WHERE category_id = ?", (tid,))
+                            tconn.execute("DELETE FROM categories WHERE id = ?", (tid,))
+                            tconn.commit()
+                except Exception as e:
+                    print(f"Error syncing delete to terms.db: {e}")
+
+        conn.execute("DELETE FROM tm_categories WHERE id = ?", (category_id,))
+        conn.commit()

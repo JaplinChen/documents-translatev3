@@ -5,7 +5,7 @@ import { useUIStore } from "../store/useUIStore";
 import { useSettingsStore } from "../store/useSettingsStore";
 import { useFileStore } from "../store/useFileStore";
 
-const PRESERVE_CATEGORY_TRANSLATION = "翻譯術語";
+const PRESERVE_CATEGORY_TRANSLATION = "翻譯";
 
 export function useTerminology() {
     const { t } = useTranslation();
@@ -80,7 +80,8 @@ export function useTerminology() {
             target_lang: blockOrEntry.target_lang || targetLang || "zh-TW",
             source_text: (blockOrEntry.source_text || blockOrEntry.text || "").trim(),
             target_text: (blockOrEntry.target_text || blockOrEntry.translated_text || "").trim(),
-            priority: blockOrEntry.priority != null ? Number(blockOrEntry.priority) : 0
+            priority: blockOrEntry.priority != null ? Number(blockOrEntry.priority) : 0,
+            category_id: blockOrEntry.category_id
         };
 
         if (!entry.source_text) {
@@ -123,7 +124,8 @@ export function useTerminology() {
             source_lang: blockOrEntry.source_lang || sourceLang || "vi",
             target_lang: blockOrEntry.target_lang || targetLang || "zh-TW",
             source_text: (blockOrEntry.source_text || blockOrEntry.text || "").trim(),
-            target_text: (blockOrEntry.target_text || blockOrEntry.translated_text || "").trim()
+            target_text: (blockOrEntry.target_text || blockOrEntry.translated_text || "").trim(),
+            category_id: blockOrEntry.category_id
         };
 
         if (!entry.source_text) {

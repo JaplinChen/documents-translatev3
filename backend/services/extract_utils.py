@@ -1,10 +1,10 @@
 from __future__ import annotations
 
-import json
 import re
 from pathlib import Path
 
 from langdetect import DetectorFactory, detect
+from backend.services.preserve_terms_repository import list_preserve_terms
 
 # Set seed for consistent langdetect results
 DetectorFactory.seed = 0
@@ -15,29 +15,17 @@ _PRESERVE_TERMS_MTIME: float | None = None
 
 
 def _load_preserve_terms() -> tuple[list[dict], float | None]:
-    """Load preserve terms from JSON file."""
-    # Try multiple possible locations for preserve_terms.json
-    base_path = Path(__file__).parent.parent
-    possible_paths = [
-        base_path / "data" / "preserve_terms.json",
-        base_path / "services" / "data" / "preserve_terms.json",
-    ]
-
-    latest_mtime: float | None = None
-    latest_terms: list[dict] = []
-
-    for preserve_file in possible_paths:
-        if not preserve_file.exists():
-            continue
-        try:
-            stat = preserve_file.stat()
-            if latest_mtime is None or stat.st_mtime > latest_mtime:
-                with open(preserve_file, encoding="utf-8") as f:
-                    latest_terms = json.load(f)
-                latest_mtime = stat.st_mtime
-        except Exception:
-            continue
-    return latest_terms, latest_mtime
+    """Load preserve terms from SQLite table."""
+    db_path = Path("data/translation_memory.db")
+    try:
+        mtime = db_path.stat().st_mtime if db_path.exists() else None
+    except Exception:
+        mtime = None
+    try:
+        terms = list_preserve_terms()
+    except Exception:
+        terms = []
+    return terms, mtime
 
 
 def _get_preserve_terms() -> list[dict]:
@@ -68,7 +56,7 @@ def is_technical_terms_only(text: str) -> bool:  # noqa: C901
     """
     Check if the text consists only of technical terms, product names,
     or acronyms.
-    First checks preserve_terms.json, then falls back to auto-detection.
+    First checks preserve_terms, then falls back to auto-detection.
     """
     if not text or not text.strip():
         return True

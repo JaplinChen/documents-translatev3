@@ -1,12 +1,22 @@
-import React from "react";
+import React, { useEffect, useRef } from "react";
 import { useTranslation } from "react-i18next";
 import { Edit, Trash2, Check, X, Table } from "lucide-react";
+import { CategoryPill } from "../CategoryPill";
 
-export function PreserveTermsList({ filteredTerms, filterText, filterCategory, editingId, setEditingId, editForm, setEditForm, selectedIds, setSelectedIds, categories, getCategoryLabel, handleUpdate, handleDelete, onConvertToGlossary, highlightColor, t }) {
+export function PreserveTermsList({ filteredTerms, filterText, filterCategory, editingId, setEditingId, editForm, setEditForm, selectedIds, setSelectedIds, categories, getCategoryLabel, handleUpdate, handleDelete, onConvertToGlossary, highlightColor, t, compact }) {
     const safeTerms = Array.isArray(filteredTerms) ? filteredTerms : [];
     const allSelected = safeTerms.length > 0 && selectedIds.length === safeTerms.length;
     const [sortKey, setSortKey] = React.useState(null);
     const [sortDir, setSortDir] = React.useState("asc");
+    const [colWidths, setColWidths] = React.useState(() => {
+        try {
+            const saved = localStorage.getItem("manage_preserve_table_cols");
+            return saved ? JSON.parse(saved) : {};
+        } catch {
+            return {};
+        }
+    });
+    const resizingRef = useRef(null);
 
     const handleSelectAll = (checked) => {
         if (checked) setSelectedIds(safeTerms.map(t => t.id));
@@ -42,6 +52,15 @@ export function PreserveTermsList({ filteredTerms, filterText, filterCategory, e
         }).map(({ term }) => term);
     }, [safeTerms, sortKey, sortDir]);
 
+    useEffect(() => {
+        try {
+            const saved = localStorage.getItem("manage_preserve_table_cols");
+            setColWidths(saved ? JSON.parse(saved) : {});
+        } catch {
+            setColWidths({});
+        }
+    }, []);
+
     if (safeTerms.length === 0) {
         return (
             <div className="flex-grow flex flex-col items-center justify-center p-12 text-slate-300">
@@ -64,39 +83,82 @@ export function PreserveTermsList({ filteredTerms, filterText, filterCategory, e
         return sortDir === "asc" ? "▲" : "▼";
     };
 
+    const columnKeys = ["select", "term", "category", "case_sensitive", "created_at", "actions"];
+    const startResize = (key, event) => {
+        event.preventDefault();
+        event.stopPropagation();
+        const startX = event.clientX;
+        const currentWidth = event.currentTarget.parentElement?.offsetWidth || 120;
+        resizingRef.current = { key, startX, startWidth: currentWidth };
+        const handleMove = (moveEvent) => {
+            if (!resizingRef.current) return;
+            const delta = moveEvent.clientX - resizingRef.current.startX;
+            const nextWidth = Math.max(60, resizingRef.current.startWidth + delta);
+            setColWidths((prev) => {
+                const next = { ...(prev || {}), [key]: nextWidth };
+                try {
+                    localStorage.setItem("manage_preserve_table_cols", JSON.stringify(next));
+                } catch {
+                    // 忽略儲存失敗
+                }
+                return next;
+            });
+        };
+        const handleUp = () => {
+            resizingRef.current = null;
+            document.removeEventListener("mousemove", handleMove);
+            document.removeEventListener("mouseup", handleUp);
+        };
+        document.addEventListener("mousemove", handleMove);
+        document.addEventListener("mouseup", handleUp);
+    };
+
     return (
         <div className="w-full">
-            <table className="table-sticky w-full text-left">
+            <table className={`table-sticky w-full text-left ${compact ? "is-compact text-xs" : "text-sm"}`}>
+                <colgroup>
+                    {columnKeys.map((key) => (
+                        <col key={key} style={colWidths?.[key] ? { width: `${colWidths[key]}px` } : undefined} />
+                    ))}
+                </colgroup>
                 <thead className="table-header-sticky border-b border-slate-200">
                     <tr className="text-xs font-bold text-slate-500 uppercase tracking-wider">
-                        <th className="py-4 px-4 w-10 text-center">
+                        <th className="py-4 px-4 text-center">
                             <input type="checkbox" checked={allSelected} onChange={(e) => handleSelectAll(e.target.checked)} />
+                            <span className="col-resizer" onMouseDown={(e) => startResize("select", e)} />
                         </th>
                         <th className="py-4 px-4">
                             <button type="button" className="sort-btn" onClick={() => toggleSort("term")} aria-label={`${t("manage.preserve.table.term")} 排序`}>
                                 {t("manage.preserve.table.term")}
                                 <span className="sort-indicator">{sortIndicator("term")}</span>
                             </button>
+                            <span className="col-resizer" onMouseDown={(e) => startResize("term", e)} />
                         </th>
-                        <th className="py-4 px-2 w-32 text-center">
+                        <th className="py-4 px-2 text-center">
                             <button type="button" className="sort-btn justify-center" onClick={() => toggleSort("category")} aria-label={`${t("manage.preserve.table.category")} 排序`}>
                                 {t("manage.preserve.table.category")}
                                 <span className="sort-indicator">{sortIndicator("category")}</span>
                             </button>
+                            <span className="col-resizer" onMouseDown={(e) => startResize("category", e)} />
                         </th>
-                        <th className="py-4 px-2 w-24 text-center">
+                        <th className="py-4 px-2 text-center">
                             <button type="button" className="sort-btn justify-center" onClick={() => toggleSort("case_sensitive")} aria-label={`${t("manage.preserve.table.case")} 排序`}>
                                 {t("manage.preserve.table.case")}
                                 <span className="sort-indicator">{sortIndicator("case_sensitive")}</span>
                             </button>
+                            <span className="col-resizer" onMouseDown={(e) => startResize("case_sensitive", e)} />
                         </th>
-                        <th className="py-4 px-2 w-36 text-center">
+                        <th className="py-4 px-2 text-center">
                             <button type="button" className="sort-btn justify-center" onClick={() => toggleSort("created_at")} aria-label={`${t("manage.preserve.table.date")} 排序`}>
                                 {t("manage.preserve.table.date")}
                                 <span className="sort-indicator">{sortIndicator("created_at")}</span>
                             </button>
+                            <span className="col-resizer" onMouseDown={(e) => startResize("created_at", e)} />
                         </th>
-                        <th className="py-4 px-4 w-32 text-right">{t("manage.preserve.table.actions")}</th>
+                        <th className="py-4 px-4 text-right">
+                            {t("manage.preserve.table.actions")}
+                            <span className="col-resizer" onMouseDown={(e) => startResize("actions", e)} />
+                        </th>
                     </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-50">
@@ -104,7 +166,7 @@ export function PreserveTermsList({ filteredTerms, filterText, filterCategory, e
                         const isSelected = selectedIds.includes(term.id);
                         const rowStyle = term.is_new ? { backgroundColor: highlightColor } : undefined;
                         return (
-                            <tr key={term.id} className={`group hover:bg-blue-50/30 transition-colors ${isSelected ? "bg-blue-50/50" : ""}`} style={rowStyle}>
+                            <tr key={term.id} className={`group transition-colors ${isSelected ? "bg-blue-50/50" : ""}`} style={rowStyle}>
                                 <td className="py-4 px-4 text-center">
                                     <input type="checkbox" checked={isSelected} onChange={(e) => handleSelectRow(term.id, e.target.checked)} />
                                 </td>
@@ -132,14 +194,7 @@ export function PreserveTermsList({ filteredTerms, filterText, filterCategory, e
                                             ))}
                                         </select>
                                     ) : (
-                                        <span className={`text-[10px] font-black px-2.5 py-1 rounded-full uppercase tracking-wider ${term.category === "產品名稱" ? "bg-blue-100 text-blue-700" :
-                                                term.category === "技術縮寫" ? "bg-indigo-100 text-indigo-700" :
-                                                    term.category === "專業術語" ? "bg-purple-100 text-purple-700" :
-                                                        term.category === "翻譯術語" ? "bg-emerald-100 text-emerald-700" :
-                                                            "bg-slate-100 text-slate-600"
-                                            }`}>
-                                            {getCategoryLabel(term.category)}
-                                        </span>
+                                        <CategoryPill name={getCategoryLabel(term.category)} />
                                     )}
                                 </td>
                                 <td className="py-4 px-2 text-center">

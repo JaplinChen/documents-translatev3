@@ -42,6 +42,10 @@
         flex: 1 1 auto;
     }
 
+    .modal.is-draggable.is-manage .modal-header.draggable-handle {
+        @apply bg-slate-50/90 border border-slate-200/70 rounded-xl px-3 py-2;
+    }
+
     .modal.is-draggable .modal-header.draggable-handle {
         cursor: grab;
         user-select: none;

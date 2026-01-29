@@ -246,6 +246,8 @@ function App() {
         tmTotal={tm.tmTotal}
         onLoadMoreGlossary={tm.loadMoreGlossary}
         onLoadMoreMemory={tm.loadMoreMemory}
+        onRefreshGlossary={tm.loadGlossary}
+        onRefreshMemory={tm.loadMemory}
         onSeed={tm.handleSeedTm}
         onUpsertGlossary={tm.upsertGlossary}
         onDeleteGlossary={tm.deleteGlossary}

@@ -3,7 +3,7 @@
  */
 export const API_BASE = (typeof import.meta.env.VITE_API_BASE === "string" && import.meta.env.VITE_API_BASE !== "")
     ? import.meta.env.VITE_API_BASE
-    : (import.meta.env.VITE_API_BASE === "" ? "" : "http://localhost:5002");
+    : "";
 
 /**
  * Default Ollama base URL

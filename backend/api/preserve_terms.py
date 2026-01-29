@@ -2,22 +2,22 @@ from __future__ import annotations
 
 import csv
 import io
-import json
-from datetime import datetime
-from pathlib import Path
-from uuid import uuid4
-
-from fastapi import APIRouter, HTTPException, Response
+from fastapi import APIRouter, Body, HTTPException, Response
 from pydantic import BaseModel
 
 from backend.services.language_detect import detect_language
+from backend.services.preserve_terms_repository import (
+    create_preserve_term as repo_create_preserve_term,
+    create_preserve_terms_batch as repo_create_preserve_terms_batch,
+    delete_all_preserve_terms as repo_delete_all_preserve_terms,
+    delete_preserve_term as repo_delete_preserve_term,
+    get_preserve_term_by_id as repo_get_preserve_term_by_id,
+    list_preserve_terms as repo_list_preserve_terms,
+    update_preserve_term as repo_update_preserve_term,
+)
 from backend.services.translation_memory import upsert_glossary
 
 router = APIRouter(prefix="/api/preserve-terms")
-
-PRESERVE_TERMS_FILE = (
-    Path(__file__).parent.parent / "data" / "preserve_terms.json"
-)
 
 
 class PreserveTerm(BaseModel):
@@ -38,133 +38,69 @@ class PreserveTermBatch(BaseModel):
     terms: list[PreserveTerm]
 
 
-def _load_preserve_terms() -> list[dict]:
-    """Load preserve terms from JSON file."""
-    if not PRESERVE_TERMS_FILE.exists():
-        return []
-    try:
-        with open(PRESERVE_TERMS_FILE, encoding="utf-8") as f:
-            return json.load(f)
-    except Exception:
-        return []
-
-
-def _save_preserve_terms(terms: list[dict]) -> None:
-    """Save preserve terms to JSON file."""
-    PRESERVE_TERMS_FILE.parent.mkdir(parents=True, exist_ok=True)
-    with open(PRESERVE_TERMS_FILE, "w", encoding="utf-8") as f:
-        json.dump(terms, f, ensure_ascii=False, indent=2)
-
-
 @router.get("")
 async def get_preserve_terms() -> dict:
     """Get all preserve terms."""
-    terms = _load_preserve_terms()
-    return {"terms": terms}
+    return {"terms": repo_list_preserve_terms()}
 
 
 @router.post("")
 async def create_preserve_term(term: PreserveTerm) -> dict:
     """Create a new preserve term."""
-    terms = _load_preserve_terms()
-
-    # Check for duplicates
-    for existing in terms:
-        if existing["term"].lower() == term.term.lower():
-            raise HTTPException(
-                status_code=400,
-                detail=f"術語 '{term.term}' 已存在",
-            )
-
-    new_term = {
-        "id": str(uuid4()),
-        "term": term.term,
-        "category": term.category,
-        "case_sensitive": term.case_sensitive,
-        "created_at": datetime.utcnow().isoformat() + "Z",
-    }
-
-    terms.append(new_term)
-    _save_preserve_terms(terms)
-
-    return {"term": new_term}
+    try:
+        new_term = repo_create_preserve_term(
+            term=term.term,
+            category=term.category,
+            case_sensitive=term.case_sensitive,
+        )
+        return {"term": new_term}
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
 
 
 @router.post("/batch")
 async def create_preserve_terms_batch(payload: PreserveTermBatch) -> dict:
     """Create preserve terms in batch, skipping duplicates."""
-    terms = _load_preserve_terms()
-    existing = {
-        (t.get("term") or "").lower()
-        for t in terms
-        if t.get("term")
-    }
-
-    created_terms: list[dict] = []
-    skipped = 0
-
-    for entry in payload.terms:
-        term_text = (entry.term or "").strip()
-        if not term_text:
-            continue
-        key = term_text.lower()
-        if key in existing:
-            skipped += 1
-            continue
-        new_term = {
-            "id": str(uuid4()),
-            "term": term_text,
-            "category": entry.category or "未分類",
+    entries = [
+        {
+            "term": entry.term,
+            "category": entry.category,
             "case_sensitive": entry.case_sensitive,
-            "created_at": datetime.utcnow().isoformat() + "Z",
         }
-        terms.append(new_term)
-        created_terms.append(new_term)
-        existing.add(key)
-
-    _save_preserve_terms(terms)
-
-    return {
-        "created": len(created_terms),
-        "skipped": skipped,
-        "terms": created_terms,
-    }
+        for entry in payload.terms
+    ]
+    return repo_create_preserve_terms_batch(entries)
 
 
 @router.put("/{term_id}")
 async def update_preserve_term(term_id: str, term: PreserveTerm) -> dict:
     """Update an existing preserve term."""
-    terms = _load_preserve_terms()
-
-    for i, existing in enumerate(terms):
-        if existing["id"] == term_id:
-            terms[i]["term"] = term.term
-            terms[i]["category"] = term.category
-            terms[i]["case_sensitive"] = term.case_sensitive
-            _save_preserve_terms(terms)
-            return {"term": terms[i]}
-
-    raise HTTPException(status_code=404, detail="術語不存在")
+    try:
+        updated = repo_update_preserve_term(
+            term_id=term_id,
+            term=term.term,
+            category=term.category,
+            case_sensitive=term.case_sensitive,
+        )
+        return {"term": updated}
+    except ValueError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
 
 
 @router.delete("/{term_id}")
 async def delete_preserve_term(term_id: str) -> dict:
     """Delete a preserve term."""
-    terms = _load_preserve_terms()
-
-    for i, existing in enumerate(terms):
-        if existing["id"] == term_id:
-            deleted = terms.pop(i)
-            _save_preserve_terms(terms)
-            return {"deleted": deleted}
-
-    raise HTTPException(status_code=404, detail="術語不存在")
+    try:
+        deleted = repo_delete_preserve_term(term_id)
+        return {"deleted": deleted}
+    except ValueError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
 
 
 @router.get("/export")
 async def export_preserve_terms() -> Response:
     """Export preserve terms as CSV."""
-    terms = _load_preserve_terms()
+    terms = repo_list_preserve_terms()
 
     output = io.StringIO()
     writer = csv.DictWriter(
@@ -194,46 +130,37 @@ async def export_preserve_terms() -> Response:
 
 
 @router.post("/import")
-async def import_preserve_terms(csv_data: str) -> dict:
+async def import_preserve_terms(
+    csv_data: str = Body(..., media_type="text/plain"),
+) -> dict:
     """Import preserve terms from CSV data."""
     try:
-        terms = _load_preserve_terms()
-        reader = csv.DictReader(io.StringIO(csv_data))
+        text = csv_data.lstrip("\ufeff")
+        if not text.strip():
+            total = len(repo_list_preserve_terms())
+            return {"imported": 0, "skipped": 0, "total": total}
+        reader = csv.DictReader(io.StringIO(text))
 
         imported = 0
         skipped = 0
+        payload_terms = []
 
         for row in reader:
             term_text = row.get("term", "").strip()
             if not term_text:
                 continue
-
-            # Check for duplicates
-            exists = any(
-                existing["term"].lower() == term_text.lower()
-                for existing in terms
+            payload_terms.append(
+                {
+                    "term": term_text,
+                    "category": row.get("category", "未分類").strip(),
+                    "case_sensitive": row.get("case_sensitive", "true").lower() == "true",
+                }
             )
-
-            if exists:
-                skipped += 1
-                continue
-
-            new_term = {
-                "id": str(uuid4()),
-                "term": term_text,
-                "category": row.get("category", "未分類").strip(),
-                "case_sensitive": (
-                    row.get("case_sensitive", "true").lower() == "true"
-                ),
-                "created_at": datetime.utcnow().isoformat() + "Z",
-            }
-
-            terms.append(new_term)
-            imported += 1
-
-        _save_preserve_terms(terms)
-
-        return {"imported": imported, "skipped": skipped, "total": len(terms)}
+        result = repo_create_preserve_terms_batch(payload_terms)
+        imported = result.get("created", 0)
+        skipped = result.get("skipped", 0)
+        total = len(repo_list_preserve_terms())
+        return {"imported": imported, "skipped": skipped, "total": total}
 
     except Exception as exc:
         raise HTTPException(
@@ -245,7 +172,7 @@ async def import_preserve_terms(csv_data: str) -> dict:
 @router.delete("")
 async def delete_all_preserve_terms() -> dict:
     """Delete all preserve terms."""
-    _save_preserve_terms([])
+    repo_delete_all_preserve_terms()
     return {"message": "已清除所有保留術語"}
 
 
@@ -264,27 +191,14 @@ async def convert_glossary_to_preserve_term(
         raise HTTPException(status_code=400, detail="術語不可為空")
 
     term_text = source_text.strip()
-    terms = _load_preserve_terms()
-
-    # Check for duplicates
-    for existing in terms:
-        if existing["term"].lower() == term_text.lower():
-            raise HTTPException(
-                status_code=400,
-                detail=f"術語 '{term_text}' 已存在於保留術語中",
-            )
-
-    new_term = {
-        "id": str(uuid4()),
-        "term": term_text,
-        "category": category,
-        "case_sensitive": case_sensitive,
-        "created_at": datetime.utcnow().isoformat() + "Z",
-    }
-
-    terms.append(new_term)
-    _save_preserve_terms(terms)
-
+    try:
+        new_term = repo_create_preserve_term(
+            term=term_text,
+            category=category,
+            case_sensitive=case_sensitive,
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
     return {"term": new_term, "message": f"已將 '{term_text}' 添加到保留術語"}
 
 
@@ -293,15 +207,7 @@ async def convert_preserve_term_to_glossary(
     payload: ConvertToGlossaryRequest,
 ) -> dict:
     """Convert a preserve term to glossary entry with auto-detected source lang."""
-    terms = _load_preserve_terms()
-    term_index = None
-    term_entry = None
-    for i, existing in enumerate(terms):
-        if existing["id"] == payload.id:
-            term_index = i
-            term_entry = existing
-            break
-
+    term_entry = repo_get_preserve_term_by_id(payload.id)
     if term_entry is None:
         raise HTTPException(status_code=404, detail="術語不存在")
 
@@ -320,9 +226,7 @@ async def convert_preserve_term_to_glossary(
         }
     )
 
-    if term_index is not None:
-        terms.pop(term_index)
-        _save_preserve_terms(terms)
+    repo_delete_preserve_term(payload.id)
 
     return {
         "status": "ok",

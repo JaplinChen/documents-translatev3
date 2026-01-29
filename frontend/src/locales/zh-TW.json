@@ -309,7 +309,7 @@
         "download": "下載"
     },
     "manage": {
-        "title": "資料管理",
+        "title": "翻譯資料管理",
         "tabs": {
             "glossary": "對照表",
             "preserve": "術語",
@@ -369,11 +369,13 @@
                 "no": "否"
             },
             "categories": {
-                "product": "產品名稱",
-                "abbr": "技術縮寫",
-                "special": "專業術語",
+                "product": "產品",
+                "abbr": "技術",
+                "special": "專業",
                 "other": "其他",
-                "trans": "翻譯術語"
+                "trans": "翻譯",
+                "company": "公司",
+                "network": "網絡"
             },
             "case_sensitive": "區分大小寫",
             "alerts": {

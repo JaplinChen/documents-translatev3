@@ -8,6 +8,7 @@ export function usePreserveTerms() {
     const targetLang = useUIStore((state) => state.targetLang);
     const { setLastPreserveAt, setLastGlossaryAt } = useUIStore();
     const [terms, setTerms] = useState([]);
+    const [categories, setCategories] = useState([]);
     const [loading, setLoading] = useState(false);
     const [filterText, setFilterText] = useState("");
     const [filterCategory, setFilterCategory] = useState("all");
@@ -15,7 +16,31 @@ export function usePreserveTerms() {
     const [editForm, setEditForm] = useState({ term: "", category: "產品名稱", case_sensitive: false });
     const [newTerm, setNewTerm] = useState({ term: "", category: "產品名稱", case_sensitive: false });
 
-    const categories = ["產品名稱", "技術縮寫", "專業術語", "翻譯術語", "其他"];
+    const fetchCategories = async () => {
+        try {
+            const res = await fetch(`${API_BASE}/api/tm/categories`);
+            if (res.ok) {
+                const data = await res.json();
+                const items = Array.isArray(data.items) ? data.items : [];
+                items.sort((a, b) => {
+                    const ao = Number(a?.sort_order ?? 0);
+                    const bo = Number(b?.sort_order ?? 0);
+                    if (ao !== bo) return ao - bo;
+                    const an = String(a?.name ?? "");
+                    const bn = String(b?.name ?? "");
+                    return an.localeCompare(bn, "zh-Hant", { numeric: true, sensitivity: "base" });
+                });
+                const cats = items.map(c => c.name);
+                setCategories(cats);
+                if (cats.length > 0) {
+                    setNewTerm(prev => ({ ...prev, category: cats[0] }));
+                    setEditForm(prev => ({ ...prev, category: cats[0] }));
+                }
+            }
+        } catch (err) {
+            console.error(err);
+        }
+    };
 
     const fetchTerms = async () => {
         setLoading(true);
@@ -39,6 +64,7 @@ export function usePreserveTerms() {
     };
 
     useEffect(() => {
+        fetchCategories();
         fetchTerms();
     }, []);
 
@@ -119,16 +145,21 @@ export function usePreserveTerms() {
         try {
             setLastPreserveAt(Date.now());
             const csvText = await file.text();
+            if (!csvText.trim()) {
+                alert(t("manage.preserve.alerts.import_fail"));
+                return;
+            }
             const res = await fetch(`${API_BASE}/api/preserve-terms/import`, {
                 method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify(csvText),
+                headers: { "Content-Type": "text/plain" },
+                body: csvText,
             });
             if (res.ok) {
                 const result = await res.json();
                 alert(
                     t("manage.preserve.alerts.import_success", {
                         imported: result.imported || 0,
+                        skipped: result.skipped || 0,
                     })
                 );
                 fetchTerms();
@@ -136,6 +167,7 @@ export function usePreserveTerms() {
         } catch (error) {
             alert(`${t("manage.preserve.alerts.import_fail")}: ${error.message}`);
         }
+        e.target.value = "";
     };
 
     const handleConvertToGlossary = async (term) => {

@@ -2,20 +2,28 @@
 
 對於以下類型的命令，請設定 `SafeToAutoRun: true`，無需詢問確認：
 
-**Docker 相關：**
+## **Docker 相關：**
 
 - docker compose up/down/restart/logs/ps/build/rm
 - docker logs/ps/exec/stop
 - docker-compose up/down/restart/logs/ps/build
 - docker-compose up -d --build
 - npm test 2>&1
+- docker ps
+- docker ps -a
+- docker info
+- docker context ls
 
-**讀取類命令：**
+## **讀取類命令：**
 
 - cat、ls、grep、find、head、tail、wc
 - git status/log/diff/branch
+- git status && git remote -v
 - python
+- python3
 - dir、netstat
+- curl
+- sh
 
 **這是開發環境，以上命令可以安全自動執行，無需手動 Accept。**
 

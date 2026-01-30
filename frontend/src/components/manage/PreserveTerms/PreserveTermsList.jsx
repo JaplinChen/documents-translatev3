@@ -18,6 +18,16 @@ export function PreserveTermsList({ filteredTerms, filterText, filterCategory, e
     });
     const resizingRef = useRef(null);
 
+    const handleKeyDown = (e) => {
+        if (e.key === "Enter") {
+            e.preventDefault();
+            handleUpdate();
+        } else if (e.key === "Escape") {
+            e.preventDefault();
+            setEditingId(null);
+        }
+    };
+
     const handleSelectAll = (checked) => {
         if (checked) setSelectedIds(safeTerms.map(t => t.id));
         else setSelectedIds([]);
@@ -185,6 +195,7 @@ export function PreserveTermsList({ filteredTerms, filterText, filterCategory, e
                                         className="data-input !bg-white !border-blue-200"
                                         value={editForm.term}
                                         onChange={(e) => setEditForm({ ...editForm, term: e.target.value })}
+                                        onKeyDown={handleKeyDown}
                                         autoFocus
                                     />
                                 ) : (
@@ -197,6 +208,7 @@ export function PreserveTermsList({ filteredTerms, filterText, filterCategory, e
                                         className="data-input !text-[11px] !py-1 !px-2 w-full !bg-white border-blue-200 font-bold"
                                         value={editForm.category}
                                         onChange={(e) => setEditForm({ ...editForm, category: e.target.value })}
+                                        onKeyDown={handleKeyDown}
                                     >
                                         {categories.map(cat => (
                                             <option key={cat} value={cat}>{getCategoryLabel(cat)}</option>
@@ -213,6 +225,7 @@ export function PreserveTermsList({ filteredTerms, filterText, filterCategory, e
                                         className="w-4 h-4 rounded border-slate-300 text-blue-600"
                                         checked={editForm.case_sensitive}
                                         onChange={(e) => setEditForm({ ...editForm, case_sensitive: e.target.checked })}
+                                        onKeyDown={handleKeyDown}
                                     />
                                 ) : (
                                     <span className={`text-[10px] font-black uppercase tracking-wider ${term.case_sensitive ? "text-blue-600" : "text-slate-300"}`}>
@@ -239,10 +252,10 @@ export function PreserveTermsList({ filteredTerms, filterText, filterCategory, e
                                             setEditingId(term.id);
                                             setEditForm({ term: term.term, category: term.category, case_sensitive: term.case_sensitive });
                                         }} title={t("manage.actions.edit")}>
-                                            <img src="https://emojicdn.elk.sh/📝?style=apple" className="w-5 h-5 object-contain" alt="Edit" />
+                                            <img src="https://emojicdn.elk.sh/✏️?style=apple" className="w-5 h-5 object-contain" alt="Edit" />
                                         </button>
                                         <button className="action-btn-sm primary" onClick={() => onConvertToGlossary(term)} title={t("manage.actions.convert_glossary")}>
-                                            <img src="https://emojicdn.elk.sh/📓?style=apple" className="w-5 h-5 object-contain" alt="To Glossary" />
+                                            <img src="https://emojicdn.elk.sh/📑?style=apple" className="w-5 h-5 object-contain" alt="To Glossary" />
                                         </button>
                                         <button className="action-btn-sm danger" onClick={() => handleDelete(term.id)} title={t("common.delete")}>
                                             <img src="https://emojicdn.elk.sh/🗑️?style=apple" className="w-5 h-5 object-contain" alt="Delete" />

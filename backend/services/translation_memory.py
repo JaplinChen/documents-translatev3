@@ -683,6 +683,20 @@ def create_tm_category(name: str, sort_order: int | None = None) -> dict:
             (name, sort_order or 0),
         )
         conn.commit()
+        
+        # Sync to terms.db if exists
+        terms_db = Path("data/terms.db")
+        if terms_db.exists():
+            try:
+                with sqlite3.connect(terms_db) as tconn:
+                    tconn.execute(
+                        "INSERT OR IGNORE INTO categories (name, sort_order) VALUES (?, ?)",
+                        (name, sort_order or 0)
+                    )
+                    tconn.commit()
+            except Exception as e:
+                print(f"Error syncing create to terms.db: {e}")
+
         return {"id": cur.lastrowid, "name": name, "sort_order": sort_order or 0}
 
 

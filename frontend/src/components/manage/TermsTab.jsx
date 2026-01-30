@@ -48,7 +48,6 @@ export default function TermsTab() {
     const [showLanguages, setShowLanguages] = useState(false);
     const [showImport, setShowImport] = useState(false);
     const [compactTable, setCompactTable] = useState(false);
-    const [showCreate, setShowCreate] = useState(false);
     const [showColPanel, setShowColPanel] = useState(false);
     const [importStep, setImportStep] = useState(1);
     const [colWidths, setColWidths] = useState(() => {
@@ -89,7 +88,6 @@ export default function TermsTab() {
     const colLabels = {
         term: "術語",
         category: "分類",
-        status: "狀態",
         languages: "語言",
         aliases: "別名",
         note: "備註",
@@ -123,7 +121,6 @@ export default function TermsTab() {
         select: "40px",
         term: "1.4fr",
         category: "100px",
-        status: "90px",
         languages: "1fr",
         aliases: "1.2fr",
         note: "1.2fr",
@@ -427,75 +424,7 @@ export default function TermsTab() {
                 </div>
             )}
 
-            <div className="p-4 border border-slate-200 rounded-2xl bg-white shadow-sm">
-                <div className="flex items-center justify-between mb-2">
-                    <div className="text-sm font-bold text-slate-700">新增 / 編輯術語</div>
-                    <button className="btn ghost compact" type="button" onClick={() => setShowCreate((v) => !v)}>
-                        {showCreate ? "收合" : "展開"}
-                    </button>
-                </div>
-                {showCreate && (
-                    <div className="space-y-2">
-                        <div className="create-fields grid grid-cols-12 gap-2 w-full items-center">
-                            <input
-                                className="text-input col-span-3"
-                                value={form.term}
-                                placeholder="術語"
-                                onChange={(e) => setForm((p) => ({ ...p, term: e.target.value }))}
-                                onKeyDown={(e) => handleKeyDown(e, handleUpsert, resetForm)}
-                            />
-                            <select className="select-input col-span-2" value={form.category_id || ""} onChange={(e) => setForm((p) => ({ ...p, category_id: e.target.value }))}>
-                                <option value="">分類</option>
-                                {categories.map((c) => (
-                                    <option key={c.id} value={c.id}>{c.name}</option>
-                                ))}
-                            </select>
-                            <select className="select-input col-span-2" value={form.status} onChange={(e) => setForm((p) => ({ ...p, status: e.target.value }))}>
-                                <option value="active">active</option>
-                                <option value="inactive">inactive</option>
-                            </select>
-                            <select className="select-input col-span-2" value={form.case_rule} onChange={(e) => setForm((p) => ({ ...p, case_rule: e.target.value }))}>
-                                <option value="">大小寫規則</option>
-                                <option value="preserve">preserve</option>
-                                <option value="uppercase">uppercase</option>
-                                <option value="lowercase">lowercase</option>
-                            </select>
-                            <input className="text-input col-span-3" value={form.aliases} placeholder="別名 (| 分隔)" onChange={(e) => setForm((p) => ({ ...p, aliases: e.target.value }))} onKeyDown={(e) => handleKeyDown(e, handleUpsert, resetForm)} />
-                            <input className="text-input col-span-3" value={form.note} placeholder="備註" onChange={(e) => setForm((p) => ({ ...p, note: e.target.value }))} onKeyDown={(e) => handleKeyDown(e, handleUpsert, resetForm)} />
-                            <div className="col-span-1 flex gap-1">
-                                <button className="btn primary flex-1 text-lg" type="button" onClick={handleUpsert}>
-                                    {editingId ? "更新" : "+"}
-                                </button>
-                            </div>
-                        </div>
-                        {errorMsg && (
-                            <div className="mt-2 text-xs text-rose-600">{errorMsg}</div>
-                        )}
-                        <div className="mt-3 p-3 border border-slate-200 rounded-xl bg-slate-50/50">
-                            <div className="flex items-center justify-between mb-2">
-                                <div className="text-sm font-bold">語言欄位</div>
-                                <div className="flex gap-2">
-                                    <button className="btn ghost compact" type="button" onClick={() => setShowLanguages((v) => !v)}>
-                                        {showLanguages ? "收合" : "展開"}
-                                    </button>
-                                    <button className="btn ghost compact" type="button" onClick={addLanguage}>新增語言</button>
-                                </div>
-                            </div>
-                            {showLanguages && (
-                                <div className="space-y-2">
-                                    {form.languages.map((lang, idx) => (
-                                        <div key={`${lang.lang_code}-${idx}`} className="grid grid-cols-12 gap-2">
-                                            <input className="text-input col-span-3" value={lang.lang_code} placeholder="lang_code" onChange={(e) => updateLanguage(idx, "lang_code", e.target.value)} />
-                                            <input className="text-input col-span-8" value={lang.value} placeholder="value" onChange={(e) => updateLanguage(idx, "value", e.target.value)} />
-                                            <button className="btn ghost compact col-span-1" type="button" onClick={() => removeLanguage(idx)}>刪除</button>
-                                        </div>
-                                    ))}
-                                </div>
-                            )}
-                        </div>
-                    </div>
-                )}
-            </div>
+
 
             {selectedIds.length > 0 && (
                 <div className="batch-actions flex flex-wrap gap-2 mt-3">
@@ -551,18 +480,20 @@ export default function TermsTab() {
                         </div>
                         <div className="text-xs font-bold text-slate-500 mb-2">常用</div>
                         <div className="grid grid-cols-2 gap-2 mb-3">
-                            {["term", "category", "status", "languages"].map((key) => (
-                                <label key={key} className="flex items-center gap-2 border border-slate-200 rounded-lg px-2 py-1">
-                                    <input
-                                        type="checkbox"
-                                        checked={visibleCols[key]}
-                                        onChange={(e) =>
-                                            setVisibleColsSafe({ ...visibleCols, [key]: e.target.checked })
-                                        }
-                                    />
-                                    {colLabels[key]}
-                                </label>
-                            ))}
+                            <div className="grid grid-cols-2 gap-2 mb-3">
+                                {["term", "category", "languages"].map((key) => (
+                                    <label key={key} className="flex items-center gap-2 border border-slate-200 rounded-lg px-2 py-1">
+                                        <input
+                                            type="checkbox"
+                                            checked={visibleCols[key]}
+                                            onChange={(e) =>
+                                                setVisibleColsSafe({ ...visibleCols, [key]: e.target.checked })
+                                            }
+                                        />
+                                        {colLabels[key]}
+                                    </label>
+                                ))}
+                            </div>
                         </div>
                         <div className="text-xs font-bold text-slate-500 mb-2">進階</div>
                         <div className="grid grid-cols-2 gap-2 mb-3">
@@ -612,7 +543,6 @@ export default function TermsTab() {
                     </div>
                     {visibleCols.term && <div className="data-cell">術語<span className="col-resizer" onMouseDown={(e) => startResize("term", e)} /></div>}
                     {visibleCols.category && <div className="data-cell">分類<span className="col-resizer" onMouseDown={(e) => startResize("category", e)} /></div>}
-                    {visibleCols.status && <div className="data-cell">狀態<span className="col-resizer" onMouseDown={(e) => startResize("status", e)} /></div>}
                     {visibleCols.languages && <div className="data-cell">語言<span className="col-resizer" onMouseDown={(e) => startResize("languages", e)} /></div>}
                     {visibleCols.aliases && <div className="data-cell">別名<span className="col-resizer" onMouseDown={(e) => startResize("aliases", e)} /></div>}
                     {visibleCols.note && <div className="data-cell">備註<span className="col-resizer" onMouseDown={(e) => startResize("note", e)} /></div>}
@@ -622,6 +552,7 @@ export default function TermsTab() {
                 {loading && <div className="data-empty">載入中...</div>}
                 {!loading && terms.map((item, idx) => {
                     const isEditing = editingId === item.id;
+                    const isSelected = selectedIds.includes(item.id);
                     const languageText = formatLanguages(isEditing ? form.languages : item.languages);
                     return (
                         <div
@@ -663,22 +594,7 @@ export default function TermsTab() {
                                     )}
                                 </div>
                             )}
-                            {visibleCols.status && (
-                                <div className="data-cell">
-                                    {isEditing ? (
-                                        <select
-                                            className="select-input !h-8 !text-xs !bg-white !border-blue-200 font-bold"
-                                            value={form.status || "active"}
-                                            onChange={(e) => setForm((p) => ({ ...p, status: e.target.value }))}
-                                        >
-                                            <option value="active">active</option>
-                                            <option value="inactive">inactive</option>
-                                        </select>
-                                    ) : (
-                                        <span className={`status-pill ${item.status}`}>{item.status}</span>
-                                    )}
-                                </div>
-                            )}
+
                             {visibleCols.languages && (
                                 <div className="data-cell">
                                     {isEditing ? (
@@ -735,7 +651,7 @@ export default function TermsTab() {
                                 ) : (
                                     <>
                                         <button className="action-btn-sm" onClick={() => startEdit(item)} title="編輯">
-                                            <img src="https://emojicdn.elk.sh/📝?style=apple" className="w-5 h-5 object-contain" alt="Edit" />
+                                            <img src="https://emojicdn.elk.sh/✏️?style=apple" className="w-5 h-5 object-contain" alt="Edit" />
                                         </button>
                                         <button className="action-btn-sm" onClick={() => loadVersions(item.id)} title="版本">
                                             <img src="https://emojicdn.elk.sh/📜?style=apple" className="w-5 h-5 object-contain" alt="Version" />

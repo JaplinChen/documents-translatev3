@@ -390,11 +390,11 @@ export default function ManageModal({
                 </div>
                 <div className="modal-tabs">
                     <button className={`tab-btn ${tab === "glossary" ? "is-active" : ""}`} type="button" onClick={() => setTab("glossary")}>{t("manage.tabs.glossary")}</button>
-                    <button className={`tab-btn ${tab === "terms" ? "is-active" : ""}`} type="button" onClick={() => setTab("terms")}>術語資料</button>
                     <button className={`tab-btn ${tab === "preserve" ? "is-active" : ""}`} type="button" onClick={() => setTab("preserve")}>{t("manage.tabs.preserve")}</button>
                     <button className={`tab-btn ${tab === "tm" ? "is-active" : ""}`} type="button" onClick={() => setTab("tm")}>{t("manage.tabs.tm")}</button>
                     <button className={`tab-btn ${tab === "history" ? "is-active" : ""}`} type="button" onClick={() => setTab("history")}>{t("nav.history", "History")}</button>
-                    <button className={`tab-btn ${tab === "tm_categories" ? "is-active" : ""}`} type="button" onClick={() => setTab("tm_categories")}>分類維護</button>
+                    <button className={`tab-btn ml-4 bg-amber-100 text-amber-900 hover:bg-amber-200 ${tab === "tm_categories" ? "is-active !bg-amber-300 !text-amber-950" : ""}`} type="button" onClick={() => setTab("tm_categories")}>分類維護</button>
+                    <button className={`tab-btn bg-amber-100 text-amber-900 hover:bg-amber-200 ${tab === "terms" ? "is-active !bg-amber-300 !text-amber-950" : ""}`} type="button" onClick={() => setTab("terms")}>翻譯資料</button>
                 </div>
                 <div className={`modal-body ${tab === "history" ? "" : "manage-body"}`}>
                     {tab === "history" ? (
@@ -536,6 +536,16 @@ function TMCategoriesTab({ categories, onRefresh }) {
             return false;
         }
     });
+
+    const handleKeyDown = (e, saveFn, cancelFn) => {
+        if (e.key === "Enter") {
+            e.preventDefault();
+            saveFn();
+        } else if (e.key === "Escape") {
+            e.preventDefault();
+            cancelFn();
+        }
+    };
 
     const handleCreate = async () => {
         if (!newName.trim()) return;
@@ -694,7 +704,7 @@ function TMCategoriesTab({ categories, onRefresh }) {
                                 ) : (
                                     <>
                                         <button className="action-btn-sm" onClick={() => { setEditingId(cat.id); setDraft({ ...cat }); }} title="編輯">
-                                            <img src="https://emojicdn.elk.sh/📝?style=apple" className="w-5 h-5 object-contain" alt="Edit" />
+                                            <img src="https://emojicdn.elk.sh/✏️?style=apple" className="w-5 h-5 object-contain" alt="Edit" />
                                         </button>
                                         <button className="action-btn-sm danger" onClick={() => handleDelete(cat.id)} title="刪除">
                                             <img src="https://emojicdn.elk.sh/🗑️?style=apple" className="w-5 h-5 object-contain" alt="Delete" />
@@ -725,6 +735,17 @@ function UnifiedDataTable({ items, isGlossary, compact, editingKey, draft, savin
         }
     });
     const resizingRef = useRef(null);
+
+    const handleKeyDown = (e, saveFn, cancelFn) => {
+        if (e.key === "Enter") {
+            e.preventDefault();
+            saveFn();
+        } else if (e.key === "Escape") {
+            e.preventDefault();
+            cancelFn();
+        }
+    };
+
     useEffect(() => {
         try {
             const saved = localStorage.getItem(storageKey);
@@ -950,6 +971,7 @@ function UnifiedDataTable({ items, isGlossary, compact, editingKey, draft, savin
                                     className="data-input !bg-white !border-blue-200 font-bold !text-[12px]"
                                     value={row.category_id || ""}
                                     onChange={(e) => setDraft((prev) => ({ ...prev, category_id: e.target.value ? parseInt(e.target.value) : null }))}
+                                    onKeyDown={(e) => handleKeyDown(e, onSave, onCancel)}
                                 >
                                     <option value="">{t("manage.fields.no_category", "無分類")}</option>
                                     {categories.map(c => (
@@ -973,14 +995,14 @@ function UnifiedDataTable({ items, isGlossary, compact, editingKey, draft, savin
                             ) : (
                                 <>
                                     <button className="action-btn-sm" onClick={() => onEdit(item)} title={t("manage.actions.edit")}>
-                                        <img src="https://emojicdn.elk.sh/📝?style=apple" className="w-5 h-5 object-contain" alt="Edit" />
+                                        <img src="https://emojicdn.elk.sh/✏️?style=apple" className="w-5 h-5 object-contain" alt="Edit" />
                                     </button>
                                     <button className="action-btn-sm primary" onClick={() => onConvertToPreserveTerm(item)} title={t("manage.actions.convert_preserve")}>
                                         <img src="https://emojicdn.elk.sh/🔒?style=apple" className="w-5 h-5 object-contain" alt="Preserve" />
                                     </button>
                                     {!isGlossary && (
                                         <button className="action-btn-sm primary" onClick={() => onConvertToGlossary(item)} title={t("manage.actions.convert_glossary")}>
-                                            <img src="https://emojicdn.elk.sh/📓?style=apple" className="w-5 h-5 object-contain" alt="To Glossary" />
+                                            <img src="https://emojicdn.elk.sh/📑?style=apple" className="w-5 h-5 object-contain" alt="To Glossary" />
                                         </button>
                                     )}
                                     <button className="action-btn-sm danger" onClick={() => onDelete(item)} title={t("manage.actions.delete")}>

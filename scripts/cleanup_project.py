@@ -1,108 +1,84 @@
+import argparse
+
+# --- Configuration ---
+TARGET_DIRS = [
+    "__pycache__",
+    ".pytest_cache",
+    ".mypy_cache",
+    "build",
+    "dist"
+]
+TARGET_EXTENSIONS = [
+    ".log",
+    ".tmp",
+    ".bak",
+    ".DS_Store"
+]
+# Potentially orphaned scripts at root
+POTENTIAL_ORPHANS = [
+    "check_db.py",
+    "check_env.py",
+    "one_time_sync.py",
+    "install_log.txt",
+    "test_simple.png"
+]
+
+def cleanup(dry_run=True, auto_confirm=False):
+    print(f"{'='*20} CODEBASE CLEANUP {'='*20}")
+    if dry_run:
+        print("[MODE] DRY RUN - No files will be deleted")
+    else:
+        print("[MODE] LIVE - Files will be deleted")
+    
+    base_path = Path(__file__).parent.parent.absolute()
+    deleted_count = 0
+    
+    # 1. Clean directories
+    print("\nScanning for junk directories...")
+    for root, dirs, files in os.walk(base_path):
+        for d in dirs:
+            if d in TARGET_DIRS:
+                dir_path = Path(root) / d
+                print(f"[CACHE] {dir_path.relative_to(base_path)}")
+                if not dry_run:
+                    confirm = 'y' if auto_confirm else input(f"Delete directory {dir_path.name}? (y/N): ")
+                    if confirm.lower() == 'y':
+                        shutil.rmtree(dir_path)
+                        deleted_count += 1
+
+    # 2. Clean temporary files
+    print("\nScanning for junk files...")
+    for root, dirs, files in os.walk(base_path):
+        for f in files:
+            if any(f.endswith(ext) for ext in TARGET_EXTENSIONS) or f in POTENTIAL_ORPHANS:
+                file_path = Path(root) / f
+                # Skip important root files if any wrongly matched
+                if f == "requirements.txt" or f == "docker-compose.yml":
+                    continue
+                
+                category = "[TEMP]" if f.endswith(tuple(TARGET_EXTENSIONS)) else "[ORPHAN]"
+                print(f"{category} {file_path.relative_to(base_path)}")
+                
+                if not dry_run:
+                    confirm = 'y' if auto_confirm else input(f"Delete file {file_path.name}? (y/N): ")
+                    if confirm.lower() == 'y':
+                        os.remove(file_path)
+                        deleted_count += 1
+
+    print("\n" + "="*50)
+    if dry_run:
+        print("Dry run finished. Run with --live to perform cleaning.")
+    else:
+        print(f"Cleanup finished. Total items deleted: {deleted_count}")
+
 import os
 import shutil
-import argparse
 from pathlib import Path
 
-# 配置清理目標 (分類)
-TARGETS = {
-    "CACHE": [
-        "frontend/dist",
-        "**/*/__pycache__",
-        ".pytest_cache",
-        ".mypy_cache",
-        "**/.DS_Store",
-    ],
-    "TEMP_ARTIFACTS": [
-        "release_package",
-        "*.tar",
-        "install_log.txt",
-        "backend/test_zip_dup.py",
-        "backend_logs.txt",
-        "data/.update.lock",
-        "data/.last_update_hash",
-    ],
-    "DEBUG_SCRIPTS": [
-        "debug_ollama_connection.py",
-        "debug_nuclear.py",
-        "backend/debug_nuclear.py",
-        "probe_contracts.py",
-        "probe_flow.py",
-        "check_env.py",
-        "build.cmd",
-    ],
-    "ORPHANED_TESTS": [
-        "test_api_flow.py",
-        "test_final_quality.py",
-        "test_regex.py",
-    ],
-    "LOGS": [
-        "*.log",
-        "**/*.log",
-        "*.tmp",
-        "*.bak",
-    ]
-}
-
-def get_to_delete(project_root):
-    to_delete = []
-    
-    # 處理精確路徑與 glob
-    for category, paths in TARGETS.items():
-        for pattern in paths:
-            if "**/" in pattern:
-                # 遞迴搜尋
-                p_clean = pattern.replace("**/", "")
-                for p in project_root.rglob(p_clean):
-                    to_delete.append((p, category))
-            elif "*" in pattern:
-                # 目錄下的 glob
-                for p in project_root.glob(pattern):
-                    to_delete.append((p, category))
-            else:
-                # 精確路徑
-                p = project_root / pattern
-                if p.exists():
-                    to_delete.append((p, category))
-    return to_delete
-
-def cleanup(dry_run=True):
-    # 腳本位在 scripts/，root 為上一層
-    project_root = Path(__file__).parent.parent.absolute()
-    all_to_delete = get_to_delete(project_root)
-
-    if not all_to_delete:
-        print("Done. No items found to clean.")
-        return
-
-    print(f"{' [DRY RUN] ' if dry_run else ' [LIVE RUN] '} Proposed items for removal:")
-    print("-" * 50)
-    for p, cat in sorted(all_to_delete, key=lambda x: x[1]):
-        rel_path = p.relative_to(project_root)
-        print(f"[{cat:15}] {rel_path}")
-    print("-" * 50)
-
-    if dry_run:
-        print("\nNote: This was a dry run. Use --no-dry-run to perform actual deletion.")
-        return
-
-    confirm = input("\nAre you sure you want to delete these items? (y/N): ").lower()
-    if confirm == 'y':
-        for p, _ in all_to_delete:
-            try:
-                if p.is_dir():
-                    shutil.rmtree(p)
-                else:
-                    p.unlink()
-                print(f"Deleted: {p.relative_to(project_root)}")
-            except Exception as e:
-                print(f"Error deleting {p}: {e}")
-        print("\nCleanup cycle completed.")
-    else:
-        print("\nCleanup aborted by user.")
-
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description="Documents-Translate Codebase Cleanup Tool")
-    parser.add_argument("--no-dry-run", action="store_true", help="Perform actual deletion")
+    parser = argparse.ArgumentParser(description="Cleanup codebase")
+    parser.add_argument("--live", action="store_true", help="Perform actual deletion")
+    parser.add_argument("--yes", action="store_true", help="Auto-confirm all deletions")
     args = parser.parse_args()
-
-    cleanup(dry_run=not args.no_dry_run)
+    
+    cleanup(dry_run=not args.live, auto_confirm=args.yes)

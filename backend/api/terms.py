@@ -4,8 +4,9 @@ import csv
 import io
 from pathlib import Path
 
-from fastapi import APIRouter, File, HTTPException, Response, UploadFile
+from fastapi import APIRouter, File, HTTPException, Request, Response, UploadFile
 from pydantic import BaseModel
+import socket
 
 from backend.services.term_repository import (
     batch_delete_terms,
@@ -88,8 +89,18 @@ async def term_list(
 
 
 @router.post("")
-async def term_create(payload: TermPayload) -> dict:
+async def term_create(payload: TermPayload, request: Request) -> dict:
     try:
+        if not payload.created_by:
+            client_host = request.client.host
+            try:
+                # Try to resolve hostname
+                hostname, _, _ = socket.gethostbyaddr(client_host)
+                payload.created_by = hostname
+            except Exception:
+                # Fallback to IP if resolution fails
+                payload.created_by = client_host
+
         item = create_term(payload.model_dump())
         return {"item": item}
     except ValueError as exc:

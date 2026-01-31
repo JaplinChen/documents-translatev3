@@ -21,6 +21,7 @@ CREATE TABLE IF NOT EXISTS terms (
   status TEXT NOT NULL,
   case_rule TEXT,
   note TEXT,
+  source TEXT,
   created_by TEXT,
   created_at TEXT DEFAULT CURRENT_TIMESTAMP,
   updated_at TEXT DEFAULT CURRENT_TIMESTAMP
@@ -68,21 +69,14 @@ def _ensure_db() -> None:
     DB_PATH.parent.mkdir(parents=True, exist_ok=True)
     with _connect() as conn:
         conn.executescript(SCHEMA_SQL)
-        conn.execute(
-            "CREATE UNIQUE INDEX IF NOT EXISTS idx_terms_norm ON terms (term_norm)"
-        )
-        conn.execute(
-
-                "CREATE INDEX IF NOT EXISTS idx_term_lang_code "
-                "ON term_languages (lang_code)"
-
-        )
-        conn.execute(
-
-                "CREATE INDEX IF NOT EXISTS idx_term_alias_norm "
-                "ON term_aliases (alias_norm)"
-
-        )
+        conn.execute("CREATE UNIQUE INDEX IF NOT EXISTS idx_terms_norm ON terms (term_norm)")
+        conn.execute("CREATE INDEX IF NOT EXISTS idx_term_lang_code ON term_languages (lang_code)")
+        conn.execute("CREATE INDEX IF NOT EXISTS idx_term_alias_norm ON term_aliases (alias_norm)")
+        # Check if source column exists
+        cursor = conn.execute("PRAGMA table_info(terms)")
+        columns = [row["name"] for row in cursor.fetchall()]
+        if "source" not in columns:
+            conn.execute("ALTER TABLE terms ADD COLUMN source TEXT")
     _DB_INITIALIZED = True
 
 
@@ -209,10 +203,7 @@ def _check_alias_conflict(alias_norms: list[str], exclude_term_id: int | None = 
                 raise ValueError("別名與現有術語衝突")
             if exclude_term_id:
                 conflict = conn.execute(
-                    (
-                        "SELECT id FROM term_aliases "
-                        "WHERE alias_norm = ? AND term_id != ?"
-                    ),
+                    ("SELECT id FROM term_aliases WHERE alias_norm = ? AND term_id != ?"),
                     (alias_norm, exclude_term_id),
                 ).fetchone()
             else:
@@ -250,10 +241,19 @@ def create_term(payload: dict) -> dict:
         cur = conn.execute(
             (
                 "INSERT INTO terms "
-                "(term, term_norm, category_id, status, case_rule, note, created_by) "
-                "VALUES (?, ?, ?, ?, ?, ?, ?)"
+                "(term, term_norm, category_id, status, case_rule, note, source, created_by) "
+                "VALUES (?, ?, ?, ?, ?, ?, ?, ?)"
             ),
-            (term, term_norm, category_id, status, case_rule, note, created_by),
+            (
+                term,
+                term_norm,
+                category_id,
+                status,
+                case_rule,
+                note,
+                payload.get("source"),
+                created_by,
+            ),
         )
         term_id = cur.lastrowid
         _upsert_languages(conn, term_id, payload.get("languages") or [])
@@ -289,10 +289,11 @@ def update_term(term_id: int, payload: dict) -> dict:
         conn.execute(
             (
                 "UPDATE terms SET term = ?, term_norm = ?, category_id = ?, "
-                "status = ?, case_rule = ?, note = ?, updated_at = CURRENT_TIMESTAMP "
+                "status = ?, case_rule = ?, note = ?, source = ?, "
+                "updated_at = CURRENT_TIMESTAMP "
                 "WHERE id = ?"
             ),
-            (term, term_norm, category_id, status, case_rule, note, term_id),
+            (term, term_norm, category_id, status, case_rule, note, payload.get("source"), term_id),
         )
         _upsert_languages(conn, term_id, payload.get("languages") or [])
         _replace_aliases(conn, term_id, aliases)
@@ -368,12 +369,10 @@ def list_terms(filters: dict) -> list[dict]:  # noqa: C901
     q = _normalize_text(filters.get("q"))
     if q:
         where.append(
-
-                "(t.term_norm LIKE ? OR EXISTS ("
-                "SELECT 1 FROM term_aliases a "
-                "WHERE a.term_id = t.id AND a.alias_norm LIKE ?"
-                "))"
-
+            "(t.term_norm LIKE ? OR EXISTS ("
+            "SELECT 1 FROM term_aliases a "
+            "WHERE a.term_id = t.id AND a.alias_norm LIKE ?"
+            "))"
         )
         like = f"%{q.lower()}%"
         params.extend([like, like])
@@ -393,6 +392,11 @@ def list_terms(filters: dict) -> list[dict]:  # noqa: C901
         where.append("t.created_by = ?")
         params.append(created_by)
 
+    source = _normalize_text(filters.get("source"))
+    if source:
+        where.append("t.source = ?")
+        params.append(source)
+
     date_from = filters.get("date_from")
     if date_from:
         where.append("t.created_at >= ?")
@@ -406,26 +410,20 @@ def list_terms(filters: dict) -> list[dict]:  # noqa: C901
     missing_lang = filters.get("missing_lang")
     if missing_lang:
         where.append(
-
-                "NOT EXISTS ("
-                "SELECT 1 FROM term_languages tl "
-                "WHERE tl.term_id = t.id AND tl.lang_code = ? "
-                "AND tl.value IS NOT NULL AND tl.value != ''"
-                ")"
-
+            "NOT EXISTS ("
+            "SELECT 1 FROM term_languages tl "
+            "WHERE tl.term_id = t.id AND tl.lang_code = ? "
+            "AND tl.value IS NOT NULL AND tl.value != ''"
+            ")"
         )
         params.append(missing_lang)
 
     has_alias = filters.get("has_alias")
     if has_alias is not None:
         if has_alias:
-            where.append(
-                "EXISTS (SELECT 1 FROM term_aliases a WHERE a.term_id = t.id)"
-            )
+            where.append("EXISTS (SELECT 1 FROM term_aliases a WHERE a.term_id = t.id)")
         else:
-            where.append(
-                "NOT EXISTS (SELECT 1 FROM term_aliases a WHERE a.term_id = t.id)"
-            )
+            where.append("NOT EXISTS (SELECT 1 FROM term_aliases a WHERE a.term_id = t.id)")
 
     clause = " AND ".join(where) if where else "1=1"
     sql = (
@@ -500,6 +498,64 @@ def batch_delete_terms(term_ids: list[int]) -> int:
         return cur.rowcount
 
 
+def sync_from_external(
+    term: str,
+    category_name: str | None = None,
+    source: str = "manual",
+    languages: list[dict] | None = None,
+) -> dict:
+    """Sync a term from an external source. Merges languages if the term exists."""
+    _ensure_db()
+    term_text = _normalize_text(term)
+    if not term_text:
+        return {}
+
+    term_norm = term_text.lower()
+    with _connect() as conn:
+        row = conn.execute("SELECT id FROM terms WHERE term_norm = ?", (term_norm,)).fetchone()
+        term_id = int(row["id"]) if row else None
+
+    if term_id:
+        # Existing term, fetch current languages to merge
+        with _connect() as conn:
+            current_langs = _fetch_languages(conn, term_id)
+            lang_dict = {l["lang_code"]: l["value"] for l in current_langs}
+            for l in languages or []:
+                lang_dict[l["lang_code"]] = l["value"]
+
+            merged_languages = [{"lang_code": k, "value": v} for k, v in lang_dict.items()]
+
+            payload = {
+                "term": term_text,
+                "category_name": category_name,
+                "source": source,
+                "languages": merged_languages,
+                "status": "active",
+            }
+            return update_term(term_id, payload)
+    else:
+        # New term
+        payload = {
+            "term": term_text,
+            "category_name": category_name,
+            "source": source,
+            "languages": languages or [],
+            "status": "active",
+            "allow_create_category": True,
+        }
+        return create_term(payload)
+
+
+def delete_by_term(term: str) -> None:
+    """Delete a term by its text (e.g. from sync hooks)."""
+    _ensure_db()
+    term_norm = _normalize_text(term).lower()
+    with _connect() as conn:
+        row = conn.execute("SELECT id FROM terms WHERE term_norm = ?", (term_norm,)).fetchone()
+        if row:
+            delete_term(int(row["id"]))
+
+
 def upsert_term_by_norm(payload: dict) -> dict:
     _ensure_db()
     term = _normalize_text(payload.get("term"))
@@ -559,10 +615,7 @@ def _record_version(
 ) -> None:
     payload = {"before": before, "after": after}
     conn.execute(
-        (
-            "INSERT INTO term_versions (term_id, diff, created_by) "
-            "VALUES (?, ?, ?)"
-        ),
+        ("INSERT INTO term_versions (term_id, diff, created_by) VALUES (?, ?, ?)"),
         (term_id, json.dumps(payload, ensure_ascii=False), created_by),
     )
 
@@ -592,9 +645,6 @@ def _replace_aliases(conn: sqlite3.Connection, term_id: int, aliases: list[str])
             continue
         alias_norm = alias_clean.lower()
         conn.execute(
-            (
-                "INSERT INTO term_aliases (term_id, alias, alias_norm) "
-                "VALUES (?, ?, ?)"
-            ),
+            ("INSERT INTO term_aliases (term_id, alias, alias_norm) VALUES (?, ?, ?)"),
             (term_id, alias_clean, alias_norm),
         )

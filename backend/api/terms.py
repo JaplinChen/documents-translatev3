@@ -19,6 +19,7 @@ from backend.services.term_repository import (
     list_categories,
     list_terms,
     list_versions,
+    sync_from_external,
     update_category,
     update_term,
     upsert_term_by_norm,
@@ -40,6 +41,7 @@ class TermPayload(BaseModel):
     status: str = "active"
     case_rule: str | None = None
     note: str | None = None
+    source: str | None = None
     aliases: list[str] = []
     languages: list[TermLanguageInput] = []
     created_by: str | None = None
@@ -151,6 +153,40 @@ async def term_batch_delete(payload: BatchPayload) -> dict:
     return {"deleted": deleted}
 
 
+@router.post("/sync-all")
+async def term_sync_all() -> dict:
+    """Synchronize all existing data from preserve_terms and glossary to terms center."""
+    from backend.services.preserve_terms_repository import list_preserve_terms
+    from backend.services.translation_memory import get_glossary
+
+    synced_count = 0
+    # 1. Sync preserve terms
+    p_terms = list_preserve_terms()
+    for pt in p_terms:
+        try:
+            sync_from_external(pt["term"], category_name=pt.get("category"), source="reference")
+            synced_count += 1
+        except Exception as e:
+            print(f"Sync sync-all preserve failed for {pt['term']}: {e}")
+
+    # 2. Sync glossary
+    g_terms = get_glossary(limit=5000)
+    for gt in g_terms:
+        try:
+            lang_code = gt.get("target_lang", "zh-TW")
+            sync_from_external(
+                gt["source_text"],
+                category_name=gt.get("category_name"),
+                source="terminology",
+                languages=[{"lang_code": lang_code, "value": gt["target_text"]}],
+            )
+            synced_count += 1
+        except Exception as e:
+            print(f"Sync sync-all glossary failed for {gt['source_text']}: {e}")
+
+    return {"status": "ok", "synced": synced_count}
+
+
 @router.get("/categories")
 async def category_list() -> dict:
     return {"items": list_categories()}
@@ -254,9 +290,8 @@ async def term_import_preview(
         )
         normalized = {k: (v or "").strip() for k, v in mapped_row.items()}
         row_errors = _validate_row(normalized)
-        if (
-            not mapping_payload.create_missing_category
-            and _normalize_text(normalized.get("category"))
+        if not mapping_payload.create_missing_category and _normalize_text(
+            normalized.get("category")
         ):
             if get_category_id_by_name(normalized.get("category")) is None:
                 row_errors.append("分類不存在")
@@ -345,9 +380,7 @@ async def term_import_errors() -> Response:
     return Response(
         content=content,
         media_type="text/csv",
-        headers={
-            "Content-Disposition": "attachment; filename=terms_import_errors.csv"
-        },
+        headers={"Content-Disposition": "attachment; filename=terms_import_errors.csv"},
     )
 
 
@@ -361,6 +394,7 @@ async def term_export() -> Response:
         "status",
         "case_rule",
         "note",
+        "source",
         "aliases",
         "created_by",
         "created_at",
@@ -383,6 +417,7 @@ async def term_export() -> Response:
             "status": item.get("status") or "",
             "case_rule": item.get("case_rule") or "",
             "note": item.get("note") or "",
+            "source": item.get("source") or "",
             "aliases": "|".join(item.get("aliases") or []),
             "created_by": item.get("created_by") or "",
             "created_at": item.get("created_at") or "",
@@ -399,7 +434,5 @@ async def term_export() -> Response:
     return Response(
         content=csv_content,
         media_type="text/csv",
-        headers={
-            "Content-Disposition": "attachment; filename=terms_export.csv"
-        },
+        headers={"Content-Disposition": "attachment; filename=terms_export.csv"},
     )

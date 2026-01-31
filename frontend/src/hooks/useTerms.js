@@ -10,6 +10,7 @@ const DEFAULT_FORM = {
     note: "",
     aliases: "",
     languages: [{ lang_code: "zh-TW", value: "" }],
+    source: "",
     created_by: ""
 };
 
@@ -21,7 +22,8 @@ export function useTerms() {
         category_id: "",
         status: "",
         missing_lang: "",
-        has_alias: ""
+        has_alias: "",
+        source: ""
     });
     const [selectedIds, setSelectedIds] = useState([]);
     const [loading, setLoading] = useState(false);

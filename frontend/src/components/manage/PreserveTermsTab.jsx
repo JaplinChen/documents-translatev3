@@ -113,17 +113,13 @@ export default function PreserveTermsTab({ onClose }) {
                     totalCount={totalCount}
                     canLoadMore={shownCount < totalCount}
                     onLoadMore={() => setVisibleCount((prev) => prev + 200)}
+                    onAdd={handleAdd}
+                    compactTable={compactTable}
+                    setCompactTable={setCompactTable}
                 />
             </div>
 
-            <div className="create-row flex items-center gap-2">
-                <div className="flex-1 min-w-0">
-                    <PreserveTermsAddForm
-                        newTerm={newTerm} setNewTerm={setNewTerm}
-                        categories={categories} getCategoryLabel={getCategoryLabel}
-                        handleAdd={handleAdd} loading={loading}
-                    />
-                </div>
+            <div className="manage-toolbar flex items-center gap-2 mb-2">
                 {selectedIds.length > 0 && (
                     <div className="ml-auto flex items-center gap-2 animate-in fade-in slide-in-from-right-2">
                         <button className="btn ghost compact !text-blue-600 text-xs font-bold" onClick={handleBatchConvertToGlossary}>{t("manage.batch.to_glossary")}</button>
@@ -133,24 +129,6 @@ export default function PreserveTermsTab({ onClose }) {
             </div>
 
             <div className="manage-scroll-area">
-                <div className="flex justify-end mb-2">
-                    <label className="flex items-center gap-2 text-xs text-slate-600">
-                        <input
-                            type="checkbox"
-                            checked={compactTable}
-                            onChange={(e) => {
-                                const checked = e.target.checked;
-                                setCompactTable(checked);
-                                try {
-                                    localStorage.setItem("manage_table_compact_preserve", JSON.stringify(checked));
-                                } catch {
-                                    // 忽略儲存失敗
-                                }
-                            }}
-                        />
-                        緊湊模式
-                    </label>
-                </div>
                 <PreserveTermsList
                     filteredTerms={visibleTerms} filterText={filterText} filterCategory={filterCategory}
                     editingId={editingId} setEditingId={setEditingId}
@@ -158,6 +136,7 @@ export default function PreserveTermsTab({ onClose }) {
                     selectedIds={selectedIds} setSelectedIds={setSelectedIds}
                     categories={categories} getCategoryLabel={getCategoryLabel}
                     handleUpdate={handleUpdate} handleDelete={handleDelete} onConvertToGlossary={handleConvertToGlossary}
+                    onAdd={handleAdd}
                     highlightColor={correctionFillColor}
                     t={t}
                     compact={compactTable}

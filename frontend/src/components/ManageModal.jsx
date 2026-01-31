@@ -270,25 +270,31 @@ export default function ManageModal({
         handleCancel();
     };
 
-    const handleCreate = async () => {
-        if (!newEntry.source_text || !newEntry.target_text) return;
+    const handleCreate = async (proto = null) => {
         if (isGlossary) setLastGlossaryAt(Date.now());
         else setLastMemoryAt(Date.now());
+
+        const payload = proto ? {
+            source_lang: proto.source_lang,
+            target_lang: proto.target_lang,
+            source_text: proto.source_text,
+            target_text: proto.target_text,
+            priority: proto.priority ?? 10,
+            category_id: proto.category_id || ""
+        } : {
+            source_lang: newEntry.source_lang || defaultSourceLang || "vi",
+            target_lang: newEntry.target_lang || defaultTargetLang || "zh-TW",
+            source_text: "",
+            target_text: "",
+            priority: 10,
+            category_id: ""
+        };
+
         if (isGlossary) {
-            await onUpsertGlossary({
-                ...newEntry,
-                priority: Number.isNaN(Number(newEntry.priority)) ? 0 : Number(newEntry.priority)
-            });
+            await onUpsertGlossary(payload);
         } else {
-            await onUpsertMemory({
-                source_lang: newEntry.source_lang,
-                target_lang: newEntry.target_lang,
-                source_text: newEntry.source_text,
-                target_text: newEntry.target_text,
-                category_id: newEntry.category_id || ""
-            });
+            await onUpsertMemory(payload);
         }
-        setNewEntry((prev) => ({ ...prev, source_text: "", target_text: "", priority: 0, category_id: "" }));
     };
 
     const handleBatchDelete = async () => {
@@ -409,13 +415,16 @@ export default function ManageModal({
                         <div className="flex flex-col h-full min-h-0">
                             <div className="action-row flex items-center justify-between gap-2">
                                 <div className="flex gap-2">
-                                    <button className="btn ghost" type="button" onClick={onSeed}>{t("manage.actions.seed")}</button>
-                                    <button className="btn ghost" type="button" onClick={() => handleExport(`${API_BASE}/api/tm/${isGlossary ? "glossary" : "memory"}/export`)}>{t("manage.actions.export_csv")}</button>
-                                    <label className="btn ghost">
+                                    <button className="btn ghost compact" type="button" onClick={onSeed}>{t("manage.actions.seed")}</button>
+                                    <button className="btn ghost compact" type="button" onClick={() => handleExport(`${API_BASE}/api/tm/${isGlossary ? "glossary" : "memory"}/export`)}>{t("manage.actions.export_csv")}</button>
+                                    <label className="btn ghost compact">
                                         {t("manage.actions.import_csv")}
                                         <input type="file" accept=".csv" className="hidden-input" onChange={(event) => handleImport(event, `${API_BASE}/api/tm/${isGlossary ? "glossary" : "memory"}/import`, onSeed)} />
                                     </label>
-                                    <button className="btn danger" type="button" onClick={isGlossary ? onClearGlossary : onClearMemory}>{t("manage.actions.clear_all")}</button>
+                                    <button className="btn ghost compact" type="button" onClick={isGlossary ? onClearGlossary : onClearMemory}>{t("manage.actions.clear_all")}</button>
+                                    <button className="btn primary compact !px-3" type="button" onClick={() => handleCreate()} title={t("manage.actions.add")}>
+                                        <Plus size={16} />
+                                    </button>
                                     <span className="text-xs font-bold text-slate-400 self-center">
                                         {t("manage.list_summary", { shown: items.length, total: isGlossary ? glossaryTotal : tmTotal })}
                                     </span>
@@ -457,38 +466,6 @@ export default function ManageModal({
                                     </label>
                                 </div>
                             </div>
-                            <div className="create-row">
-                                <div className="manage-create-row">
-                                    <select className="select-input manage-field-short" value={newEntry.source_lang} onChange={(e) => setNewEntry((prev) => ({ ...prev, source_lang: e.target.value }))}>
-                                        {(languageOptions || []).filter((o) => o.code !== "auto").map((o) => (
-                                            <option key={`src-${o.code}`} value={o.code}>{getOptionLabel(t, o)}</option>
-                                        ))}
-                                    </select>
-                                    <select className="select-input manage-field-short" value={newEntry.target_lang} onChange={(e) => setNewEntry((prev) => ({ ...prev, target_lang: e.target.value }))}>
-                                        {(languageOptions || []).filter((o) => o.code !== "auto").map((o) => (
-                                            <option key={`tgt-${o.code}`} value={o.code}>{getOptionLabel(t, o)}</option>
-                                        ))}
-                                    </select>
-                                    <input className="text-input flex-1 min-w-[160px]" value={newEntry.source_text} placeholder={t("manage.fields.source_text")} onChange={(e) => setNewEntry((prev) => ({ ...prev, source_text: e.target.value }))} />
-                                    <input className="text-input flex-1 min-w-[160px]" value={newEntry.target_text} placeholder={t("manage.fields.target_text")} onChange={(e) => setNewEntry((prev) => ({ ...prev, target_text: e.target.value }))} />
-                                    {isGlossary && (
-                                        <input className="text-input manage-field-number !px-1" type="number" value={newEntry.priority} placeholder="0" onChange={(e) => setNewEntry((prev) => ({ ...prev, priority: e.target.value }))} />
-                                    )}
-                                    <select
-                                        className="select-input manage-field-short !min-w-[100px]"
-                                        value={newEntry.category_id || ""}
-                                        onChange={(e) => setNewEntry((prev) => ({ ...prev, category_id: e.target.value ? parseInt(e.target.value) : null }))}
-                                    >
-                                        <option value="">{t("manage.fields.no_category", "無分類")}</option>
-                                        {tmCategories.map(c => (
-                                            <option key={`cat-new-${c.id}`} value={c.id}>{c.name}</option>
-                                        ))}
-                                    </select>
-                                    <button className="btn primary manage-btn-square" type="button" onClick={handleCreate} title={t("manage.actions.add")}>
-                                        <Plus size={18} />
-                                    </button>
-                                </div>
-                            </div>
                             <div className="manage-scroll-area">
                                 <UnifiedDataTable
                                     items={items}
@@ -504,6 +481,7 @@ export default function ManageModal({
                                     onSave={handleSave}
                                     onCancel={handleCancel}
                                     onDelete={handleDelete}
+                                    onAdd={handleCreate}
                                     onSelectRow={handleSelectRow}
                                     onSelectAll={handleSelectAll}
                                     onConvertToGlossary={onConvertToGlossary}
@@ -525,8 +503,6 @@ function TMCategoriesTab({ categories, onRefresh }) {
     const { t } = useTranslation();
     const [editingId, setEditingId] = useState(null);
     const [draft, setDraft] = useState(null);
-    const [newName, setNewName] = useState("");
-    const [filterText, setFilterText] = useState("");
     const [saving, setSaving] = useState(false);
     const [compactTable, setCompactTable] = useState(() => {
         try {
@@ -548,16 +524,14 @@ function TMCategoriesTab({ categories, onRefresh }) {
     };
 
     const handleCreate = async () => {
-        if (!newName.trim()) return;
         setSaving(true);
         try {
             const res = await fetch(`${API_BASE}/api/tm/categories`, {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ name: newName.trim(), sort_order: 0 })
+                body: JSON.stringify({ name: "新分類", sort_order: 0 })
             });
             if (res.ok) {
-                setNewName("");
                 onRefresh();
             }
         } catch (err) {
@@ -600,57 +574,31 @@ function TMCategoriesTab({ categories, onRefresh }) {
         }
     };
 
-    const filtered = categories.filter(c =>
-        c.name.toLowerCase().includes(filterText.toLowerCase())
-    );
-
     return (
-        <div className="flex flex-col h-full">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-                <div className="flex gap-2 p-2 bg-slate-50 rounded-xl border border-slate-200">
+        <div className="flex flex-col h-full min-h-0">
+            <div className="flex items-center justify-between px-2 mb-3">
+                <span className="text-xs font-bold text-slate-400">
+                    {t("manage.list_summary", { shown: categories.length, total: categories.length })}
+                </span>
+                <label className="flex items-center gap-2 text-xs text-slate-600 cursor-pointer hover:text-slate-900 transition-colors">
                     <input
-                        className="text-input flex-1"
-                        value={newName}
-                        placeholder="新分類名稱"
-                        onChange={(e) => setNewName(e.target.value)}
-                        onKeyDown={(e) => handleKeyDown(e, handleCreate, () => setNewName(""))}
+                        type="checkbox"
+                        checked={compactTable}
+                        onChange={(e) => {
+                            const checked = e.target.checked;
+                            setCompactTable(checked);
+                            try {
+                                localStorage.setItem("manage_table_compact_categories", JSON.stringify(checked));
+                            } catch {
+                                // 忽略儲存失敗
+                            }
+                        }}
                     />
-                    <button className="btn primary" onClick={handleCreate} disabled={saving || !newName.trim()}>
-                        <Plus size={18} className="mr-1" />
-                        新增
-                    </button>
-                </div>
-                <div className="flex gap-2 p-2 bg-slate-50 rounded-xl border border-slate-200">
-                    <div className="flex-1 relative">
-                        <input
-                            className="text-input w-full pl-8"
-                            value={filterText}
-                            placeholder="搜尋分類..."
-                            onChange={(e) => setFilterText(e.target.value)}
-                        />
-                        <div className="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400">🔍</div>
-                    </div>
-                </div>
+                    緊湊模式
+                </label>
             </div>
+
             <div className="manage-scroll-area flex-1">
-                <div className="flex justify-end mb-2">
-                    <label className="flex items-center gap-2 text-xs text-slate-600">
-                        <input
-                            type="checkbox"
-                            checked={compactTable}
-                            onChange={(e) => {
-                                const checked = e.target.checked;
-                                setCompactTable(checked);
-                                try {
-                                    localStorage.setItem("manage_table_compact_categories", JSON.stringify(checked));
-                                } catch {
-                                    // 忽略儲存失敗
-                                }
-                            }}
-                        />
-                        緊湊模式
-                    </label>
-                </div>
                 <div className={`data-table ${compactTable ? "is-compact text-xs" : "text-sm"}`}>
                     <div className="unified-data-row data-header" style={{ gridTemplateColumns: "1fr 120px 150px 80px 100px" }}>
                         <div className="data-cell">分類名稱</div>
@@ -659,7 +607,7 @@ function TMCategoriesTab({ categories, onRefresh }) {
                         <div className="data-cell">排序</div>
                         <div className="data-cell data-actions">操作</div>
                     </div>
-                    {filtered.map(cat => (
+                    {categories.map(cat => (
                         <div className="unified-data-row" key={cat.id} style={{ gridTemplateColumns: "1fr 120px 150px 80px 100px" }}>
                             <div className="data-cell">
                                 {editingId === cat.id ? (
@@ -703,6 +651,9 @@ function TMCategoriesTab({ categories, onRefresh }) {
                                     </>
                                 ) : (
                                     <>
+                                        <button className="action-btn-sm success" onClick={handleCreate} disabled={saving} title="新增分類">
+                                            <Plus size={18} className="text-emerald-600" />
+                                        </button>
                                         <button className="action-btn-sm" onClick={() => { setEditingId(cat.id); setDraft({ ...cat }); }} title="編輯">
                                             <img src="https://emojicdn.elk.sh/✏️?style=apple" className="w-5 h-5 object-contain" alt="Edit" />
                                         </button>
@@ -714,14 +665,14 @@ function TMCategoriesTab({ categories, onRefresh }) {
                             </div>
                         </div>
                     ))}
-                    {filtered.length === 0 && <div className="data-empty">尚無相符分類</div>}
+                    {categories.length === 0 && <div className="data-empty">尚未建立分類</div>}
                 </div>
             </div>
         </div>
     );
 }
 
-function UnifiedDataTable({ items, isGlossary, compact, editingKey, draft, saving, selectedIds, makeKey, setDraft, onEdit, onSave, onCancel, onDelete, onSelectRow, onSelectAll, onConvertToGlossary, onConvertToPreserveTerm, t, highlightColor, categories }) {
+function UnifiedDataTable({ items, isGlossary, compact, editingKey, draft, saving, selectedIds, makeKey, setDraft, onEdit, onSave, onCancel, onDelete, onAdd, onSelectRow, onSelectAll, onConvertToGlossary, onConvertToPreserveTerm, t, highlightColor, categories }) {
     const safeItems = Array.isArray(items) ? items : [];
     const [sortKey, setSortKey] = useState(null);
     const [sortDir, setSortDir] = useState("asc");
@@ -994,6 +945,9 @@ function UnifiedDataTable({ items, isGlossary, compact, editingKey, draft, savin
                                 </>
                             ) : (
                                 <>
+                                    <button className="action-btn-sm success" onClick={() => onAdd(item)} title={t("manage.actions.add")}>
+                                        <Plus size={18} className="text-emerald-600" />
+                                    </button>
                                     <button className="action-btn-sm" onClick={() => onEdit(item)} title={t("manage.actions.edit")}>
                                         <img src="https://emojicdn.elk.sh/✏️?style=apple" className="w-5 h-5 object-contain" alt="Edit" />
                                     </button>

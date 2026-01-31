@@ -34,6 +34,12 @@
         background-size: 1rem;
     }
 
+    .select-input.compact {
+        @apply h-8 px-3 pr-8 text-xs;
+        background-position: right 0.75rem center;
+        background-size: 0.875rem;
+    }
+
     .text-input {
         @apply w-full h-11 px-4 text-sm;
         border-radius: var(--radius-md);
@@ -43,6 +49,10 @@
         @apply transition-all duration-200;
         @apply hover:border-slate-400;
         @apply focus:outline-none focus:border-blue-600 focus:ring-4 focus:ring-blue-600/10;
+    }
+
+    .text-input.compact {
+        @apply h-8 px-3 text-xs;
     }
 
     /* Custom Select Styles */

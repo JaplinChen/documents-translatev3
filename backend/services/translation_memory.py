@@ -7,6 +7,7 @@ from pathlib import Path
 
 from backend.services.language_detect import detect_language
 from backend.services.preserve_terms_repository import list_preserve_terms
+import backend.services.term_repository as term_repo
 
 # Ensure we use the centralized data volume at /app/data
 DB_PATH = Path("data/translation_memory.db")
@@ -104,13 +105,13 @@ def _ensure_db() -> None:
     DB_PATH.parent.mkdir(parents=True, exist_ok=True)
     with sqlite3.connect(DB_PATH) as conn:
         conn.executescript(SCHEMA_SQL)
-        
+
         # Migration: Add category_id if missing
         cursor = conn.execute("PRAGMA table_info(glossary)")
         columns = [row[1] for row in cursor.fetchall()]
         if "category_id" not in columns:
             conn.execute("ALTER TABLE glossary ADD COLUMN category_id INTEGER")
-            
+
         cursor = conn.execute("PRAGMA table_info(tm)")
         columns = [row[1] for row in cursor.fetchall()]
         if "category_id" not in columns:
@@ -130,7 +131,7 @@ def _ensure_db() -> None:
             "idx_glossary_unique "
             "ON glossary (source_lang, target_lang, source_text)"
         )
-        
+
         # Performance: Add indexes for category lookup and count
         conn.execute("CREATE INDEX IF NOT EXISTS idx_glossary_category ON glossary (category_id)")
         conn.execute("CREATE INDEX IF NOT EXISTS idx_tm_category ON tm (category_id)")
@@ -145,10 +146,7 @@ def _hash_text(
 ) -> str:
     payload = f"{source_lang}|{target_lang}|{text}"
     if context:
-        ctx_str = "|".join(
-            str(context.get(k, ""))
-            for k in ["provider", "model", "tone"]
-        )
+        ctx_str = "|".join(str(context.get(k, "")) for k in ["provider", "model", "tone"])
         payload += f"||{ctx_str}"
     return hashlib.sha256(payload.encode("utf-8")).hexdigest()
 
@@ -489,10 +487,7 @@ def upsert_glossary(entry: dict) -> None:
         return
     with sqlite3.connect(DB_PATH) as conn:
         conn.execute(
-            (
-                "DELETE FROM glossary "
-                "WHERE source_lang = ? AND target_lang = ? AND source_text = ?"
-            ),
+            ("DELETE FROM glossary WHERE source_lang = ? AND target_lang = ? AND source_text = ?"),
             (
                 entry.get("source_lang"),
                 entry.get("target_lang"),
@@ -516,6 +511,18 @@ def upsert_glossary(entry: dict) -> None:
             ),
         )
         conn.commit()
+
+    # Sync to terms center
+    try:
+        lang_code = entry.get("target_lang", "zh-TW")
+        term_repo.sync_from_external(
+            entry_source,
+            category_name=entry.get("category_name"),
+            source="terminology",
+            languages=[{"lang_code": lang_code, "value": entry_target}],
+        )
+    except Exception as e:
+        print(f"Sync to terms center failed: {e}")
 
 
 def batch_upsert_glossary(entries: list[dict]) -> None:
@@ -559,6 +566,21 @@ def batch_upsert_glossary(entries: list[dict]) -> None:
             )
         conn.commit()
 
+    # Sync to terms center
+    for entry in entries:
+        try:
+            entry_source = _normalize_glossary_text(entry.get("source_text", ""))
+            entry_target = _normalize_glossary_text(entry.get("target_text", ""))
+            lang_code = entry.get("target_lang", "zh-TW")
+            term_repo.sync_from_external(
+                entry_source,
+                category_name=entry.get("category_name"),
+                source="terminology",
+                languages=[{"lang_code": lang_code, "value": entry_target}],
+            )
+        except Exception as e:
+            print(f"Sync to terms center failed for {entry.get('source_text')}: {e}")
+
 
 def clear_glossary() -> int:
     _ensure_db()
@@ -571,11 +593,23 @@ def clear_glossary() -> int:
 def delete_glossary(entry_id: int) -> int:
     _ensure_db()
     with sqlite3.connect(DB_PATH) as conn:
+        # Get term text for sync
+        row = conn.execute("SELECT source_text FROM glossary WHERE id = ?", (entry_id,)).fetchone()
+        source_text = row[0] if row else None
+
         cur = conn.execute(
             "DELETE FROM glossary WHERE id = ?",
             (entry_id,),
         )
         conn.commit()
+
+        # Sync to terms center
+        if source_text:
+            try:
+                term_repo.delete_by_term(source_text)
+            except Exception as e:
+                print(f"Sync delete to terms center failed: {e}")
+
         return cur.rowcount
 
 
@@ -653,6 +687,7 @@ def clear_tm() -> int:
 
 # TM Categories functions
 
+
 def list_tm_categories() -> list[dict]:
     _ensure_db()
     with sqlite3.connect(DB_PATH) as conn:
@@ -683,7 +718,7 @@ def create_tm_category(name: str, sort_order: int | None = None) -> dict:
             (name, sort_order or 0),
         )
         conn.commit()
-        
+
         # Sync to terms.db if exists
         terms_db = Path("data/terms.db")
         if terms_db.exists():
@@ -691,7 +726,7 @@ def create_tm_category(name: str, sort_order: int | None = None) -> dict:
                 with sqlite3.connect(terms_db) as tconn:
                     tconn.execute(
                         "INSERT OR IGNORE INTO categories (name, sort_order) VALUES (?, ?)",
-                        (name, sort_order or 0)
+                        (name, sort_order or 0),
                     )
                     tconn.commit()
             except Exception as e:
@@ -707,28 +742,34 @@ def update_tm_category(category_id: int, name: str, sort_order: int | None = Non
         raise ValueError("分類名稱不可為空")
     with sqlite3.connect(DB_PATH) as conn:
         # Get old name for syncing
-        old_row = conn.execute("SELECT name FROM tm_categories WHERE id = ?", (category_id,)).fetchone()
+        old_row = conn.execute(
+            "SELECT name FROM tm_categories WHERE id = ?", (category_id,)
+        ).fetchone()
         old_name = old_row[0] if old_row else None
 
         conn.execute(
             "UPDATE tm_categories SET name = ?, sort_order = ? WHERE id = ?",
             (name, sort_order or 0, category_id),
         )
-        
+
         if old_name and old_name != name:
             # Sync to preserve_terms in same DB
-            conn.execute("UPDATE preserve_terms SET category = ? WHERE category = ?", (name, old_name))
-            
+            conn.execute(
+                "UPDATE preserve_terms SET category = ? WHERE category = ?", (name, old_name)
+            )
+
             # Sync to terms.db if exists
             terms_db = Path("data/terms.db")
             if terms_db.exists():
                 try:
                     with sqlite3.connect(terms_db) as tconn:
-                        tconn.execute("UPDATE categories SET name = ? WHERE name = ?", (name, old_name))
+                        tconn.execute(
+                            "UPDATE categories SET name = ? WHERE name = ?", (name, old_name)
+                        )
                         tconn.commit()
                 except Exception as e:
                     print(f"Error syncing to terms.db: {e}")
-                    
+
         conn.commit()
         return {"id": category_id, "name": name, "sort_order": sort_order or 0}
 
@@ -739,26 +780,32 @@ def delete_tm_category(category_id: int) -> None:
         # Get name for syncing
         row = conn.execute("SELECT name FROM tm_categories WHERE id = ?", (category_id,)).fetchone()
         name = row[0] if row else None
-        
+
         # Update items to NULL
         conn.execute("UPDATE glossary SET category_id = NULL WHERE category_id = ?", (category_id,))
         conn.execute("UPDATE tm SET category_id = NULL WHERE category_id = ?", (category_id,))
-        
+
         if name:
             # Sync to preserve_terms: set back to '未分類' string
-            conn.execute("UPDATE preserve_terms SET category = '未分類' WHERE category = ?", (name,))
-            
+            conn.execute(
+                "UPDATE preserve_terms SET category = '未分類' WHERE category = ?", (name,)
+            )
+
             # Sync to terms.db Categories table
             terms_db = Path("data/terms.db")
             if terms_db.exists():
                 try:
                     with sqlite3.connect(terms_db) as tconn:
                         # Find the corresponding category in terms.db by name
-                        trow = tconn.execute("SELECT id FROM categories WHERE name = ?", (name,)).fetchone()
+                        trow = tconn.execute(
+                            "SELECT id FROM categories WHERE name = ?", (name,)
+                        ).fetchone()
                         if trow:
                             tid = trow[0]
                             # Update terms in terms.db to NULL
-                            tconn.execute("UPDATE terms SET category_id = NULL WHERE category_id = ?", (tid,))
+                            tconn.execute(
+                                "UPDATE terms SET category_id = NULL WHERE category_id = ?", (tid,)
+                            )
                             tconn.execute("DELETE FROM categories WHERE id = ?", (tid,))
                             tconn.commit()
                 except Exception as e:

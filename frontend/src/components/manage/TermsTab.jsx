@@ -1,11 +1,15 @@
 import React, { useEffect, useRef, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { Check, Edit, History, Trash2, X } from "lucide-react";
 import { IconButton } from "../common/IconButton";
 import { CategoryPill } from "./CategoryPill";
 import { API_BASE } from "../../constants";
 import { useTerms } from "../../hooks/useTerms";
+import { createPortal } from "react-dom";
+
 
 export default function TermsTab() {
+    const { t } = useTranslation();
     const {
         terms,
         categories,
@@ -35,6 +39,8 @@ export default function TermsTab() {
     const [versions, setVersions] = useState(null);
     const [batchCategory, setBatchCategory] = useState("");
     const [batchCaseRule, setBatchCaseRule] = useState("");
+    const [batchSource, setBatchSource] = useState("");
+    const [isSyncing, setIsSyncing] = useState(false);
     const [importResult, setImportResult] = useState(null);
     const [mappingRows, setMappingRows] = useState([
         { from: "", to: "term" },
@@ -59,6 +65,7 @@ export default function TermsTab() {
         }
     });
     const resizingRef = useRef(null);
+    const colBtnRef = useRef(null);
     const [visibleCols, setVisibleCols] = useState(() => {
         try {
             const saved = localStorage.getItem("terms_visible_cols");
@@ -69,6 +76,7 @@ export default function TermsTab() {
                     category: true,
                     status: true,
                     languages: true,
+                    source: true,
                     aliases: false,
                     note: false,
                     created_by: false,
@@ -79,20 +87,13 @@ export default function TermsTab() {
                 category: true,
                 status: true,
                 languages: true,
+                source: true,
                 aliases: false,
                 note: false,
                 created_by: false,
             };
         }
     });
-    const colLabels = {
-        term: "術語",
-        category: "分類",
-        languages: "語言",
-        aliases: "別名",
-        note: "備註",
-        created_by: "建立者",
-    };
 
     useEffect(() => {
         try {
@@ -109,6 +110,7 @@ export default function TermsTab() {
         "category",
         "status",
         "languages",
+        "source",
         "aliases",
         "note",
         "created_by",
@@ -122,6 +124,7 @@ export default function TermsTab() {
         term: "1.4fr",
         category: "100px",
         languages: "1fr",
+        source: "100px",
         aliases: "1.2fr",
         note: "1.2fr",
         created_by: "100px",
@@ -213,6 +216,22 @@ export default function TermsTab() {
         await upsert();
     };
 
+    const handleFullSync = async () => {
+        if (!window.confirm("確定要將所有「對照表」與「術語庫」資料同步至此分頁嗎？這可能需要一點時間。")) return;
+        setIsSyncing(true);
+        try {
+            const res = await fetch(`${API_BASE}/api/terms/sync-all`, { method: "POST" });
+            if (res.ok) {
+                alert("同步完成！");
+                setFilters(p => ({ ...p, _refresh: Date.now() }));
+            }
+        } catch (err) {
+            console.error(err);
+        } finally {
+            setIsSyncing(false);
+        }
+    };
+
     const setVisibleColsSafe = (next) => {
         const nextState = { ...next };
         const hasAny = Object.values(nextState).some(Boolean);
@@ -299,14 +318,14 @@ export default function TermsTab() {
             <div className="action-row flex items-center justify-between gap-3 bg-slate-50/70 border border-slate-200/70 rounded-2xl px-4 py-3 sticky top-0 z-20">
                 <div className="flex flex-wrap gap-2 items-center">
                     <input
-                        className="text-input w-52"
+                        className="text-input w-52 compact"
                         placeholder="搜尋術語/別名"
                         value={filters.q}
                         onChange={(e) => setFilters((p) => ({ ...p, q: e.target.value }))}
                         onKeyDown={(e) => e.key === "Enter" && setFilters((p) => ({ ...p, _refresh: Date.now() }))}
                     />
                     <select
-                        className="select-input w-36"
+                        className="select-input w-36 compact"
                         value={filters.category_id}
                         onChange={(e) => setFilters((p) => ({ ...p, category_id: e.target.value }))}
                     >
@@ -316,29 +335,52 @@ export default function TermsTab() {
                         ))}
                     </select>
                     <select
-                        className="select-input w-32"
+                        className="select-input w-32 compact"
                         value={filters.status}
                         onChange={(e) => setFilters((p) => ({ ...p, status: e.target.value }))}
                     >
                         <option value="">全部狀態</option>
-                        <option value="active">active</option>
-                        <option value="inactive">inactive</option>
+                        <option value="active">使用中</option>
+                        <option value="inactive">未啟用</option>
+                    </select>
+                    <select
+                        className="select-input w-28 compact"
+                        value={filters.source}
+                        onChange={(e) => setFilters((p) => ({ ...p, source: e.target.value }))}
+                    >
+                        <option value="">全部來源</option>
+                        <option value="reference">對照表</option>
+                        <option value="terminology">專業術語</option>
+                        <option value="manual">手動輸入</option>
                     </select>
                     <input
-                        className="text-input w-36"
+                        className="text-input w-36 compact"
                         placeholder="缺語言 e.g. en"
                         value={filters.missing_lang}
                         onChange={(e) => setFilters((p) => ({ ...p, missing_lang: e.target.value }))}
                     />
-                </div>
-                <div className="flex gap-2 items-center">
-                    <button className="btn ghost" type="button" onClick={exportCsv}>匯出 CSV</button>
-                    <button className="btn ghost" type="button" onClick={() => {
-                        setShowImport(true);
-                        setImportStep(1);
-                    }}>
-                        匯入 CSV
+                    <button
+                        className={`btn ghost compact whitespace-nowrap ${isSyncing ? "loading" : ""}`}
+                        onClick={handleFullSync}
+                        disabled={isSyncing}
+                        title="將對照表與術語庫歷史資料同步至此中心"
+                    >
+                        {isSyncing ? "同步中..." : "同步舊資料"}
                     </button>
+                </div>
+                <div className="flex items-center gap-2">
+                    <span className="text-xs font-bold text-slate-400 whitespace-nowrap">
+                        {t("manage.list_summary", { shown: terms.length, total: terms.length })}
+                    </span>
+                    <div className="flex gap-2 items-center">
+                        <button className="btn ghost compact" type="button" onClick={exportCsv}>匯出 CSV</button>
+                        <button className="btn ghost compact" type="button" onClick={() => {
+                            setShowImport(true);
+                            setImportStep(1);
+                        }}>
+                            匯入 CSV
+                        </button>
+                    </div>
                 </div>
             </div>
 
@@ -430,14 +472,21 @@ export default function TermsTab() {
                 <div className="batch-actions flex flex-wrap gap-2 mt-3">
                     <button className="btn ghost compact" onClick={() => batchUpdate({ status: "active" })}>批次啟用</button>
                     <button className="btn ghost compact" onClick={() => batchUpdate({ status: "inactive" })}>批次停用</button>
-                    <select className="select-input w-36" value={batchCategory} onChange={(e) => setBatchCategory(e.target.value)}>
+                    <select className="select-input w-36 compact" value={batchCategory} onChange={(e) => setBatchCategory(e.target.value)}>
                         <option value="">批次分類</option>
                         {categories.map((c) => (
                             <option key={c.id} value={c.id}>{c.name}</option>
                         ))}
                     </select>
                     <button className="btn ghost compact" onClick={() => batchUpdate({ category_id: batchCategory })} disabled={!batchCategory}>套用分類</button>
-                    <select className="select-input w-36" value={batchCaseRule} onChange={(e) => setBatchCaseRule(e.target.value)}>
+                    <select className="select-input w-28 compact" value={batchSource} onChange={(e) => setBatchSource(e.target.value)}>
+                        <option value="">批次來源</option>
+                        <option value="reference">對照表</option>
+                        <option value="terminology">專業術語</option>
+                        <option value="manual">手動輸入</option>
+                    </select>
+                    <button className="btn ghost compact" onClick={() => batchUpdate({ source: batchSource })} disabled={!batchSource}>套用來源</button>
+                    <select className="select-input w-36 compact" value={batchCaseRule} onChange={(e) => setBatchCaseRule(e.target.value)}>
                         <option value="">批次大小寫規則</option>
                         <option value="preserve">preserve</option>
                         <option value="uppercase">uppercase</option>
@@ -452,90 +501,80 @@ export default function TermsTab() {
             )}
 
             <div className={`data-table is-glossary mt-3 ${compactTable ? "is-compact text-xs" : "text-sm"}`}>
-                <div className="flex items-center justify-between mb-2 sticky top-[72px] bg-white/90 backdrop-blur px-2 py-2 rounded-xl border border-slate-200/60">
-                    <div className="flex flex-wrap gap-2 text-xs text-slate-600 items-center">
-                        <button className="btn ghost compact !text-blue-600 font-bold" type="button" onClick={() => setShowColPanel((v) => !v)}>
+                <div className="flex items-center justify-between mb-2 sticky top-[72px] bg-white/90 backdrop-blur px-2 py-2 rounded-xl border border-slate-200/60 z-30">
+                    <div className="flex flex-wrap gap-2 text-xs text-slate-600 items-center relative">
+                        <button
+                            ref={colBtnRef}
+                            className={`btn ghost compact font-bold ${showColPanel ? "bg-slate-100 text-blue-600" : "!text-blue-600"}`}
+                            type="button"
+                            onClick={() => setShowColPanel((v) => !v)}
+                        >
                             顯示欄位
                         </button>
+                        {showColPanel && createPortal(
+                            <>
+                                <div className="fixed inset-0 z-[9998]" onClick={() => setShowColPanel(false)} />
+                                <div
+                                    className={`fixed bg-white rounded-2xl border border-slate-200 shadow-2xl z-[9999] transition-all ${compactTable ? "p-3 w-[360px]" : "p-4 w-[420px]"}`}
+                                    style={{
+                                        top: (colBtnRef.current?.getBoundingClientRect().bottom || 0) + 8,
+                                        left: Math.min(
+                                            colBtnRef.current?.getBoundingClientRect().left || 0,
+                                            window.innerWidth - (compactTable ? 380 : 440)
+                                        )
+                                    }}
+                                >
+                                    <div className={`flex items-center justify-between border-b border-slate-100 ${compactTable ? "mb-2 pb-1.5" : "mb-3 pb-2"}`}>
+                                        <div className={`${compactTable ? "text-xs" : "text-sm"} font-bold text-slate-700`}>配置顯示欄位</div>
+                                        <button className="btn ghost compact" type="button" onClick={() => setShowColPanel(false)}><X size={compactTable ? 12 : 14} /></button>
+                                    </div>
+                                    <div className={`grid grid-cols-2 gap-x-4 mb-4 overflow-y-auto max-h-[400px] p-1 ${compactTable ? "gap-y-1" : "gap-y-2"}`}>
+                                        {[
+                                            { key: "term", label: "術語" },
+                                            { key: "category", label: "分類" },
+                                            { key: "languages", label: "語言" },
+                                            { key: "source", label: "來源" },
+                                            { key: "status", label: "狀態" },
+                                            { key: "aliases", label: "別名" },
+                                            { key: "note", label: "備註" },
+                                            { key: "created_by", label: "建立者" }
+                                        ].map(({ key, label }) => (
+                                            <label key={key} className={`flex items-center gap-2 cursor-pointer hover:bg-slate-50 rounded transition-colors border border-transparent hover:border-slate-100 ${compactTable ? "px-1.5 py-1" : "px-2 py-1.5"}`}>
+                                                <input
+                                                    type="checkbox"
+                                                    className={`${compactTable ? "w-3.5 h-3.5" : "w-4 h-4"} rounded border-slate-300 text-blue-600 focus:ring-blue-500`}
+                                                    checked={!!visibleCols[key]}
+                                                    onChange={(e) =>
+                                                        setVisibleColsSafe({ ...visibleCols, [key]: e.target.checked })
+                                                    }
+                                                />
+                                                <span className={`${compactTable ? "text-[11px]" : "text-sm"} text-slate-700 font-medium select-none`}>{label}</span>
+                                                {key === "aliases" && <span className="text-[10px] text-slate-400 font-normal ml-auto whitespace-nowrap">(| 分隔)</span>}
+                                            </label>
+                                        ))}
+                                    </div>
+                                    <div className="flex items-center justify-between pt-3 border-t border-slate-100">
+                                        <div className="flex gap-2">
+                                            <button className="btn ghost compact text-[11px]" type="button" onClick={() => setPreset("basic")}>預設</button>
+                                            <button className="btn ghost compact text-[11px]" type="button" onClick={() => setPreset("all")}>全選</button>
+                                        </div>
+                                        <div className="text-[10px] text-slate-400">
+                                            勾選後立即生效
+                                        </div>
+                                    </div>
+                                </div>
+                            </>,
+                            document.body
+                        )}
                         {!showColPanel && (
-                            <span className="text-xs text-slate-400">勾選後立即生效</span>
+                            <span className="text-[10px] text-slate-400">點擊配置表格欄位</span>
                         )}
                     </div>
-                    <label className="flex items-center gap-2 text-xs text-slate-600">
-                        <input type="checkbox" checked={compactTable} onChange={(e) => setCompactTable(e.target.checked)} />
+                    <label className="flex items-center gap-2 text-xs text-slate-600 cursor-pointer">
+                        <input type="checkbox" className="w-3.5 h-3.5" checked={compactTable} onChange={(e) => setCompactTable(e.target.checked)} />
                         緊湊模式
                     </label>
                 </div>
-                {showColPanel && (
-                    <div className="w-full mt-2 mb-3 bg-white rounded-2xl border border-slate-200 shadow-sm p-4">
-                        <div className="flex items-center justify-between mb-2">
-                            <div className="text-sm font-bold">顯示欄位</div>
-                            <button className="btn ghost compact" type="button" onClick={() => setShowColPanel(false)}>關閉</button>
-                        </div>
-                        <div className="text-xs text-slate-500 mb-3">勾選後立即生效，至少保留一欄</div>
-                        <div className="flex flex-wrap gap-2 mb-3">
-                            <button className="btn ghost compact" type="button" onClick={() => setPreset("basic")}>基本</button>
-                            <button className="btn ghost compact" type="button" onClick={() => setPreset("advanced")}>進階</button>
-                            <button className="btn ghost compact" type="button" onClick={() => setPreset("all")}>全部</button>
-                        </div>
-                        <div className="text-xs font-bold text-slate-500 mb-2">常用</div>
-                        <div className="grid grid-cols-2 gap-2 mb-3">
-                            <div className="grid grid-cols-2 gap-2 mb-3">
-                                {["term", "category", "languages"].map((key) => (
-                                    <label key={key} className="flex items-center gap-2 border border-slate-200 rounded-lg px-2 py-1">
-                                        <input
-                                            type="checkbox"
-                                            checked={visibleCols[key]}
-                                            onChange={(e) =>
-                                                setVisibleColsSafe({ ...visibleCols, [key]: e.target.checked })
-                                            }
-                                        />
-                                        {colLabels[key]}
-                                    </label>
-                                ))}
-                            </div>
-                        </div>
-                        <div className="text-xs font-bold text-slate-500 mb-2">進階</div>
-                        <div className="grid grid-cols-2 gap-2 mb-3">
-                            {["aliases", "note", "created_by"].map((key) => (
-                                <label key={key} className="flex items-center gap-2 border border-slate-200 rounded-lg px-2 py-1">
-                                    <input
-                                        type="checkbox"
-                                        checked={visibleCols[key]}
-                                        onChange={(e) =>
-                                            setVisibleColsSafe({ ...visibleCols, [key]: e.target.checked })
-                                        }
-                                    />
-                                    {colLabels[key]}
-                                    {key === "aliases" && <span className="text-[10px] text-slate-400">多個以 | 分隔</span>}
-                                </label>
-                            ))}
-                        </div>
-                        <div className="text-xs font-bold text-slate-500 mb-2">表頭預覽</div>
-                        <div className="text-[11px] text-slate-600 mb-3">
-                            {Object.keys(visibleCols)
-                                .filter((k) => visibleCols[k])
-                                .map((k) => colLabels[k])
-                                .join(" / ")}
-                        </div>
-                        <div className="flex gap-2">
-                            <button className="btn ghost compact" type="button" onClick={() => {
-                                setPreset("basic");
-                            }}>恢復預設</button>
-                            <button className="btn ghost compact" type="button" onClick={() => {
-                                setPreset("all");
-                            }}>全選</button>
-                            <button className="btn ghost compact" type="button" onClick={() => {
-                                setVisibleColsSafe(
-                                    Object.keys(visibleCols).reduce(
-                                        (acc, key) => ({ ...acc, [key]: false }),
-                                        {}
-                                    )
-                                );
-                            }}>全不選</button>
-                        </div>
-                    </div>
-                )}
                 <div className="unified-data-row data-header" style={{ gridTemplateColumns }}>
                     <div className="data-cell w-10 shrink-0 flex items-center justify-center">
                         <input type="checkbox" checked={terms.length > 0 && selectedIds.length === terms.length} onChange={(e) => toggleSelectAll(e.target.checked)} />
@@ -544,6 +583,7 @@ export default function TermsTab() {
                     {visibleCols.term && <div className="data-cell">術語<span className="col-resizer" onMouseDown={(e) => startResize("term", e)} /></div>}
                     {visibleCols.category && <div className="data-cell">分類<span className="col-resizer" onMouseDown={(e) => startResize("category", e)} /></div>}
                     {visibleCols.languages && <div className="data-cell">語言<span className="col-resizer" onMouseDown={(e) => startResize("languages", e)} /></div>}
+                    {visibleCols.source && <div className="data-cell">來源<span className="col-resizer" onMouseDown={(e) => startResize("source", e)} /></div>}
                     {visibleCols.aliases && <div className="data-cell">別名<span className="col-resizer" onMouseDown={(e) => startResize("aliases", e)} /></div>}
                     {visibleCols.note && <div className="data-cell">備註<span className="col-resizer" onMouseDown={(e) => startResize("note", e)} /></div>}
                     {visibleCols.created_by && <div className="data-cell">建立者<span className="col-resizer" onMouseDown={(e) => startResize("created_by", e)} /></div>}
@@ -583,6 +623,7 @@ export default function TermsTab() {
                                             className="data-input !bg-white !border-blue-200 font-bold !text-[12px]"
                                             value={form.category_id || ""}
                                             onChange={(e) => setForm((p) => ({ ...p, category_id: e.target.value ? parseInt(e.target.value) : null }))}
+                                            onKeyDown={(e) => handleKeyDown(e, handleUpsert, resetForm)}
                                         >
                                             <option value="">分類</option>
                                             {categories.map((c) => (
@@ -591,6 +632,25 @@ export default function TermsTab() {
                                         </select>
                                     ) : (
                                         <CategoryPill name={item.category_name} />
+                                    )}
+                                </div>
+                            )}
+                            {visibleCols.status && (
+                                <div className="data-cell">
+                                    {isEditing ? (
+                                        <select
+                                            className="data-input !bg-white !border-blue-200 font-bold !text-[12px]"
+                                            value={form.status || "active"}
+                                            onChange={(e) => setForm((p) => ({ ...p, status: e.target.value }))}
+                                            onKeyDown={(e) => handleKeyDown(e, handleUpsert, resetForm)}
+                                        >
+                                            <option value="active">active</option>
+                                            <option value="inactive">inactive</option>
+                                        </select>
+                                    ) : (
+                                        <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider ${item.status === "active" ? "bg-emerald-100 text-emerald-700" : "bg-slate-100 text-slate-500"}`}>
+                                            {item.status}
+                                        </span>
                                     )}
                                 </div>
                             )}
@@ -606,6 +666,33 @@ export default function TermsTab() {
                                         />
                                     ) : (
                                         (item.languages || []).map((l) => `${l.lang_code}:${l.value}`).join(" / ")
+                                    )}
+                                </div>
+                            )}
+                            {visibleCols.source && (
+                                <div className="data-cell">
+                                    {isEditing ? (
+                                        <select
+                                            className="data-input !bg-white !border-blue-200 font-bold !text-[12px]"
+                                            value={form.source || ""}
+                                            onChange={(e) => setForm((p) => ({ ...p, source: e.target.value }))}
+                                            onKeyDown={(e) => handleKeyDown(e, handleUpsert, resetForm)}
+                                        >
+                                            <option value="">來源</option>
+                                            <option value="reference">對照表</option>
+                                            <option value="terminology">專業術語</option>
+                                            <option value="manual">手動輸入</option>
+                                        </select>
+                                    ) : (
+                                        item.source && (
+                                            <span className={`px-1.5 py-0.5 rounded text-[10px] font-bold ${item.source === "reference" ? "bg-blue-50 text-blue-600 border border-blue-100" :
+                                                item.source === "terminology" ? "bg-purple-50 text-purple-600 border border-purple-100" :
+                                                    "bg-slate-50 text-slate-500 border border-slate-100"
+                                                }`}>
+                                                {item.source === "reference" ? "對照" :
+                                                    item.source === "terminology" ? "術語" : "手動"}
+                                            </span>
+                                        )
                                     )}
                                 </div>
                             )}

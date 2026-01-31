@@ -340,7 +340,8 @@
             "source": "來源",
             "target": "對應",
             "priority": "權重",
-            "actions": "操作"
+            "actions": "操作",
+            "compact": "緊湊模式"
         },
         "confirm": {
             "delete": "確定要刪除這筆資料嗎？",

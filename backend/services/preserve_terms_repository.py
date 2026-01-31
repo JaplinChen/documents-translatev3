@@ -6,6 +6,8 @@ from datetime import datetime
 from pathlib import Path
 from uuid import uuid4
 
+import backend.services.term_repository as term_repo
+
 DB_PATH = Path("data/translation_memory.db")
 LEGACY_FILES = [
     Path(__file__).parent.parent / "data" / "preserve_terms.json",
@@ -38,10 +40,7 @@ def _ensure_db() -> None:
     DB_PATH.parent.mkdir(parents=True, exist_ok=True)
     with _connect() as conn:
         conn.executescript(SCHEMA_SQL)
-        conn.execute(
-            "CREATE INDEX IF NOT EXISTS idx_preserve_terms_term "
-            "ON preserve_terms(term)"
-        )
+        conn.execute("CREATE INDEX IF NOT EXISTS idx_preserve_terms_term ON preserve_terms(term)")
     _migrate_from_json()
     _DB_INITIALIZED = True
 
@@ -192,6 +191,14 @@ def create_preserve_terms_batch(terms: list[dict]) -> dict:
             )
             existing.add(key)
         conn.commit()
+
+    # Sync to terms center
+    for t in created_terms:
+        try:
+            term_repo.sync_from_external(t["term"], category_name=t["category"], source="reference")
+        except Exception as e:
+            print(f"Sync to terms center failed for {t['term']}: {e}")
+
     return {"created": created, "skipped": skipped, "terms": created_terms}
 
 
@@ -205,24 +212,38 @@ def update_preserve_term(
     term_text = (term or "").strip()
     if not term_text:
         raise ValueError("術語不可為空")
+
     with _connect() as conn:
         row = conn.execute(
-            "SELECT id FROM preserve_terms WHERE id = ?",
+            "SELECT term FROM preserve_terms WHERE id = ?",
             (term_id,),
         ).fetchone()
         if not row:
             raise ValueError("術語不存在")
+        old_term = row["term"]
+
         conflict = conn.execute(
             "SELECT id FROM preserve_terms WHERE lower(term) = lower(?) AND id != ?",
             (term_text, term_id),
         ).fetchone()
         if conflict:
             raise ValueError(f"術語 '{term_text}' 已存在")
+
         conn.execute(
             "UPDATE preserve_terms SET term = ?, category = ?, case_sensitive = ? WHERE id = ?",
             (term_text, category or "未分類", 1 if case_sensitive else 0, term_id),
         )
         conn.commit()
+
+    # Sync to terms center
+    try:
+        # If term changed, delete old and sync new
+        if old_term and old_term != term_text:
+            term_repo.delete_by_term(old_term)
+        term_repo.sync_from_external(term_text, category_name=category, source="reference")
+    except Exception as e:
+        print(f"Sync to terms center failed: {e}")
+
     return {
         "id": term_id,
         "term": term_text,
@@ -233,6 +254,7 @@ def update_preserve_term(
 
 def delete_preserve_term(term_id: str) -> dict:
     _ensure_db()
+    term_to_del = None
     with _connect() as conn:
         row = conn.execute(
             "SELECT id, term, category, case_sensitive, created_at "
@@ -241,8 +263,17 @@ def delete_preserve_term(term_id: str) -> dict:
         ).fetchone()
         if not row:
             raise ValueError("術語不存在")
+        term_to_del = row["term"]
         conn.execute("DELETE FROM preserve_terms WHERE id = ?", (term_id,))
         conn.commit()
+
+    # Sync to terms center
+    if term_to_del:
+        try:
+            term_repo.delete_by_term(term_to_del)
+        except Exception as e:
+            print(f"Sync delete to terms center failed: {e}")
+
     return {
         "id": row["id"],
         "term": row["term"],

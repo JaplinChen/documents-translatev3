@@ -140,10 +140,10 @@ export default function HistoryTab({ onLoadFile }) {
                         緊湊模式
                     </label>
                     <button
-                        className="btn btn-sm danger flex items-center gap-2 py-1 h-9 rounded-xl shadow-sm hover:shadow-md transition-all"
+                        className="btn ghost compact danger ml-4"
                         onClick={handleResetAll}
                     >
-                        <span className="text-lg">🗑️</span> {t("history.reset_all")}
+                        <span className="text-sm">🗑️</span> {t("history.reset_all")}
                     </button>
                 </div>
             </div>

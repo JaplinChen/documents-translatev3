@@ -1,9 +1,9 @@
 import React, { useEffect, useRef } from "react";
 import { useTranslation } from "react-i18next";
-import { Edit, Trash2, Check, X, Table } from "lucide-react";
+import { Edit, Trash2, Check, X, Table, Plus } from "lucide-react";
 import { CategoryPill } from "../CategoryPill";
 
-export function PreserveTermsList({ filteredTerms, filterText, filterCategory, editingId, setEditingId, editForm, setEditForm, selectedIds, setSelectedIds, categories, getCategoryLabel, handleUpdate, handleDelete, onConvertToGlossary, highlightColor, t, compact }) {
+export function PreserveTermsList({ filteredTerms, filterText, filterCategory, editingId, setEditingId, editForm, setEditForm, selectedIds, setSelectedIds, categories, getCategoryLabel, handleUpdate, handleDelete, onConvertToGlossary, onAdd, highlightColor, t, compact }) {
     const safeTerms = Array.isArray(filteredTerms) ? filteredTerms : [];
     const allSelected = safeTerms.length > 0 && selectedIds.length === safeTerms.length;
     const [sortKey, setSortKey] = React.useState(null);
@@ -248,6 +248,9 @@ export function PreserveTermsList({ filteredTerms, filterText, filterCategory, e
                                     </>
                                 ) : (
                                     <>
+                                        <button className="action-btn-sm success" onClick={() => onAdd(term)} title={t("manage.actions.add")}>
+                                            <Plus size={18} className="text-emerald-600" />
+                                        </button>
                                         <button className="action-btn-sm" onClick={() => {
                                             setEditingId(term.id);
                                             setEditForm({ term: term.term, category: term.category, case_sensitive: term.case_sensitive });

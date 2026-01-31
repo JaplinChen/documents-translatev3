@@ -68,22 +68,29 @@ export function usePreserveTerms() {
         fetchTerms();
     }, []);
 
-    const handleAdd = async () => {
-        if (!newTerm.term.trim()) return;
+    const handleAdd = async (proto = null) => {
+        const payload = proto ? {
+            term: proto.term,
+            category: proto.category,
+            case_sensitive: proto.case_sensitive,
+        } : {
+            term: "",
+            category: categories[0] || "產品名稱",
+            case_sensitive: false,
+        };
+
+        if (!payload.term.trim() && proto) return;
+
         setLoading(true);
         try {
             setLastPreserveAt(Date.now());
             const res = await fetch(`${API_BASE}/api/preserve-terms`, {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({
-                    term: newTerm.term,
-                    category: newTerm.category,
-                    case_sensitive: newTerm.case_sensitive,
-                }),
+                body: JSON.stringify(payload),
             });
             if (res.ok) {
-                setNewTerm({ term: "", category: "產品名稱", case_sensitive: false });
+                if (!proto) setNewTerm({ term: "", category: categories[0] || "產品名稱", case_sensitive: false });
                 fetchTerms();
             } else {
                 const err = await res.json();

@@ -399,8 +399,8 @@ export default function ManageModal({
                     <button className={`tab-btn ${tab === "preserve" ? "is-active" : ""}`} type="button" onClick={() => setTab("preserve")}>{t("manage.tabs.preserve")}</button>
                     <button className={`tab-btn ${tab === "tm" ? "is-active" : ""}`} type="button" onClick={() => setTab("tm")}>{t("manage.tabs.tm")}</button>
                     <button className={`tab-btn ${tab === "history" ? "is-active" : ""}`} type="button" onClick={() => setTab("history")}>{t("nav.history", "History")}</button>
-                    <button className={`tab-btn ml-4 bg-amber-100 text-amber-900 hover:bg-amber-200 ${tab === "tm_categories" ? "is-active !bg-amber-300 !text-amber-950" : ""}`} type="button" onClick={() => setTab("tm_categories")}>分類維護</button>
-                    <button className={`tab-btn bg-amber-100 text-amber-900 hover:bg-amber-200 ${tab === "terms" ? "is-active !bg-amber-300 !text-amber-950" : ""}`} type="button" onClick={() => setTab("terms")}>翻譯資料</button>
+                    <button className={`tab-btn ml-4 bg-amber-100 text-amber-900 hover:bg-amber-200 ${tab === "tm_categories" ? "is-active !bg-amber-300 !text-amber-950" : ""}`} type="button" onClick={() => setTab("tm_categories")}>{t("manage.tabs.tm_categories")}</button>
+                    <button className={`tab-btn bg-amber-100 text-amber-900 hover:bg-amber-200 ${tab === "terms" ? "is-active !bg-amber-300 !text-amber-950" : ""}`} type="button" onClick={() => setTab("terms")}>{t("manage.tabs.terms")}</button>
                 </div>
                 <div className={`modal-body ${tab === "history" ? "" : "manage-body"}`}>
                     {tab === "history" ? (
@@ -462,7 +462,7 @@ export default function ManageModal({
                                                 }
                                             }}
                                         />
-                                        緊湊模式
+                                        {t("manage.table.compact")}
                                     </label>
                                 </div>
                             </div>
@@ -529,7 +529,7 @@ function TMCategoriesTab({ categories, onRefresh }) {
             const res = await fetch(`${API_BASE}/api/tm/categories`, {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ name: "新分類", sort_order: 0 })
+                body: JSON.stringify({ name: t("manage.categories.new_category"), sort_order: 0 })
             });
             if (res.ok) {
                 onRefresh();
@@ -594,18 +594,18 @@ function TMCategoriesTab({ categories, onRefresh }) {
                             }
                         }}
                     />
-                    緊湊模式
+                    {t("manage.table.compact")}
                 </label>
             </div>
 
             <div className="manage-scroll-area flex-1">
                 <div className={`data-table ${compactTable ? "is-compact text-xs" : "text-sm"}`}>
                     <div className="unified-data-row data-header" style={{ gridTemplateColumns: "1fr 120px 150px 80px 100px" }}>
-                        <div className="data-cell">分類名稱</div>
-                        <div className="data-cell">預覽</div>
-                        <div className="data-cell">使用量 (對照/術語)</div>
-                        <div className="data-cell">排序</div>
-                        <div className="data-cell data-actions">操作</div>
+                        <div className="data-cell">{t("manage.categories.name")}</div>
+                        <div className="data-cell">{t("manage.categories.preview")}</div>
+                        <div className="data-cell">{t("manage.categories.usage")}</div>
+                        <div className="data-cell">{t("manage.categories.sort_order")}</div>
+                        <div className="data-cell data-actions">{t("manage.categories.actions")}</div>
                     </div>
                     {categories.map(cat => (
                         <div className="unified-data-row" key={cat.id} style={{ gridTemplateColumns: "1fr 120px 150px 80px 100px" }}>
@@ -642,22 +642,22 @@ function TMCategoriesTab({ categories, onRefresh }) {
                             <div className="data-cell data-actions flex justify-end gap-1">
                                 {editingId === cat.id ? (
                                     <>
-                                        <button className="action-btn-sm success" onClick={handleSave} disabled={saving} title="儲存">
+                                        <button className="action-btn-sm success" onClick={handleSave} disabled={saving} title={t("manage.actions.save")}>
                                             <img src="https://emojicdn.elk.sh/✅?style=apple" className="w-5 h-5 object-contain" alt="Save" />
                                         </button>
-                                        <button className="action-btn-sm" onClick={() => { setEditingId(null); setDraft(null); }} title="取消">
+                                        <button className="action-btn-sm" onClick={() => { setEditingId(null); setDraft(null); }} title={t("manage.actions.cancel")}>
                                             <img src="https://emojicdn.elk.sh/❌?style=apple" className="w-5 h-5 object-contain" alt="Cancel" />
                                         </button>
                                     </>
                                 ) : (
                                     <>
-                                        <button className="action-btn-sm success" onClick={handleCreate} disabled={saving} title="新增分類">
+                                        <button className="action-btn-sm success" onClick={handleCreate} disabled={saving} title={t("manage.categories.add_category")}>
                                             <Plus size={18} className="text-emerald-600" />
                                         </button>
-                                        <button className="action-btn-sm" onClick={() => { setEditingId(cat.id); setDraft({ ...cat }); }} title="編輯">
+                                        <button className="action-btn-sm" onClick={() => { setEditingId(cat.id); setDraft({ ...cat }); }} title={t("manage.actions.edit")}>
                                             <img src="https://emojicdn.elk.sh/✏️?style=apple" className="w-5 h-5 object-contain" alt="Edit" />
                                         </button>
-                                        <button className="action-btn-sm danger" onClick={() => handleDelete(cat.id)} title="刪除">
+                                        <button className="action-btn-sm danger" onClick={() => handleDelete(cat.id)} title={t("manage.actions.delete")}>
                                             <img src="https://emojicdn.elk.sh/🗑️?style=apple" className="w-5 h-5 object-contain" alt="Delete" />
                                         </button>
                                     </>
@@ -665,7 +665,7 @@ function TMCategoriesTab({ categories, onRefresh }) {
                             </div>
                         </div>
                     ))}
-                    {categories.length === 0 && <div className="data-empty">尚未建立分類</div>}
+                    {categories.length === 0 && <div className="data-empty">{t("manage.categories.empty")}</div>}
                 </div>
             </div>
         </div>

@@ -313,7 +313,105 @@
         "tabs": {
             "glossary": "對照表",
             "preserve": "術語",
-            "tm": "記憶"
+            "tm": "記憶",
+            "tm_categories": "分類維護",
+            "terms": "翻譯資料"
+        },
+        "categories": {
+            "name": "分類名稱",
+            "preview": "預覽",
+            "usage": "使用量 (對照/術語)",
+            "sort_order": "排序",
+            "actions": "操作",
+            "empty": "尚未建立分類",
+            "new_category": "新分類",
+            "add_category": "新增分類"
+        },
+        "terms_tab": {
+            "search_placeholder": "搜尋術語/別名",
+            "filter_category_all": "全部分類",
+            "filter_status_all": "全部狀態",
+            "filter_status_active": "使用中",
+            "filter_status_inactive": "未啟用",
+            "filter_source_all": "全部來源",
+            "filter_source_reference": "對照表",
+            "filter_source_terminology": "專業術語",
+            "filter_source_manual": "手動輸入",
+            "missing_lang_placeholder": "缺語言 e.g. en",
+            "sync_data": "同步舊資料",
+            "syncing": "同步中...",
+            "sync_confirm": "確定要將所有「對照表」與「術語庫」資料同步至此分頁嗎？這可能需要一點時間。",
+            "sync_complete": "同步完成！",
+            "columns": {
+                "term": "術語",
+                "category": "分類",
+                "languages": "語言",
+                "source": "來源",
+                "status": "狀態",
+                "aliases": "別名",
+                "note": "備註",
+                "created_by": "建立者",
+                "actions": "操作"
+            },
+            "columns_panel": {
+                "title": "配置顯示欄位",
+                "apply_immediately": "勾選後立即生效",
+                "show_columns": "顯示欄位",
+                "click_to_configure": "點擊配置表格欄位",
+                "preset_basic": "預設",
+                "preset_all": "全選"
+            },
+            "batch": {
+                "enable": "批次啟用",
+                "disable": "批次停用",
+                "category": "批次分類",
+                "apply_category": "套用分類",
+                "source": "批次來源",
+                "apply_source": "套用來源",
+                "case_rule": "批次大小寫規則",
+                "apply_case_rule": "套用規則",
+                "delete": "批次刪除",
+                "delete_confirm": "確定要刪除選取的 {{count}} 筆術語嗎？"
+            },
+            "import": {
+                "title": "CSV 匯入（步驟 {{step}}/3）",
+                "close": "關閉",
+                "select_csv": "選擇 CSV",
+                "select_hint": "選擇檔案後進入欄位對應",
+                "next": "下一步",
+                "prev": "上一步",
+                "mapping_hint": "欄位對應（可選）",
+                "csv_column": "CSV 欄位名稱",
+                "system_column": "系統欄位（term/category/lang_zh-TW）",
+                "add_mapping": "新增對應",
+                "apply_json": "套用為 JSON",
+                "clear_mapping": "清空對應",
+                "preview_result": "預覽結果",
+                "confirm_import": "確認匯入",
+                "import_complete": "匯入完成：成功 {{imported}} 筆，失敗 {{failed}} 筆",
+                "summary": "總筆數 {{total}}｜有效 {{valid}}｜錯誤 {{invalid}}"
+            },
+            "version": {
+                "title": "版本紀錄",
+                "empty": "尚無版本紀錄",
+                "time": "時間",
+                "operator": "操作者"
+            },
+            "source_labels": {
+                "reference": "對照",
+                "terminology": "術語",
+                "manual": "手動"
+            },
+            "loading": "載入中...",
+            "version_btn": "版本",
+            "validation": {
+                "term_required": "術語不可為空",
+                "term_exists": "術語已存在",
+                "alias_conflict": "別名與現有術語衝突",
+                "alias_exists": "別名已存在"
+            },
+            "no_diff": "無差異資料",
+            "alias_separator": "(| 分隔)"
         },
         "actions": {
             "seed": "載入資料",
@@ -486,5 +584,108 @@
         "size": "大小",
         "actions": "操作",
         "load": "載入到編輯器"
+    },
+    "api": {
+        "errors": {
+            "network_error": "網路連線錯誤，請檢查網路狀態",
+            "server_error": "伺服器錯誤 ({{status}})",
+            "timeout": "請求超時，請稍後再試",
+            "unauthorized": "未授權，請檢查 API Key",
+            "forbidden": "存取被拒絕",
+            "not_found": "資源不存在",
+            "bad_request": "請求參數錯誤",
+            "rate_limit": "請求次數過多，請稍後再試",
+            "unknown": "未知錯誤：{{message}}"
+        },
+        "pptx": {
+            "extract_failed": "PPTX 提取失敗",
+            "apply_failed": "PPTX 套用失敗",
+            "download_failed": "PPTX 下載失敗",
+            "translate_failed": "PPTX 翻譯失敗",
+            "invalid_file": "無效的 PPTX 檔案"
+        },
+        "docx": {
+            "extract_failed": "DOCX 提取失敗",
+            "apply_failed": "DOCX 套用失敗",
+            "download_failed": "DOCX 下載失敗",
+            "translate_failed": "DOCX 翻譯失敗",
+            "invalid_file": "無效的 DOCX 檔案"
+        },
+        "pdf": {
+            "extract_failed": "PDF 提取失敗",
+            "apply_failed": "PDF 套用失敗",
+            "download_failed": "PDF 下載失敗",
+            "translate_failed": "PDF 翻譯失敗",
+            "invalid_file": "無效的 PDF 檔案"
+        },
+        "xlsx": {
+            "extract_failed": "XLSX 提取失敗",
+            "apply_failed": "XLSX 套用失敗",
+            "download_failed": "XLSX 下載失敗",
+            "translate_failed": "XLSX 翻譯失敗",
+            "invalid_file": "無效的 XLSX 檔案"
+        },
+        "llm": {
+            "models_failed": "模型列表取得失敗",
+            "api_key_required": "API Key 為必填",
+            "provider_not_supported": "不支援的 Provider",
+            "connection_refused": "無法連線到 {{provider}} 服務"
+        },
+        "export": {
+            "failed": "匯出失敗",
+            "format_not_supported": "不支援的匯出格式"
+        },
+        "tm": {
+            "glossary_save_failed": "詞彙儲存失敗",
+            "glossary_delete_failed": "詞彙刪除失敗",
+            "memory_save_failed": "記憶儲存失敗",
+            "memory_delete_failed": "記憶刪除失敗",
+            "import_failed": "匯入失敗",
+            "export_failed": "匯出失敗",
+            "category_exists": "分類名稱已存在"
+        },
+        "terms": {
+            "save_failed": "術語儲存失敗",
+            "delete_failed": "術語刪除失敗",
+            "import_failed": "匯入失敗",
+            "export_failed": "匯出失敗",
+            "category_exists": "分類名稱已存在"
+        },
+        "preserve": {
+            "save_failed": "保留術語儲存失敗",
+            "delete_failed": "保留術語刪除失敗",
+            "term_exists": "術語已存在",
+            "term_empty": "術語不可為空"
+        },
+        "prompts": {
+            "load_failed": "Prompt 載入失敗",
+            "save_failed": "Prompt 儲存失敗",
+            "not_found": "Prompt 不存在"
+        },
+        "ocr": {
+            "load_failed": "OCR 設定載入失敗",
+            "save_failed": "OCR 設定儲存失敗",
+            "invalid_dpi": "DPI 必須介於 50 與 600 之間",
+            "invalid_conf": "信心門檻必須介於 0 與 100 之間"
+        },
+        "tokens": {
+            "stats_failed": "統計資料載入失敗",
+            "record_failed": "使用量記錄失敗"
+        },
+        "stream": {
+            "connection_lost": "串流連線已中斷",
+            "parse_error": "資料解析錯誤"
+        },
+        "status": {
+            "loading": "載入中...",
+            "saving": "儲存中...",
+            "deleting": "刪除中...",
+            "importing": "匯入中...",
+            "exporting": "匯出中...",
+            "translating": "翻譯中...",
+            "processing": "處理中...",
+            "success": "操作成功",
+            "failed": "操作失敗"
+        }
     }
 }

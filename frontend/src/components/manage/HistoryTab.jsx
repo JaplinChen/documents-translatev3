@@ -137,7 +137,7 @@ export default function HistoryTab({ onLoadFile }) {
                                 }
                             }}
                         />
-                        緊湊模式
+                        {t("manage.table.compact")}
                     </label>
                     <button
                         className="btn ghost compact danger ml-4"

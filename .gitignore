@@ -63,7 +63,8 @@ backend/data/*.db
 data/
 
 # Agent & Temp
-.agent/
+.agent/logs/
+.agent/cache/
 .antigravity/
 .pytest_cache/
 .worktrees/

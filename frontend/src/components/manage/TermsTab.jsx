@@ -217,12 +217,12 @@ export default function TermsTab() {
     };
 
     const handleFullSync = async () => {
-        if (!window.confirm("確定要將所有「對照表」與「術語庫」資料同步至此分頁嗎？這可能需要一點時間。")) return;
+        if (!window.confirm(t("manage.terms_tab.sync_confirm"))) return;
         setIsSyncing(true);
         try {
             const res = await fetch(`${API_BASE}/api/terms/sync-all`, { method: "POST" });
             if (res.ok) {
-                alert("同步完成！");
+                alert(t("manage.terms_tab.sync_complete"));
                 setFilters(p => ({ ...p, _refresh: Date.now() }));
             }
         } catch (err) {
@@ -319,7 +319,7 @@ export default function TermsTab() {
                 <div className="flex flex-wrap gap-2 items-center">
                     <input
                         className="text-input w-52 compact"
-                        placeholder="搜尋術語/別名"
+                        placeholder={t("manage.terms_tab.search_placeholder")}
                         value={filters.q}
                         onChange={(e) => setFilters((p) => ({ ...p, q: e.target.value }))}
                         onKeyDown={(e) => e.key === "Enter" && setFilters((p) => ({ ...p, _refresh: Date.now() }))}
@@ -329,7 +329,7 @@ export default function TermsTab() {
                         value={filters.category_id}
                         onChange={(e) => setFilters((p) => ({ ...p, category_id: e.target.value }))}
                     >
-                        <option value="">全部分類</option>
+                        <option value="">{t("manage.terms_tab.filter_category_all")}</option>
                         {categories.map((c) => (
                             <option key={c.id} value={c.id}>{c.name}</option>
                         ))}
@@ -339,23 +339,23 @@ export default function TermsTab() {
                         value={filters.status}
                         onChange={(e) => setFilters((p) => ({ ...p, status: e.target.value }))}
                     >
-                        <option value="">全部狀態</option>
-                        <option value="active">使用中</option>
-                        <option value="inactive">未啟用</option>
+                        <option value="">{t("manage.terms_tab.filter_status_all")}</option>
+                        <option value="active">{t("manage.terms_tab.filter_status_active")}</option>
+                        <option value="inactive">{t("manage.terms_tab.filter_status_inactive")}</option>
                     </select>
                     <select
                         className="select-input w-28 compact"
                         value={filters.source}
                         onChange={(e) => setFilters((p) => ({ ...p, source: e.target.value }))}
                     >
-                        <option value="">全部來源</option>
-                        <option value="reference">對照表</option>
-                        <option value="terminology">專業術語</option>
-                        <option value="manual">手動輸入</option>
+                        <option value="">{t("manage.terms_tab.filter_source_all")}</option>
+                        <option value="reference">{t("manage.terms_tab.filter_source_reference")}</option>
+                        <option value="terminology">{t("manage.terms_tab.filter_source_terminology")}</option>
+                        <option value="manual">{t("manage.terms_tab.filter_source_manual")}</option>
                     </select>
                     <input
                         className="text-input w-36 compact"
-                        placeholder="缺語言 e.g. en"
+                        placeholder={t("manage.terms_tab.missing_lang_placeholder")}
                         value={filters.missing_lang}
                         onChange={(e) => setFilters((p) => ({ ...p, missing_lang: e.target.value }))}
                     />
@@ -363,9 +363,9 @@ export default function TermsTab() {
                         className={`btn ghost compact whitespace-nowrap ${isSyncing ? "loading" : ""}`}
                         onClick={handleFullSync}
                         disabled={isSyncing}
-                        title="將對照表與術語庫歷史資料同步至此中心"
+                        title={t("manage.terms_tab.sync_confirm")}
                     >
-                        {isSyncing ? "同步中..." : "同步舊資料"}
+                        {isSyncing ? t("manage.terms_tab.syncing") : t("manage.terms_tab.sync_data")}
                     </button>
                 </div>
                 <div className="flex items-center gap-2">
@@ -373,12 +373,12 @@ export default function TermsTab() {
                         {t("manage.list_summary", { shown: terms.length, total: terms.length })}
                     </span>
                     <div className="flex gap-2 items-center">
-                        <button className="btn ghost compact" type="button" onClick={exportCsv}>匯出 CSV</button>
+                        <button className="btn ghost compact" type="button" onClick={exportCsv}>{t("manage.actions.export_csv")}</button>
                         <button className="btn ghost compact" type="button" onClick={() => {
                             setShowImport(true);
                             setImportStep(1);
                         }}>
-                            匯入 CSV
+                            {t("manage.actions.import_csv")}
                         </button>
                     </div>
                 </div>
@@ -388,34 +388,34 @@ export default function TermsTab() {
                 <div className="fixed inset-0 z-40 flex items-center justify-center bg-black/20">
                     <div className="w-[720px] max-h-[80vh] overflow-auto bg-white rounded-2xl border border-slate-200 shadow-xl p-5">
                         <div className="flex items-center justify-between mb-3">
-                            <div className="text-sm font-bold text-slate-700">CSV 匯入（步驟 {importStep}/3）</div>
-                            <button className="btn ghost compact" type="button" onClick={() => setShowImport(false)}>關閉</button>
+                            <div className="text-sm font-bold text-slate-700">{t("manage.terms_tab.import.title", { step: importStep })}</div>
+                            <button className="btn ghost compact" type="button" onClick={() => setShowImport(false)}>{t("manage.terms_tab.import.close")}</button>
                         </div>
                         {importStep === 1 && (
                             <div className="space-y-3">
                                 <label className="btn ghost w-fit">
-                                    選擇 CSV
+                                    {t("manage.terms_tab.import.select_csv")}
                                     <input type="file" accept=".csv" className="hidden-input" onChange={(e) => setImportFile(e.target.files?.[0] || null)} />
                                 </label>
-                                <div className="text-xs text-slate-500">選擇檔案後進入欄位對應</div>
-                                <button className="btn primary" type="button" onClick={() => setImportStep(2)} disabled={!importFile}>下一步</button>
+                                <div className="text-xs text-slate-500">{t("manage.terms_tab.import.select_hint")}</div>
+                                <button className="btn primary" type="button" onClick={() => setImportStep(2)} disabled={!importFile}>{t("manage.terms_tab.import.next")}</button>
                             </div>
                         )}
                         {importStep === 2 && (
                             <div className="space-y-3">
-                                <div className="text-xs text-slate-500">欄位對應（可選）</div>
+                                <div className="text-xs text-slate-500">{t("manage.terms_tab.import.mapping_hint")}</div>
                                 <div className="grid grid-cols-12 gap-2 max-h-48 overflow-auto pr-1">
                                     {mappingRows.map((row, idx) => (
                                         <React.Fragment key={`${row.to}-${idx}`}>
                                             <input
                                                 className="text-input col-span-5"
-                                                placeholder="CSV 欄位名稱"
+                                                placeholder={t("manage.terms_tab.import.csv_column")}
                                                 value={row.from}
                                                 onChange={(e) => updateMappingRow(idx, "from", e.target.value)}
                                             />
                                             <input
                                                 className="text-input col-span-5"
-                                                placeholder="系統欄位（term/category/lang_zh-TW）"
+                                                placeholder={t("manage.terms_tab.import.system_column")}
                                                 value={row.to}
                                                 onChange={(e) => updateMappingRow(idx, "to", e.target.value)}
                                             />
@@ -424,40 +424,40 @@ export default function TermsTab() {
                                                 type="button"
                                                 onClick={() => removeMappingRow(idx)}
                                             >
-                                                刪除
+                                                {t("manage.actions.delete")}
                                             </button>
                                         </React.Fragment>
                                     ))}
                                 </div>
                                 <div className="flex gap-2">
-                                    <button className="btn ghost compact" type="button" onClick={addMappingRow}>新增對應</button>
-                                    <button className="btn ghost compact" type="button" onClick={() => setMappingText(JSON.stringify(buildMappingFromRows()))}>套用為 JSON</button>
-                                    <button className="btn ghost compact" type="button" onClick={() => setMappingRows([])}>清空對應</button>
+                                    <button className="btn ghost compact" type="button" onClick={addMappingRow}>{t("manage.terms_tab.import.add_mapping")}</button>
+                                    <button className="btn ghost compact" type="button" onClick={() => setMappingText(JSON.stringify(buildMappingFromRows()))}>{t("manage.terms_tab.import.apply_json")}</button>
+                                    <button className="btn ghost compact" type="button" onClick={() => setMappingRows([])}>{t("manage.terms_tab.import.clear_mapping")}</button>
                                 </div>
                                 <div className="flex gap-2">
-                                    <button className="btn ghost" type="button" onClick={() => setImportStep(1)}>上一步</button>
+                                    <button className="btn ghost" type="button" onClick={() => setImportStep(1)}>{t("manage.terms_tab.import.prev")}</button>
                                     <button className="btn primary" type="button" onClick={async () => {
                                         await handlePreview();
                                         setImportStep(3);
-                                    }}>下一步</button>
+                                    }}>{t("manage.terms_tab.import.next")}</button>
                                 </div>
                             </div>
                         )}
                         {importStep === 3 && (
                             <div className="space-y-3">
-                                <div className="text-xs text-slate-500">預覽結果</div>
+                                <div className="text-xs text-slate-500">{t("manage.terms_tab.import.preview_result")}</div>
                                 {preview?.summary && (
                                     <div className="text-xs text-slate-600">
-                                        總筆數 {preview.summary.total}｜有效 {preview.summary.valid}｜錯誤 {preview.summary.invalid}
+                                        {t("manage.terms_tab.import.summary", { total: preview.summary.total, valid: preview.summary.valid, invalid: preview.summary.invalid })}
                                     </div>
                                 )}
                                 <div className="flex gap-2">
-                                    <button className="btn ghost" type="button" onClick={() => setImportStep(2)}>上一步</button>
-                                    <button className="btn primary" type="button" onClick={handleImport}>確認匯入</button>
+                                    <button className="btn ghost" type="button" onClick={() => setImportStep(2)}>{t("manage.terms_tab.import.prev")}</button>
+                                    <button className="btn primary" type="button" onClick={handleImport}>{t("manage.terms_tab.import.confirm_import")}</button>
                                 </div>
                                 {importResult && (
                                     <div className="text-xs text-slate-600">
-                                        匯入完成：成功 {importResult.imported} 筆，失敗 {importResult.failed?.length || 0} 筆
+                                        {t("manage.terms_tab.import.import_complete", { imported: importResult.imported, failed: importResult.failed?.length || 0 })}
                                     </div>
                                 )}
                             </div>
@@ -470,33 +470,33 @@ export default function TermsTab() {
 
             {selectedIds.length > 0 && (
                 <div className="batch-actions flex flex-wrap gap-2 mt-3">
-                    <button className="btn ghost compact" onClick={() => batchUpdate({ status: "active" })}>批次啟用</button>
-                    <button className="btn ghost compact" onClick={() => batchUpdate({ status: "inactive" })}>批次停用</button>
+                    <button className="btn ghost compact" onClick={() => batchUpdate({ status: "active" })}>{t("manage.terms_tab.batch.enable")}</button>
+                    <button className="btn ghost compact" onClick={() => batchUpdate({ status: "inactive" })}>{t("manage.terms_tab.batch.disable")}</button>
                     <select className="select-input w-36 compact" value={batchCategory} onChange={(e) => setBatchCategory(e.target.value)}>
-                        <option value="">批次分類</option>
+                        <option value="">{t("manage.terms_tab.batch.category")}</option>
                         {categories.map((c) => (
                             <option key={c.id} value={c.id}>{c.name}</option>
                         ))}
                     </select>
-                    <button className="btn ghost compact" onClick={() => batchUpdate({ category_id: batchCategory })} disabled={!batchCategory}>套用分類</button>
+                    <button className="btn ghost compact" onClick={() => batchUpdate({ category_id: batchCategory })} disabled={!batchCategory}>{t("manage.terms_tab.batch.apply_category")}</button>
                     <select className="select-input w-28 compact" value={batchSource} onChange={(e) => setBatchSource(e.target.value)}>
-                        <option value="">批次來源</option>
-                        <option value="reference">對照表</option>
-                        <option value="terminology">專業術語</option>
-                        <option value="manual">手動輸入</option>
+                        <option value="">{t("manage.terms_tab.batch.source")}</option>
+                        <option value="reference">{t("manage.terms_tab.filter_source_reference")}</option>
+                        <option value="terminology">{t("manage.terms_tab.filter_source_terminology")}</option>
+                        <option value="manual">{t("manage.terms_tab.filter_source_manual")}</option>
                     </select>
-                    <button className="btn ghost compact" onClick={() => batchUpdate({ source: batchSource })} disabled={!batchSource}>套用來源</button>
+                    <button className="btn ghost compact" onClick={() => batchUpdate({ source: batchSource })} disabled={!batchSource}>{t("manage.terms_tab.batch.apply_source")}</button>
                     <select className="select-input w-36 compact" value={batchCaseRule} onChange={(e) => setBatchCaseRule(e.target.value)}>
-                        <option value="">批次大小寫規則</option>
+                        <option value="">{t("manage.terms_tab.batch.case_rule")}</option>
                         <option value="preserve">preserve</option>
                         <option value="uppercase">uppercase</option>
                         <option value="lowercase">lowercase</option>
                     </select>
-                    <button className="btn ghost compact" onClick={() => batchUpdate({ case_rule: batchCaseRule })} disabled={!batchCaseRule}>套用規則</button>
+                    <button className="btn ghost compact" onClick={() => batchUpdate({ case_rule: batchCaseRule })} disabled={!batchCaseRule}>{t("manage.terms_tab.batch.apply_case_rule")}</button>
                     <button className="btn ghost compact !text-red-500" onClick={() => {
-                        if (!window.confirm(`確定要刪除選取的 ${selectedIds.length} 筆術語嗎？`)) return;
+                        if (!window.confirm(t("manage.terms_tab.batch.delete_confirm", { count: selectedIds.length }))) return;
                         batchDelete();
-                    }}>批次刪除</button>
+                    }}>{t("manage.terms_tab.batch.delete")}</button>
                 </div>
             )}
 
@@ -509,7 +509,7 @@ export default function TermsTab() {
                             type="button"
                             onClick={() => setShowColPanel((v) => !v)}
                         >
-                            顯示欄位
+                            {t("manage.terms_tab.columns_panel.show_columns")}
                         </button>
                         {showColPanel && createPortal(
                             <>
@@ -525,19 +525,19 @@ export default function TermsTab() {
                                     }}
                                 >
                                     <div className={`flex items-center justify-between border-b border-slate-100 ${compactTable ? "mb-2 pb-1.5" : "mb-3 pb-2"}`}>
-                                        <div className={`${compactTable ? "text-xs" : "text-sm"} font-bold text-slate-700`}>配置顯示欄位</div>
+                                        <div className={`${compactTable ? "text-xs" : "text-sm"} font-bold text-slate-700`}>{t("manage.terms_tab.columns_panel.title")}</div>
                                         <button className="btn ghost compact" type="button" onClick={() => setShowColPanel(false)}><X size={compactTable ? 12 : 14} /></button>
                                     </div>
                                     <div className={`grid grid-cols-2 gap-x-4 mb-4 overflow-y-auto max-h-[400px] p-1 ${compactTable ? "gap-y-1" : "gap-y-2"}`}>
                                         {[
-                                            { key: "term", label: "術語" },
-                                            { key: "category", label: "分類" },
-                                            { key: "languages", label: "語言" },
-                                            { key: "source", label: "來源" },
-                                            { key: "status", label: "狀態" },
-                                            { key: "aliases", label: "別名" },
-                                            { key: "note", label: "備註" },
-                                            { key: "created_by", label: "建立者" }
+                                            { key: "term", label: t("manage.terms_tab.columns.term") },
+                                            { key: "category", label: t("manage.terms_tab.columns.category") },
+                                            { key: "languages", label: t("manage.terms_tab.columns.languages") },
+                                            { key: "source", label: t("manage.terms_tab.columns.source") },
+                                            { key: "status", label: t("manage.terms_tab.columns.status") },
+                                            { key: "aliases", label: t("manage.terms_tab.columns.aliases") },
+                                            { key: "note", label: t("manage.terms_tab.columns.note") },
+                                            { key: "created_by", label: t("manage.terms_tab.columns.created_by") }
                                         ].map(({ key, label }) => (
                                             <label key={key} className={`flex items-center gap-2 cursor-pointer hover:bg-slate-50 rounded transition-colors border border-transparent hover:border-slate-100 ${compactTable ? "px-1.5 py-1" : "px-2 py-1.5"}`}>
                                                 <input
@@ -549,17 +549,17 @@ export default function TermsTab() {
                                                     }
                                                 />
                                                 <span className={`${compactTable ? "text-[11px]" : "text-sm"} text-slate-700 font-medium select-none`}>{label}</span>
-                                                {key === "aliases" && <span className="text-[10px] text-slate-400 font-normal ml-auto whitespace-nowrap">(| 分隔)</span>}
+                                                {key === "aliases" && <span className="text-[10px] text-slate-400 font-normal ml-auto whitespace-nowrap">{t("manage.terms_tab.alias_separator")}</span>}
                                             </label>
                                         ))}
                                     </div>
                                     <div className="flex items-center justify-between pt-3 border-t border-slate-100">
                                         <div className="flex gap-2">
-                                            <button className="btn ghost compact text-[11px]" type="button" onClick={() => setPreset("basic")}>預設</button>
-                                            <button className="btn ghost compact text-[11px]" type="button" onClick={() => setPreset("all")}>全選</button>
+                                            <button className="btn ghost compact text-[11px]" type="button" onClick={() => setPreset("basic")}>{t("manage.terms_tab.columns_panel.preset_basic")}</button>
+                                            <button className="btn ghost compact text-[11px]" type="button" onClick={() => setPreset("all")}>{t("manage.terms_tab.columns_panel.preset_all")}</button>
                                         </div>
                                         <div className="text-[10px] text-slate-400">
-                                            勾選後立即生效
+                                            {t("manage.terms_tab.columns_panel.apply_immediately")}
                                         </div>
                                     </div>
                                 </div>
@@ -567,12 +567,12 @@ export default function TermsTab() {
                             document.body
                         )}
                         {!showColPanel && (
-                            <span className="text-[10px] text-slate-400">點擊配置表格欄位</span>
+                            <span className="text-[10px] text-slate-400">{t("manage.terms_tab.columns_panel.click_to_configure")}</span>
                         )}
                     </div>
                     <label className="flex items-center gap-2 text-xs text-slate-600 cursor-pointer">
                         <input type="checkbox" className="w-3.5 h-3.5" checked={compactTable} onChange={(e) => setCompactTable(e.target.checked)} />
-                        緊湊模式
+                        {t("manage.table.compact")}
                     </label>
                 </div>
                 <div className="unified-data-row data-header" style={{ gridTemplateColumns }}>
@@ -580,16 +580,16 @@ export default function TermsTab() {
                         <input type="checkbox" checked={terms.length > 0 && selectedIds.length === terms.length} onChange={(e) => toggleSelectAll(e.target.checked)} />
                         <span className="col-resizer" onMouseDown={(e) => startResize("select", e)} />
                     </div>
-                    {visibleCols.term && <div className="data-cell">術語<span className="col-resizer" onMouseDown={(e) => startResize("term", e)} /></div>}
-                    {visibleCols.category && <div className="data-cell">分類<span className="col-resizer" onMouseDown={(e) => startResize("category", e)} /></div>}
-                    {visibleCols.languages && <div className="data-cell">語言<span className="col-resizer" onMouseDown={(e) => startResize("languages", e)} /></div>}
-                    {visibleCols.source && <div className="data-cell">來源<span className="col-resizer" onMouseDown={(e) => startResize("source", e)} /></div>}
-                    {visibleCols.aliases && <div className="data-cell">別名<span className="col-resizer" onMouseDown={(e) => startResize("aliases", e)} /></div>}
-                    {visibleCols.note && <div className="data-cell">備註<span className="col-resizer" onMouseDown={(e) => startResize("note", e)} /></div>}
-                    {visibleCols.created_by && <div className="data-cell">建立者<span className="col-resizer" onMouseDown={(e) => startResize("created_by", e)} /></div>}
-                    <div className="data-cell data-actions">操作<span className="col-resizer" onMouseDown={(e) => startResize("actions", e)} /></div>
+                    {visibleCols.term && <div className="data-cell">{t("manage.terms_tab.columns.term")}<span className="col-resizer" onMouseDown={(e) => startResize("term", e)} /></div>}
+                    {visibleCols.category && <div className="data-cell">{t("manage.terms_tab.columns.category")}<span className="col-resizer" onMouseDown={(e) => startResize("category", e)} /></div>}
+                    {visibleCols.languages && <div className="data-cell">{t("manage.terms_tab.columns.languages")}<span className="col-resizer" onMouseDown={(e) => startResize("languages", e)} /></div>}
+                    {visibleCols.source && <div className="data-cell">{t("manage.terms_tab.columns.source")}<span className="col-resizer" onMouseDown={(e) => startResize("source", e)} /></div>}
+                    {visibleCols.aliases && <div className="data-cell">{t("manage.terms_tab.columns.aliases")}<span className="col-resizer" onMouseDown={(e) => startResize("aliases", e)} /></div>}
+                    {visibleCols.note && <div className="data-cell">{t("manage.terms_tab.columns.note")}<span className="col-resizer" onMouseDown={(e) => startResize("note", e)} /></div>}
+                    {visibleCols.created_by && <div className="data-cell">{t("manage.terms_tab.columns.created_by")}<span className="col-resizer" onMouseDown={(e) => startResize("created_by", e)} /></div>}
+                    <div className="data-cell data-actions">{t("manage.terms_tab.columns.actions")}<span className="col-resizer" onMouseDown={(e) => startResize("actions", e)} /></div>
                 </div>
-                {loading && <div className="data-empty">載入中...</div>}
+                {loading && <div className="data-empty">{t("manage.terms_tab.loading")}</div>}
                 {!loading && terms.map((item, idx) => {
                     const isEditing = editingId === item.id;
                     const isSelected = selectedIds.includes(item.id);
@@ -625,7 +625,7 @@ export default function TermsTab() {
                                             onChange={(e) => setForm((p) => ({ ...p, category_id: e.target.value ? parseInt(e.target.value) : null }))}
                                             onKeyDown={(e) => handleKeyDown(e, handleUpsert, resetForm)}
                                         >
-                                            <option value="">分類</option>
+                                            <option value="">{t("manage.terms_tab.columns.category")}</option>
                                             {categories.map((c) => (
                                                 <option key={`cat-edit-${c.id}`} value={c.id}>{c.name}</option>
                                             ))}
@@ -678,10 +678,10 @@ export default function TermsTab() {
                                             onChange={(e) => setForm((p) => ({ ...p, source: e.target.value }))}
                                             onKeyDown={(e) => handleKeyDown(e, handleUpsert, resetForm)}
                                         >
-                                            <option value="">來源</option>
-                                            <option value="reference">對照表</option>
-                                            <option value="terminology">專業術語</option>
-                                            <option value="manual">手動輸入</option>
+                                            <option value="">{t("manage.terms_tab.columns.source")}</option>
+                                            <option value="reference">{t("manage.terms_tab.filter_source_reference")}</option>
+                                            <option value="terminology">{t("manage.terms_tab.filter_source_terminology")}</option>
+                                            <option value="manual">{t("manage.terms_tab.filter_source_manual")}</option>
                                         </select>
                                     ) : (
                                         item.source && (
@@ -689,8 +689,8 @@ export default function TermsTab() {
                                                 item.source === "terminology" ? "bg-purple-50 text-purple-600 border border-purple-100" :
                                                     "bg-slate-50 text-slate-500 border border-slate-100"
                                                 }`}>
-                                                {item.source === "reference" ? "對照" :
-                                                    item.source === "terminology" ? "術語" : "手動"}
+                                                {item.source === "reference" ? t("manage.terms_tab.source_labels.reference") :
+                                                    item.source === "terminology" ? t("manage.terms_tab.source_labels.terminology") : t("manage.terms_tab.source_labels.manual")}
                                             </span>
                                         )
                                     )}
@@ -728,22 +728,22 @@ export default function TermsTab() {
                             <div className="data-cell data-actions flex justify-end gap-1">
                                 {isEditing ? (
                                     <>
-                                        <button className="action-btn-sm success" onClick={handleUpsert} title="儲存">
+                                        <button className="action-btn-sm success" onClick={handleUpsert} title={t("manage.actions.save")}>
                                             <img src="https://emojicdn.elk.sh/✅?style=apple" className="w-5 h-5 object-contain" alt="Save" />
                                         </button>
-                                        <button className="action-btn-sm" onClick={resetForm} title="取消">
+                                        <button className="action-btn-sm" onClick={resetForm} title={t("manage.actions.cancel")}>
                                             <img src="https://emojicdn.elk.sh/❌?style=apple" className="w-5 h-5 object-contain" alt="Cancel" />
                                         </button>
                                     </>
                                 ) : (
                                     <>
-                                        <button className="action-btn-sm" onClick={() => startEdit(item)} title="編輯">
+                                        <button className="action-btn-sm" onClick={() => startEdit(item)} title={t("manage.actions.edit")}>
                                             <img src="https://emojicdn.elk.sh/✏️?style=apple" className="w-5 h-5 object-contain" alt="Edit" />
                                         </button>
-                                        <button className="action-btn-sm" onClick={() => loadVersions(item.id)} title="版本">
+                                        <button className="action-btn-sm" onClick={() => loadVersions(item.id)} title={t("manage.terms_tab.version_btn")}>
                                             <img src="https://emojicdn.elk.sh/📜?style=apple" className="w-5 h-5 object-contain" alt="Version" />
                                         </button>
-                                        <button className="action-btn-sm danger" onClick={() => remove(item.id)} title="刪除">
+                                        <button className="action-btn-sm danger" onClick={() => remove(item.id)} title={t("manage.actions.delete")}>
                                             <img src="https://emojicdn.elk.sh/🗑️?style=apple" className="w-5 h-5 object-contain" alt="Delete" />
                                         </button>
                                     </>
@@ -757,15 +757,15 @@ export default function TermsTab() {
             {versions && (
                 <div className="mt-3 p-3 border border-slate-200 rounded-lg">
                     <div className="flex items-center justify-between mb-2">
-                        <div className="text-sm font-bold">版本紀錄</div>
-                        <button className="btn ghost compact" onClick={() => setVersions(null)}>關閉</button>
+                        <div className="text-sm font-bold">{t("manage.terms_tab.version.title")}</div>
+                        <button className="btn ghost compact" onClick={() => setVersions(null)}>{t("manage.terms_tab.import.close")}</button>
                     </div>
                     <div className="space-y-2 text-xs text-slate-600">
-                        {versions.items.length === 0 && <div>尚無版本紀錄</div>}
+                        {versions.items.length === 0 && <div>{t("manage.terms_tab.version.empty")}</div>}
                         {versions.items.map((v) => (
                             <div key={v.id} className="p-2 rounded bg-slate-50 border border-slate-200">
-                                <div>時間：{v.created_at}</div>
-                                <div>操作者：{v.created_by || "-"}</div>
+                                <div>{t("manage.terms_tab.version.time")}：{v.created_at}</div>
+                                <div>{t("manage.terms_tab.version.operator")}：{v.created_by || "-"}</div>
                                 <div className="mt-2">
                                     {renderDiff(v.diff)}
                                 </div>
@@ -805,7 +805,7 @@ export default function TermsTab() {
 
     function renderDiff(diff) {
         if (!diff || !diff.before || !diff.after) {
-            return <div className="text-xs text-slate-400">無差異資料</div>;
+            return <div className="text-xs text-slate-400">{t("manage.terms_tab.no_diff")}</div>;
         }
         const before = diff.before || {};
         const after = diff.after || {};
@@ -831,7 +831,7 @@ export default function TermsTab() {
     function detectConflict() {
         const normalize = (text) => (text || "").trim().toLowerCase();
         const termValue = normalize(form.term);
-        if (!termValue) return "術語不可為空";
+        if (!termValue) return t("manage.terms_tab.validation.term_required");
         const aliasValues = form.aliases
             .split("|")
             .map((a) => normalize(a))
@@ -839,11 +839,11 @@ export default function TermsTab() {
         const existing = terms.filter((t) => t.id !== editingId);
         const termSet = new Set(existing.map((t) => normalize(t.term)));
         if (termSet.has(termValue)) {
-            return "術語已存在";
+            return t("manage.terms_tab.validation.term_exists");
         }
         for (const alias of aliasValues) {
             if (termSet.has(alias)) {
-                return "別名與現有術語衝突";
+                return t("manage.terms_tab.validation.alias_conflict");
             }
         }
         const aliasSet = new Set(
@@ -851,7 +851,7 @@ export default function TermsTab() {
         );
         for (const alias of aliasValues) {
             if (aliasSet.has(alias)) {
-                return "別名已存在";
+                return t("manage.terms_tab.validation.alias_exists");
             }
         }
         return "";

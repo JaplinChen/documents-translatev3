@@ -106,13 +106,12 @@ def detect_document_languages(blocks: Iterable[dict]) -> dict:
     if len(blocks_list) > 50:
         # Take first 20, middle 10, last 20
         mid = len(blocks_list) // 2
-        sampled_blocks = (
-            blocks_list[:20]
-            + blocks_list[mid:mid + 10]
-            + blocks_list[-20:]
-        )
+        sampled_blocks = blocks_list[:20] + blocks_list[mid : mid + 10] + blocks_list[-20:]
     else:
         sampled_blocks = blocks_list
+
+    # Use character counts for better weighting
+    char_counts: Counter[str] = Counter()
 
     for block in sampled_blocks:
         text = block.get("source_text", "")
@@ -121,16 +120,22 @@ def detect_document_languages(blocks: Iterable[dict]) -> dict:
             lang = detect_language(line)
             if not lang:
                 continue
+
+            # Weighting by length of the line
+            weight = len(line.strip())
             counts[lang] += 1
+            char_counts[lang] += weight
+
             if idx == 0:
                 first_line_counts[lang] += 1
             if idx == 1:
                 second_line_counts[lang] += 1
 
-    if not counts:
+    if not char_counts:
         return {"primary": None, "secondary": None, "counts": {}}
 
-    ranked = counts.most_common(2)
+    # Rank based on character volume instead of block count
+    ranked = char_counts.most_common(2)
     primary = ranked[0][0] if ranked else None
     secondary = ranked[1][0] if len(ranked) > 1 else None
 

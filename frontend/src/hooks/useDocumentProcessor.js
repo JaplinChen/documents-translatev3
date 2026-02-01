@@ -11,7 +11,7 @@ export function useDocumentProcessor() {
     const [progress, setProgress] = useState(0);
 
     const { file, blocks, setBlocks } = useFileStore();
-    const { llmProvider, providers, correction, fontMapping } = useSettingsStore();
+    const { llmProvider, providers, correction, fontMapping, ai } = useSettingsStore();
     const currentProvider = providers[llmProvider] || {};
     const { apiKey: llmApiKey, baseUrl: llmBaseUrl, model: llmModel, fastMode: llmFastMode } = currentProvider;
     const {
@@ -29,7 +29,7 @@ export function useDocumentProcessor() {
         return supported.includes(ext) ? ext : null;
     };
 
-    const handleExtract = async () => {
+    const handleExtract = async (refresh = false) => {
         if (!file) { setStatus(t("status.no_file")); return; }
         const fileType = getFileType();
         if (!fileType) { setStatus(t("status.format_error")); return; }
@@ -38,7 +38,7 @@ export function useDocumentProcessor() {
         try {
             const formData = new FormData();
             formData.append("file", file);
-            const response = await fetch(`${API_BASE}/api/${fileType}/extract`, { method: "POST", body: formData });
+            const response = await fetch(`${API_BASE}/api/${fileType}/extract?refresh=${refresh}`, { method: "POST", body: formData });
             if (!response.ok) throw new Error(await readErrorDetail(response, t("status.extract_failed")));
             const data = await response.json();
             const nextBlocks = (data.blocks || []).map((block, idx) => {
@@ -49,7 +49,11 @@ export function useDocumentProcessor() {
                 };
             });
             setBlocks(nextBlocks);
-            setSlideDimensions({ width: data.slide_width, height: data.slide_height });
+            setSlideDimensions({
+                width: data.slide_width,
+                height: data.slide_height,
+                thumbnails: data.thumbnail_urls || []
+            });
             setStatus({ key: "sidebar.extract.summary", params: { count: data.blocks?.length || 0 } });
             setAppStatus(APP_STATUS.IDLE);
             return data.language_summary;
@@ -66,45 +70,61 @@ export function useDocumentProcessor() {
         const fileType = getFileType();
         setLastTranslationAt(Date.now());
         setBusy(true); setProgress(0); setStatus(t("sidebar.translate.preparing")); setAppStatus(APP_STATUS.TRANSLATING);
-        setBlocks(prev => prev.map(b => ({ ...b, isTranslating: true })));
+
+        // 取得待翻譯區塊：若不是 refresh 模式，則排除已有翻譯內容的區塊（支援續傳）
+        const pendingBlocks = refresh ? blocks : blocks.filter(b => !b.translated_text);
+        if (pendingBlocks.length === 0) {
+            setStatus(t("sidebar.translate.completed"));
+            setAppStatus(APP_STATUS.TRANSLATION_COMPLETED); setBusy(false);
+            return;
+        }
+
+        setBlocks(prev => prev.map(b => pendingBlocks.some(p => p.client_id === b.client_id) ? { ...b, isTranslating: true } : b));
 
         let completedIds = [], retryCount = 0, maxRetries = 3;
+        const BATCH_SIZE = 20;
 
         const finalizeTranslation = (finalBlocks = []) => {
-            setBlocks(prev => prev.map((b, i) => {
-                const n = finalBlocks[i] || {};
-                const hasT = Object.prototype.hasOwnProperty.call(n, "translated_text");
+            setBlocks(prev => prev.map((b) => {
+                const match = finalBlocks.find(f => f.client_id === b.client_id || f._uid === b._uid);
+                if (!match) return b;
+                const hasT = Object.prototype.hasOwnProperty.call(match, "translated_text");
                 return {
-                    ...b, translated_text: hasT ? n.translated_text : b.translated_text,
-                    correction_temp: n.correction_temp ?? b.correction_temp,
-                    temp_translated_text: n.temp_translated_text ?? b.temp_translated_text,
+                    ...b, translated_text: hasT ? match.translated_text : b.translated_text,
+                    correction_temp: match.correction_temp ?? b.correction_temp,
+                    temp_translated_text: match.temp_translated_text ?? b.temp_translated_text,
                     isTranslating: false,
-                    updatedAt: (hasT && n.translated_text) ? new Date().toLocaleTimeString("zh-TW", { hour12: false }) : b.updatedAt
+                    updatedAt: (hasT && match.translated_text) ? new Date().toLocaleTimeString("zh-TW", { hour12: false }) : b.updatedAt
                 };
             }));
-            setProgress(100); setStatus(t("sidebar.translate.completed"));
-            setAppStatus(APP_STATUS.TRANSLATION_COMPLETED); setBusy(false);
         };
 
-        const runTranslation = async () => {
+        const runTranslationBatch = async (batchBlocks) => {
             try {
-                const formData = new FormData();
-                formData.append("blocks", JSON.stringify(blocks));
-                formData.append("source_language", sourceLang || "auto");
-                formData.append("secondary_language", secondaryLang || "auto");
-                formData.append("target_language", targetLang);
-                formData.append("mode", mode);
-                formData.append("use_tm", useTm ? "true" : "false");
-                formData.append("provider", llmProvider);
-                if (llmModel) formData.append("model", llmModel);
-                if (llmApiKey) formData.append("api_key", llmApiKey);
-                if (llmBaseUrl) formData.append("base_url", llmBaseUrl);
-                formData.append("ollama_fast_mode", llmFastMode ? "true" : "false");
-                formData.append("refresh", refresh ? "true" : "false");
-                formData.append("similarity_threshold", correction.similarityThreshold?.toString() || "0.75");
-                if (completedIds.length > 0) formData.append("completed_ids", JSON.stringify(completedIds));
+                const payload = {
+                    blocks: batchBlocks,
+                    source_language: sourceLang || "auto",
+                    secondary_language: secondaryLang || "auto",
+                    target_language: targetLang,
+                    mode: mode,
+                    use_tm: !!useTm,
+                    provider: llmProvider,
+                    model: llmModel || null,
+                    api_key: llmApiKey || null,
+                    base_url: llmBaseUrl || null,
+                    ollama_fast_mode: !!llmFastMode,
+                    refresh: !!refresh,
+                    vision_context: !!ai.useVision,
+                    smart_layout: !!ai.useSmartLayout,
+                    similarity_threshold: parseFloat(correction.similarityThreshold?.toString() || "0.75"),
+                    completed_ids: null // 批次請求不需傳入已完成 ID，因為 payload 本身就是分段的
+                };
 
-                const response = await fetch(`${API_BASE}/api/${fileType}/translate-stream`, { method: "POST", body: formData });
+                const response = await fetch(`${API_BASE}/api/${fileType}/translate-stream`, {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify(payload)
+                });
                 if (!response.ok) throw new Error(await readErrorDetail(response, t("status.translate_failed")));
 
                 const reader = response.body.getReader();
@@ -123,55 +143,67 @@ export function useDocumentProcessor() {
                                 if (eventMatch && dataMatch && eventMatch[1] === "complete") { finalizeTranslation(JSON.parse(dataMatch[1]).blocks); return; }
                             }
                         }
-                        if (completedIds.length < blocks.length && retryCount < maxRetries) {
-                            retryCount++; setStatus({ key: "status.retrying", params: { count: retryCount } });
-                            await new Promise(r => setTimeout(r, 2000)); return await runTranslation();
-                        }
-                        break;
+                        return; // Batch done
                     }
+
                     buffer += decoder.decode(value, { stream: true });
                     const lines = buffer.split("\n\n");
                     buffer = lines.pop();
+
                     for (const line of lines) {
                         if (!line.trim()) continue;
                         const eventMatch = line.match(/^event: (.*)$/m), dataMatch = line.match(/^data: (.*)$/m);
                         if (!eventMatch || !dataMatch) continue;
                         const eventType = eventMatch[1], eventData = JSON.parse(dataMatch[1]);
+
                         if (eventType === "progress") {
-                            const c_ids = eventData.completed_ids || eventData.completed_indices?.map(idx => blocks[idx]?.client_id);
+                            const c_ids = eventData.completed_ids || eventData.completed_indices?.map(idx => batchBlocks[idx]?.client_id);
                             c_ids?.forEach(id => { if (id && !completedIds.includes(id)) completedIds.push(id); });
+
                             if (eventData.completed_blocks?.length) {
-                                setBlocks(prev => prev.map(b => {
-                                    const match = eventData.completed_blocks.find(m =>
-                                        m.client_id === b.client_id || m._uid === b._uid
-                                    );
-                                    if (!match) return b;
-                                    const txt = match.translated_text ?? b.translated_text;
-                                    return {
-                                        ...b,
-                                        translated_text: txt,
-                                        output_mode: txt ? "translated" : b.output_mode,
-                                        isTranslating: false,
-                                        updatedAt: txt ? new Date().toLocaleTimeString("zh-TW", { hour12: false }) : b.updatedAt
-                                    };
-                                }));
+                                finalizeTranslation(eventData.completed_blocks);
                             }
-                            setProgress(Math.round((completedIds.length / blocks.length) * 100));
-                            setStatus(t("sidebar.translate.translating", { current: completedIds.length, total: blocks.length }));
-                        } else if (eventType === "complete") { finalizeTranslation(eventData.blocks); return; }
-                        else if (eventType === "error") { throw new Error(eventData.detail || t("status.translate_failed")); }
+
+                            // 節流更新：每 5 個區塊更新一次 UI 狀態，減少頻繁渲染
+                            if (completedIds.length % 5 === 0 || completedIds.length === batchBlocks.length) {
+                                const totalDone = blocks.filter(b => b.translated_text).length + completedIds.length;
+                                setProgress(Math.round((totalDone / blocks.length) * 100));
+                                setStatus(t("sidebar.translate.translating", { current: totalDone, total: blocks.length }));
+                            }
+                        } else if (eventType === "complete") {
+                            finalizeTranslation(eventData.blocks);
+                            return;
+                        } else if (eventType === "error") {
+                            throw new Error(eventData.detail || t("status.translate_failed"));
+                        }
                     }
                 }
             } catch (error) {
-                if (retryCount < maxRetries) {
-                    retryCount++; setStatus({ key: "status.retrying", params: { count: retryCount } });
-                    await new Promise(r => setTimeout(r, 2000)); return await runTranslation();
+                const isRetryable = error.message.includes("Failed to fetch") || error.message.includes("500") || error.message.includes("timeout");
+                if (isRetryable && retryCount < maxRetries) {
+                    retryCount++;
+                    setStatus({ key: "status.retrying", params: { count: retryCount } });
+                    await new Promise(r => setTimeout(r, 2000));
+                    return await runTranslationBatch(batchBlocks);
                 }
                 throw error;
             }
         };
 
-        try { await runTranslation(); } catch (error) {
+        try {
+            // 將待翻譯區塊拆分為批次
+            for (let i = 0; i < pendingBlocks.length; i += BATCH_SIZE) {
+                const batch = pendingBlocks.slice(i, i + BATCH_SIZE);
+                retryCount = 0; // 重置每個批次的重試次數
+                await runTranslationBatch(batch);
+                // 批次間加入微小停頓以釋放 UI 線程
+                if (i + BATCH_SIZE < pendingBlocks.length) {
+                    await new Promise(r => setTimeout(r, 500));
+                }
+            }
+            setProgress(100); setStatus(t("sidebar.translate.completed"));
+            setAppStatus(APP_STATUS.TRANSLATION_COMPLETED); setBusy(false);
+        } catch (error) {
             setStatus(`${t("status.translate_failed")}：${error.message}`);
             setAppStatus(APP_STATUS.ERROR); setBusy(false);
         }
@@ -196,10 +228,36 @@ export function useDocumentProcessor() {
             if (fontMapping) formData.append("font_mapping", JSON.stringify(fontMapping));
 
             const res = await fetch(`${API_BASE}/api/${fileType}/apply`, { method: "POST", body: formData });
-            if (!res.ok) throw new Error(t("status.apply_failed"));
+            if (!res.ok) {
+                const detail = await readErrorDetail(res, t("status.apply_failed"));
+                throw new Error(detail);
+            }
             const result = await res.json();
             if (result.status !== "success" || !result.download_url) throw new Error(t("status.backend_generate_failed"));
-            window.location.href = `${API_BASE}${result.download_url}`;
+
+            // --- New Selective Download Logic ---
+            const downloadRes = await fetch(`${API_BASE}${result.download_url}`);
+            if (!downloadRes.ok) throw new Error("Download failed");
+
+            // Extract filename from header
+            const disposition = downloadRes.headers.get('Content-Disposition');
+            let filename = result.filename || `translation.${fileType}`;
+            if (disposition && disposition.includes('filename*=')) {
+                filename = decodeURIComponent(disposition.split("filename*=UTF-8''")[1]);
+            } else if (disposition && disposition.includes('filename=')) {
+                filename = disposition.split('filename=')[1].replace(/["']/g, '');
+            }
+
+            const blob = await downloadRes.blob();
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement("a");
+            a.href = url;
+            a.download = filename;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            window.URL.revokeObjectURL(url);
+
             setStatus(t("sidebar.apply.completed")); setAppStatus(APP_STATUS.EXPORT_COMPLETED);
         } catch (error) {
             setStatus(`${t("status.apply_failed")}：${error.message}`); setAppStatus(APP_STATUS.ERROR);

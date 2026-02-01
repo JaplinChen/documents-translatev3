@@ -1,5 +1,6 @@
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
+
 class Settings(BaseSettings):
     # LLM Configuration
     llm_provider: str = "ollama"
@@ -38,12 +39,14 @@ class Settings(BaseSettings):
     llm_fallback_on_error: bool = False
 
     # Performance / Rate Limiting
-    llm_single_request: bool = True
-    llm_chunk_size: int = 40
+    llm_single_request: bool = False
+    llm_chunk_size: int = 10
     llm_max_retries: int = 2
     llm_retry_backoff: float = 0.8
     llm_retry_max_backoff: float = 8.0
     llm_chunk_delay: float = 0.0
+    llm_max_concurrency: int = 0  # 0 for auto
+    llm_request_timeout: int = 180
 
     model_config = SettingsConfigDict(
         env_file=".env",

@@ -40,7 +40,10 @@
         "extract": {
             "button": "📊 Trích xuất thuật ngữ",
             "hint": "Phân tích nội dung để thiết lập thuật ngữ nhằm đảm bảo tính nhất quán",
-            "summary": "✓ Đã phân tích {{count}} khối"
+            "summary": "✓ Đã phân tích {{count}} khối",
+            "refresh_button": "Trích xuất lại",
+            "refresh_hint": "Bắt buộc bỏ qua bộ đệm và quét lại tài liệu",
+            "confirm_refresh": "Bạn có chắc muốn trích xuất lại không? Thao tác này sẽ bỏ qua bộ đệm và quét lại tài liệu (PDF sẽ chạy lại OCR)."
         },
         "translate": {
             "preparing": "Đang chuẩn bị...",
@@ -493,7 +496,8 @@
             "failed": "Trích xuất thất bại",
             "failed_detail": "Trích xuất thất bại: {{message}}",
             "empty": "Không phát hiện thuật ngữ rõ ràng",
-            "success": "Trích xuất thành công, thêm {{count}} thuật ngữ"
+            "success": "Trích xuất thành công, thêm {{count}} thuật ngữ",
+            "learning_hint": "Hệ thống đã tự động nhận dạng lĩnh vực: {{domain}}, và áp dụng các thói quen sử dụng của bạn."
         }
     },
     "common": {

@@ -101,7 +101,8 @@ export default function HistoryTab({ onLoadFile }) {
     };
 
     const handleResetAll = async () => {
-        if (!window.confirm(t("history.confirm_reset_all"))) return;
+        // 優化提示訊息，明確告知術語與對照表將受保護
+        if (!window.confirm(t("history.extra_confirm_msg") || "確定要清理所有歷史快取檔案嗎？\n⚠️ 此操作僅會清除匯出的暫存檔，您的「對照表」與「術語」資料將會被妥善保留。")) return;
         try {
             const res = await fetch(`${API_BASE}/api/admin/reset-cache`, { method: "POST" });
             if (res.ok) {

@@ -5,9 +5,11 @@ import { useTranslation } from 'react-i18next';
  * SlidePreview - A high-fidelity visualization of a PPTX slide layout.
  * Uses Points as coordinates to mirror PowerPoint's positioning.
  */
-export function SlidePreview({ dimensions, blocks, activeBlockId }) {
+export function SlidePreview({ dimensions, blocks, activeBlockId, thumbnailUrl, totalPages, currentPage, onPageChange }) {
     const { t } = useTranslation();
     const { width, height } = dimensions;
+
+    const hasNavigation = totalPages > 1;
 
     if (!width || !height) return (
         <div className="bg-slate-100 border border-dashed border-slate-300 rounded-lg p-8 text-center">
@@ -21,18 +23,47 @@ export function SlidePreview({ dimensions, blocks, activeBlockId }) {
     const previewHeight = height * scale;
 
     return (
-        <div className="slide-preview-container mb-4">
-            <h3 className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">
-                {t("editor.preview_title", "Slide Preview")}
-            </h3>
+        <div className="slide-preview-container mb-2">
+            <div className="flex items-center justify-between mb-2">
+                <h3 className="text-xs font-bold text-slate-500 uppercase tracking-wider">
+                    {t("editor.preview_title", "Slide Preview")}
+                </h3>
+                {hasNavigation && (
+                    <div className="flex items-center gap-2 bg-white border border-slate-200 rounded-lg px-2 py-1 shadow-sm">
+                        <button
+                            className="p-1 hover:bg-slate-100 rounded text-slate-600 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+                            onClick={() => onPageChange && onPageChange(currentPage - 1)}
+                            disabled={currentPage <= 0}
+                            title={t("editor.prev_page", "Previous Page")}
+                        >
+                            <span className="text-sm font-bold">←</span>
+                        </button>
+                        <span className="text-[10px] font-mono font-bold text-slate-500 px-1">
+                            {currentPage + 1} / {totalPages}
+                        </span>
+                        <button
+                            className="p-1 hover:bg-slate-100 rounded text-slate-600 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+                            onClick={() => onPageChange && onPageChange(currentPage + 1)}
+                            disabled={currentPage >= totalPages - 1}
+                            title={t("editor.next_page", "Next Page")}
+                        >
+                            <span className="text-sm font-bold">→</span>
+                        </button>
+                    </div>
+                )}
+            </div>
 
             <div
                 className="slide-canvas relative bg-white border border-slate-200 shadow-sm overflow-hidden"
                 style={{
                     width: `${PREVIEW_WIDTH}px`,
                     height: `${previewHeight}px`,
-                    backgroundSize: '20px 20px',
-                    backgroundImage: 'linear-gradient(to right, #f8fafc 1px, transparent 1px), linear-gradient(to bottom, #f8fafc 1px, transparent 1px)'
+                    backgroundSize: 'contain',
+                    backgroundRepeat: 'no-repeat',
+                    backgroundPosition: 'center',
+                    backgroundColor: '#fff',
+                    backgroundImage: thumbnailUrl ? `url("${thumbnailUrl}")` : 'linear-gradient(to right, #f8fafc 1px, transparent 1px), linear-gradient(to bottom, #f8fafc 1px, transparent 1px)',
+                    backgroundSize: thumbnailUrl ? 'contain' : '20px 20px'
                 }}
             >
                 {blocks.length === 0 && (
@@ -47,7 +78,7 @@ export function SlidePreview({ dimensions, blocks, activeBlockId }) {
                         <div
                             key={block._uid}
                             className={`absolute border transition-all duration-200 cursor-default group 
-                                ${isActive ? 'border-blue-500 bg-blue-100/30 z-10' : 'border-slate-200 bg-slate-50/20 hover:border-slate-400 hover:bg-slate-100/40'}`}
+                                ${isActive ? 'border-blue-500 bg-blue-500/10 z-10 ring-2 ring-blue-500/20 shadow-lg' : 'border-slate-300/40 bg-slate-50/5 hover:border-slate-500 hover:bg-slate-100/10'}`}
                             style={{
                                 left: `${block.x * scale}px`,
                                 top: `${block.y * scale}px`,
@@ -58,8 +89,8 @@ export function SlidePreview({ dimensions, blocks, activeBlockId }) {
                         >
                             {/* Inner hint or placeholder if needed */}
                             <div className="w-full h-full overflow-hidden flex items-start justify-start p-0.5">
-                                <span className={`text-[6px] leading-[1] truncate block opacity-40 group-hover:opacity-100 
-                                    ${isActive ? 'text-blue-600 font-bold opacity-100' : 'text-slate-400'}`}>
+                                <span className={`text-[8px] font-medium leading-[1] truncate block 
+                                    ${isActive ? 'text-blue-700 opacity-100 font-bold bg-white/60 rounded px-0.5' : 'text-slate-500 opacity-40 group-hover:opacity-100 bg-white/30 rounded px-0.5'}`}>
                                     {block.translated_text || block.source_text}
                                 </span>
                             </div>

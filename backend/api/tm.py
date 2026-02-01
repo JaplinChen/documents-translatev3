@@ -1,6 +1,9 @@
 from __future__ import annotations
 
 from fastapi import APIRouter, File, Response, UploadFile, HTTPException
+from fastapi.responses import StreamingResponse
+import json
+import asyncio
 from pydantic import BaseModel
 
 from backend.services.translation_memory import (
@@ -23,6 +26,8 @@ from backend.services.translation_memory import (
     delete_tm_category,
 )
 
+from backend.services.learning_service import record_term_feedback
+
 router = APIRouter(prefix="/api/tm")
 
 
@@ -30,7 +35,9 @@ class GlossaryEntry(BaseModel):
     """
     Glossary entry data structure for translation consistency.
     """
+
     model_config = {"extra": "ignore"}
+    id: int | None = None
     source_lang: str
     target_lang: str
     source_text: str
@@ -51,7 +58,9 @@ class MemoryEntry(BaseModel):
     """
     Translation memory entry for reuse of previous translations.
     """
+
     model_config = {"extra": "ignore"}
+    id: int | None = None
     source_lang: str
     target_lang: str
     source_text: str
@@ -105,6 +114,7 @@ async def tm_glossary_upsert(entry: GlossaryEntry) -> dict:
 @router.post("/glossary/batch")
 async def tm_glossary_batch(entries: list[GlossaryEntry]) -> dict:
     from backend.services.translation_memory import batch_upsert_glossary
+
     batch_upsert_glossary([e.model_dump() for e in entries])
     return {"status": "ok", "count": len(entries)}
 
@@ -112,6 +122,7 @@ async def tm_glossary_batch(entries: list[GlossaryEntry]) -> dict:
 @router.delete("/glossary/clear")
 async def tm_glossary_clear() -> dict:
     from backend.services.translation_memory import clear_glossary
+
     deleted = clear_glossary()
     return {"deleted": deleted}
 
@@ -172,14 +183,8 @@ async def tm_glossary_import(file: UploadFile = File(...)) -> dict:
         if len(parts) < 4:
             continue
         source_lang, target_lang, source_text, target_text = parts[:4]
-        priority = (
-            int(parts[4])
-            if len(parts) > 4 and parts[4].isdigit()
-            else 0
-        )
-        entries.append(
-            (source_lang, target_lang, source_text, target_text, priority)
-        )
+        priority = int(parts[4]) if len(parts) > 4 and parts[4].isdigit() else 0
+        entries.append((source_lang, target_lang, source_text, target_text, priority))
     seed_glossary(entries)
     return {"status": "ok", "count": len(entries)}
 
@@ -226,6 +231,7 @@ async def tm_memory_export() -> Response:
 
 # Category endpoints
 
+
 @router.get("/categories")
 async def tm_category_list() -> dict:
     return {"items": list_tm_categories()}
@@ -253,3 +259,152 @@ async def tm_category_update(category_id: int, payload: CategoryPayload) -> dict
 async def tm_category_delete(category_id: int) -> dict:
     delete_tm_category(category_id)
     return {"status": "ok"}
+
+
+# Unified Glossary Extraction
+
+
+class GlossaryExtractPayload(BaseModel):
+    blocks: list[dict]
+    target_language: str = "zh-TW"
+    provider: str | None = None
+    model: str | None = None
+    api_key: str | None = None
+    base_url: str | None = None
+
+
+@router.post("/extract-glossary")
+async def tm_extract_glossary(payload: GlossaryExtractPayload) -> dict:
+    """
+    Unified terminology extraction for all file types (PPTX, DOCX, XLSX).
+    Uses JSON instead of Form for stability with large block lists.
+    """
+    from backend.services.glossary_extraction import extract_glossary_terms
+
+    try:
+        result = extract_glossary_terms(
+            payload.blocks,
+            payload.target_language,
+            provider=payload.provider,
+            model=payload.model,
+            api_key=payload.api_key,
+            base_url=payload.base_url,
+        )
+        return result
+    except Exception as exc:
+        # Log and return error details so frontend can surface it
+        import traceback
+
+        traceback.print_exc()
+        return {"terms": [], "error": str(exc)}
+
+
+@router.post("/extract-glossary-stream")
+async def tm_extract_glossary_stream(payload: GlossaryExtractPayload) -> StreamingResponse:
+    """
+    Streaming version of terminology extraction.
+    Reports progress via SSE while analyzing document segments.
+    """
+    from backend.services.glossary_extraction import extract_glossary_terms
+    from fastapi.responses import StreamingResponse
+    import asyncio
+    import json
+
+    async def event_generator():
+        try:
+            blocks = payload.blocks
+            total_blocks = len(blocks)
+
+            # Divide blocks into 3 representative segments (start, middle, end)
+            # to get a good spread of terminology with minimal LLM calls.
+            segments = []
+            if total_blocks <= 20:
+                segments = [blocks]
+            else:
+                chunk_size = min(20, total_blocks // 3) if total_blocks > 0 else 0
+                if chunk_size > 0:
+                    segments.append(blocks[:chunk_size])
+                    mid = total_blocks // 2
+                    segments.append(blocks[mid : mid + chunk_size])
+                    segments.append(blocks[-chunk_size:])
+                else:
+                    segments = [blocks]
+
+            all_terms = []
+            num_segments = len(segments)
+
+            yield f"event: progress\ndata: {json.dumps({'message': '正在準備分析文本...', 'percent': 10})}\n\n"
+            await asyncio.sleep(0.1)
+
+            for i, segment in enumerate(segments):
+                stage_name = f"正在分析第 {i + 1}/{num_segments} 段文本..."
+                percent = int(10 + (i / num_segments) * 80)
+                yield f"event: progress\ndata: {json.dumps({'message': stage_name, 'percent': percent})}\n\n"
+
+                # Run extraction for this segment in a thread pool to avoid blocking
+                loop = asyncio.get_event_loop()
+                result = await loop.run_in_executor(
+                    None,
+                    extract_glossary_terms,
+                    segment,
+                    payload.target_language,
+                    payload.provider,
+                    payload.model,
+                    payload.api_key,
+                    payload.base_url,
+                )
+
+                terms = result.get("terms", [])
+                domain = result.get("domain", "general")
+
+                if terms and isinstance(terms, list):
+                    all_terms.extend(terms)
+
+            # De-duplicate terms by source text (case-insensitive)
+            unique_terms_map = {}
+            for t in all_terms:
+                if not isinstance(t, dict) or "source" not in t:
+                    continue
+                key = t["source"].strip().lower()
+                if key not in unique_terms_map:
+                    unique_terms_map[key] = t
+
+            final_terms = list(unique_terms_map.values())
+
+            yield f"event: progress\ndata: {json.dumps({'message': '完成分析，正在彙整術語...', 'percent': 95})}\n\n"
+            await asyncio.sleep(0.5)
+
+            payload_data = {"terms": final_terms, "domain": domain}
+            yield f"event: complete\ndata: {json.dumps(payload_data)}\n\n"
+
+        except Exception as exc:
+            import traceback
+
+            traceback.print_exc()
+            yield f"event: error\ndata: {json.dumps({'detail': str(exc)})}\n\n"
+
+    return StreamingResponse(event_generator(), media_type="text/event-stream")
+
+
+class TermFeedbackPayload(BaseModel):
+    source: str
+    target: str
+    source_lang: str | None = None
+    target_lang: str | None = "zh-TW"
+
+
+@router.post("/feedback")
+async def tm_record_feedback(payload: TermFeedbackPayload) -> dict:
+    """
+    Record user feedback for terminology learning.
+    """
+    try:
+        record_term_feedback(
+            payload.source, payload.target, payload.source_lang, payload.target_lang
+        )
+        return {"status": "recorded"}
+    except Exception as e:
+        import logging
+
+        logging.getLogger(__name__).error(f"Feedback recording failed: {e}")
+        return {"status": "error", "message": str(e)}

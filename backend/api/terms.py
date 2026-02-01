@@ -42,9 +42,13 @@ class TermPayload(BaseModel):
     case_rule: str | None = None
     note: str | None = None
     source: str | None = None
+    filename: str | None = None
     aliases: list[str] = []
     languages: list[TermLanguageInput] = []
     created_by: str | None = None
+    source_lang: str | None = None
+    target_lang: str | None = None
+    priority: int | None = 0
 
 
 class CategoryPayload(BaseModel):
@@ -57,6 +61,8 @@ class BatchPayload(BaseModel):
     category_id: int | None = None
     status: str | None = None
     case_rule: str | None = None
+    source: str | None = None
+    priority: int | None = None
 
 
 class ImportMappingPayload(BaseModel):
@@ -72,6 +78,7 @@ async def term_list(
     missing_lang: str | None = None,
     has_alias: bool | None = None,
     created_by: str | None = None,
+    filename: str | None = None,
     date_from: str | None = None,
     date_to: str | None = None,
 ) -> dict:
@@ -83,6 +90,7 @@ async def term_list(
             "missing_lang": missing_lang,
             "has_alias": has_alias,
             "created_by": created_by,
+            "filename": filename,
             "date_from": date_from,
             "date_to": date_to,
         }
@@ -104,6 +112,24 @@ async def term_create(payload: TermPayload, request: Request) -> dict:
                 payload.created_by = client_host
 
         item = create_term(payload.model_dump())
+        return {"item": item}
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+
+@router.post("/upsert")
+async def term_upsert(payload: TermPayload, request: Request) -> dict:
+    try:
+        if not payload.created_by:
+            client_host = request.client.host
+            try:
+                hostname, _, _ = socket.gethostbyaddr(client_host)
+                payload.created_by = hostname
+            except Exception:
+                payload.created_by = client_host
+
+        # Use upsert_term_by_norm which handles existing terms
+        item = upsert_term_by_norm(payload.model_dump())
         return {"item": item}
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
@@ -141,6 +167,8 @@ async def term_batch_update(payload: BatchPayload) -> dict:
             category_id=payload.category_id,
             status=payload.status,
             case_rule=payload.case_rule,
+            source=payload.source,
+            priority=payload.priority,
         )
         return {"updated": updated}
     except ValueError as exc:
@@ -160,16 +188,23 @@ async def term_sync_all() -> dict:
     from backend.services.translation_memory import get_glossary
 
     synced_count = 0
-    # 1. Sync preserve terms
+    # 1. Sync preserve terms (術語)
     p_terms = list_preserve_terms()
     for pt in p_terms:
         try:
-            sync_from_external(pt["term"], category_name=pt.get("category"), source="reference")
+            # Map boolean case_sensitive to enum case_rule
+            case_rule = "uppercase" if pt.get("case_sensitive") else "preserve"
+            sync_from_external(
+                pt["term"],
+                category_name=pt.get("category"),
+                source="terminology",
+                case_rule=case_rule,
+            )
             synced_count += 1
         except Exception as e:
             print(f"Sync sync-all preserve failed for {pt['term']}: {e}")
 
-    # 2. Sync glossary
+    # 2. Sync glossary (對照表)
     g_terms = get_glossary(limit=5000)
     for gt in g_terms:
         try:
@@ -177,7 +212,10 @@ async def term_sync_all() -> dict:
             sync_from_external(
                 gt["source_text"],
                 category_name=gt.get("category_name"),
-                source="terminology",
+                source="reference",
+                source_lang=gt.get("source_lang"),
+                target_lang=gt.get("target_lang"),
+                priority=gt.get("priority", 0),
                 languages=[{"lang_code": lang_code, "value": gt["target_text"]}],
             )
             synced_count += 1
@@ -395,6 +433,7 @@ async def term_export() -> Response:
         "case_rule",
         "note",
         "source",
+        "filename",
         "aliases",
         "created_by",
         "created_at",
@@ -418,6 +457,7 @@ async def term_export() -> Response:
             "case_rule": item.get("case_rule") or "",
             "note": item.get("note") or "",
             "source": item.get("source") or "",
+            "filename": item.get("filename") or "",
             "aliases": "|".join(item.get("aliases") or []),
             "created_by": item.get("created_by") or "",
             "created_at": item.get("created_at") or "",

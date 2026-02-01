@@ -78,6 +78,7 @@ export function Sidebar({
                     languageOptions={languageOptions} sourceLang={sourceLang} setSourceLang={setSourceLang}
                     setSourceLocked={setSourceLocked} targetLang={targetLang} setTargetLang={setTargetLang}
                     setTargetLocked={setTargetLocked} useTm={useTm} setUseTm={setUseTm} blockCount={blockCount}
+                    onExtract={onExtract}
                 />
 
                 <div className={`accordion-section ${openSections.step3 ? "is-open" : ""} ${hasTranslation ? "is-done" : ""}`}>
@@ -122,10 +123,10 @@ export function Sidebar({
                                 <div className="export-alternatives">
                                     <p className="field-label mb-2">{t("sidebar.export.others")}</p>
                                     <div className="flex gap-2 flex-wrap">
-                                        <ExportButton format="docx" label="DOCX" blocks={blocks} disabled={!canApply} />
-                                        <ExportButton format="xlsx" label="XLSX" blocks={blocks} disabled={!canApply} />
-                                        <ExportButton format="txt" label="TXT" blocks={blocks} disabled={!canApply} />
-                                        <ExportButton format="md" label="Markdown" blocks={blocks} disabled={!canApply} />
+                                        <ExportButton format="docx" label="DOCX" blocks={blocks} originalFilename={file?.name} mode={mode} layout={bilingualLayout} disabled={!canApply} />
+                                        <ExportButton format="xlsx" label="XLSX" blocks={blocks} originalFilename={file?.name} mode={mode} layout={bilingualLayout} disabled={!canApply} />
+                                        <ExportButton format="txt" label="TXT" blocks={blocks} originalFilename={file?.name} mode={mode} layout={bilingualLayout} disabled={!canApply} />
+                                        <ExportButton format="md" label="Markdown" blocks={blocks} originalFilename={file?.name} mode={mode} layout={bilingualLayout} disabled={!canApply} />
                                     </div>
                                 </div>
                             )}

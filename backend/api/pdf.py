@@ -3,30 +3,45 @@ import os
 import tempfile
 from pathlib import Path
 
-from fastapi import APIRouter, File, Form, HTTPException, UploadFile
-from fastapi.responses import FileResponse
+from fastapi import APIRouter, File, Form, HTTPException, UploadFile, Body
+from fastapi.responses import FileResponse, StreamingResponse
 
+from backend.api.error_handler import api_error_handler, validate_json_blocks
 from backend.api.pptx_naming import generate_semantic_filename_with_ext
-from backend.api.pptx_translate import pptx_translate_stream
+from backend.api.pptx_translate import TranslateRequest, pptx_translate_stream
 from backend.api.pptx_utils import validate_file_type
 from backend.contracts import coerce_blocks
 from backend.services.language_detect import detect_document_languages
-from backend.services.pdf.apply import apply_bilingual, apply_translations
 from backend.services.pdf.extract import extract_blocks as extract_pdf_blocks
+from backend.services.document_cache import doc_cache
+from backend.services.pdf.apply import apply_bilingual, apply_translations
+from backend.services.thumbnail_service import generate_pdf_thumbnails
 
 router = APIRouter(prefix="/api/pdf")
 
 
 @router.post("/extract")
-async def pdf_extract(file: UploadFile = File(...)) -> dict:
-    valid, err = validate_file_type(file.filename)
-    if not valid:
-        raise HTTPException(status_code=400, detail=err)
+@api_error_handler(read_error_msg="PDF 檔案無效")
+async def pdf_extract(
+    file: UploadFile = File(...),
+    refresh: bool = False,
+) -> dict:
+    pdf_bytes = await file.read()
+    file_hash = doc_cache.get_hash(pdf_bytes)
 
-    try:
-        pdf_bytes = await file.read()
-    except Exception as exc:
-        raise HTTPException(status_code=400, detail="PDF 檔案無效") from exc
+    if not refresh:
+        cached = doc_cache.get(file_hash)
+        if cached:
+            meta = cached.get("metadata", {})
+            return {
+                "blocks": cached["blocks"],
+                "language_summary": detect_document_languages(cached["blocks"]),
+                "page_count": meta.get("page_count", 0),
+                "slide_width": meta.get("slide_width"),
+                "slide_height": meta.get("slide_height"),
+                "thumbnail_urls": meta.get("thumbnail_urls", []),
+                "cache_hit": True,
+            }
 
     with tempfile.TemporaryDirectory() as temp_dir:
         input_path = os.path.join(temp_dir, "input.pdf")
@@ -34,11 +49,29 @@ async def pdf_extract(file: UploadFile = File(...)) -> dict:
             h.write(pdf_bytes)
         data = extract_pdf_blocks(input_path)
         blocks = data["blocks"]
+        page_count = data["page_count"]
+        sw = data.get("slide_width")
+        sh = data.get("slide_height")
+
+        # Generate thumbnails for Visual Preview
+        thumbs = generate_pdf_thumbnails(input_path)
+
+    # 更新快取
+    doc_cache.set(
+        file_hash,
+        blocks,
+        {"page_count": page_count, "slide_width": sw, "slide_height": sh, "thumbnail_urls": thumbs},
+        "pdf",
+    )
 
     return {
         "blocks": blocks,
         "language_summary": detect_document_languages(blocks),
-        "page_count": data.get("page_count", 0),
+        "page_count": page_count,
+        "slide_width": sw,
+        "slide_height": sh,
+        "thumbnail_urls": thumbs,
+        "cache_hit": False,
     }
 
 
@@ -71,10 +104,15 @@ async def pdf_apply(
         with open(in_p, "wb") as h:
             h.write(pdf_bytes)
 
+        # Extract target language from blocks content if available
+        target_lang = None
+        if blocks_data:
+            target_lang = blocks_data[0].get("target_lang")
+
         if mode == "bilingual":
-            apply_bilingual(in_p, out_p, blocks_data)
+            apply_bilingual(in_p, out_p, blocks_data, target_language=target_lang)
         else:
-            apply_translations(in_p, out_p, blocks_data)
+            apply_translations(in_p, out_p, blocks_data, target_language=target_lang)
 
         with open(out_p, "rb") as h:
             output_bytes = h.read()
@@ -104,17 +142,21 @@ async def pdf_apply(
 async def pdf_download(filename: str):
     import urllib.parse
 
-    if "%" in filename:
-        filename = urllib.parse.unquote(filename)
+    # Resolve the path relative to exports
     file_path = Path("data/exports") / filename
     if not file_path.exists():
-        raise HTTPException(status_code=404, detail="檔案不存在")
+        # Fallback to unquoted name if necessary
+        alt_path = Path("data/exports") / urllib.parse.unquote(filename)
+        if alt_path.exists():
+            file_path = alt_path
+        else:
+            raise HTTPException(status_code=404, detail="檔案不存在")
 
-    ascii_name = "".join(c if ord(c) < 128 else "_" for c in filename)
-    safe_name = urllib.parse.quote(filename, safe="")
-    disposition = (
-        f'attachment; filename="{ascii_name}"; filename*=UTF-8\'\'{safe_name}'
-    )
+    actual_filename = file_path.name
+    ascii_name = "".join(c if ord(c) < 128 else "_" for c in actual_filename)
+    safe_name = urllib.parse.quote(actual_filename, safe="")
+    disposition = f"attachment; filename=\"{ascii_name}\"; filename*=UTF-8''{safe_name}"
+
     return FileResponse(
         path=file_path,
         media_type="application/pdf",
@@ -128,39 +170,7 @@ async def pdf_download(filename: str):
 
 @router.post("/translate-stream")
 async def pdf_translate_stream(
-    blocks: str = Form(...),
-    source_language: str | None = Form(None),
-    target_language: str | None = Form(None),
-    mode: str = Form("bilingual"),
-    use_tm: bool = Form(False),
-    provider: str | None = Form(None),
-    model: str | None = Form(None),
-    api_key: str | None = Form(None),
-    base_url: str | None = Form(None),
-    ollama_fast_mode: bool = Form(False),
-    tone: str | None = Form(None),
-    vision_context: bool = Form(True),
-    smart_layout: bool = Form(True),
-    refresh: bool = Form(False),
-    completed_ids: str | None = Form(None),
-    similarity_threshold: float = Form(0.75),
+    request: TranslateRequest,
 ):
     """Reuse the core PPTX streaming translation logic for PDF."""
-    return await pptx_translate_stream(
-        blocks=blocks,
-        source_language=source_language,
-        target_language=target_language,
-        mode=mode,
-        use_tm=use_tm,
-        provider=provider,
-        model=model,
-        api_key=api_key,
-        base_url=base_url,
-        ollama_fast_mode=ollama_fast_mode,
-        tone=tone,
-        vision_context=vision_context,
-        smart_layout=smart_layout,
-        refresh=refresh,
-        completed_ids=completed_ids,
-        similarity_threshold=similarity_threshold,
-    )
+    return await pptx_translate_stream(request)

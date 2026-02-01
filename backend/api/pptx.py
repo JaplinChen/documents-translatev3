@@ -26,14 +26,57 @@ from backend.services.pptx.apply import (
     apply_translations,
 )
 from backend.services.pptx.extract import extract_blocks as extract_pptx_blocks
+from backend.services.document_cache import doc_cache
+from backend.services.thumbnail_service import generate_pptx_thumbnails
 
 router = APIRouter(prefix="/api/pptx")
 
 
 @router.post("/extract")
 @api_error_handler(read_error_msg="PPTX 檔案無效")
-async def pptx_extract(file: UploadFile = File(...)) -> dict:
-    pptx_bytes = await file.read()  # File validation handled by decorator
+async def pptx_extract(
+    file: UploadFile = File(...),
+    refresh: bool = False,
+) -> dict:
+    pptx_bytes = await file.read()
+    file_hash = doc_cache.get_hash(pptx_bytes)
+
+    if not refresh:
+        cached = doc_cache.get(file_hash)
+        if cached:
+            blocks = cached["blocks"]
+            meta = cached["metadata"]
+            thumbs = meta.get("thumbnail_urls", [])
+
+            # Check if thumbnails actually exist on disk
+            thumbnails_ok = False
+            if thumbs and len(thumbs) > 0:
+                # Check the first thumbnail
+                # Convert URL "/thumbnails/hash_0.png" to path "data/thumbnails/hash_0.png"
+                # Handle potential legacy URLs (e.g., missing prefix or absolute path confusion)
+                first_url = thumbs[0]
+                filename = first_url.split("/")[-1]
+                if (Path("data/thumbnails") / filename).exists():
+                    thumbnails_ok = True
+
+            if not thumbnails_ok:
+                # Regenerate thumbnails if missing
+                with tempfile.TemporaryDirectory() as temp_dir:
+                    input_path = os.path.join(temp_dir, "input.pptx")
+                    with open(input_path, "wb") as h:
+                        h.write(pptx_bytes)
+                    thumbs = generate_pptx_thumbnails(input_path)
+                    # Update cache with new valid URLs
+                    doc_cache.update_metadata(file_hash, {"thumbnail_urls": thumbs})
+
+            return {
+                "blocks": blocks,
+                "language_summary": detect_document_languages(blocks),
+                "slide_width": meta.get("slide_width"),
+                "slide_height": meta.get("slide_height"),
+                "thumbnail_urls": thumbs,
+                "cache_hit": True,
+            }
 
     with tempfile.TemporaryDirectory() as temp_dir:
         input_path = os.path.join(temp_dir, "input.pptx")
@@ -44,11 +87,24 @@ async def pptx_extract(file: UploadFile = File(...)) -> dict:
         sw = data["slide_width"]
         sh = data["slide_height"]
 
+        # Generate high-fidelity thumbnails
+        thumbs = generate_pptx_thumbnails(input_path)
+
+    # 更新快取
+    doc_cache.set(
+        file_hash,
+        blocks,
+        {"slide_width": sw, "slide_height": sh, "thumbnail_urls": thumbs},
+        "pptx",
+    )
+
     return {
         "blocks": blocks,
         "language_summary": detect_document_languages(blocks),
         "slide_width": sw,
         "slide_height": sh,
+        "thumbnail_urls": thumbs,
+        "cache_hit": False,
     }
 
 
@@ -152,22 +208,27 @@ async def pptx_apply(
 
 @router.get("/download/{filename:path}")
 async def pptx_download(filename: str):
-    if "%" in filename:
-        filename = urllib.parse.unquote(filename)
+    # Resolve the path relative to exports
     file_path = Path("data/exports") / filename
     if not file_path.exists():
-        raise HTTPException(status_code=404, detail="檔案不存在")
+        # Fallback to unquoted name if necessary (sometimes URL routing decodes automatically)
+        alt_path = Path("data/exports") / urllib.parse.unquote(filename)
+        if alt_path.exists():
+            file_path = alt_path
+        else:
+            raise HTTPException(status_code=404, detail="檔案不存在")
 
-    ascii_name = "".join(c if ord(c) < 128 else "_" for c in filename)
-    safe_name = urllib.parse.quote(filename, safe="")
-    content_disposition = (
-        f"attachment; filename=\"{ascii_name}\"; filename*=UTF-8''{safe_name}"
-    )
+    actual_filename = file_path.name
+    ascii_name = "".join(c if ord(c) < 128 else "_" for c in actual_filename)
+    safe_name = urllib.parse.quote(actual_filename, safe="")
+
+    # Modern RFC 5987 compliant header
+    content_disposition = f"attachment; filename=\"{ascii_name}\"; filename*=UTF-8''{safe_name}"
+
     media_type = (
         "application/json"
         if file_path.suffix.lower() == ".json"
-        else "application/vnd.openxmlformats-officedocument."
-        "presentationml.presentation"
+        else "application/vnd.openxmlformats-officedocument.presentationml.presentation"
     )
     return FileResponse(
         path=file_path,
@@ -178,36 +239,6 @@ async def pptx_download(filename: str):
             "Cache-Control": "no-cache",
         },
     )
-
-
-@router.post("/extract-glossary")
-async def pptx_extract_glossary(
-    blocks: str = Form(...),
-    target_language: str = Form("zh-TW"),
-    provider: str | None = Form(None),
-    model: str | None = Form(None),
-    api_key: str | None = Form(None),
-    base_url: str | None = Form(None),
-) -> dict:
-    from backend.services.glossary_extraction import extract_glossary_terms
-
-    try:
-        blocks_data = json.loads(blocks)
-    except Exception as exc:
-        raise HTTPException(status_code=418, detail="blocks JSON 無效") from exc
-    try:
-        terms = extract_glossary_terms(
-            blocks_data,
-            target_language,
-            provider=provider,
-            model=model,
-            api_key=api_key,
-            base_url=base_url,
-        )
-        return {"terms": terms}
-    except Exception as exc:
-        # Return a 200 with error details so frontend can surface it without hard-fail
-        return {"terms": [], "error": str(exc)}
 
 
 @router.get("/debug-version")

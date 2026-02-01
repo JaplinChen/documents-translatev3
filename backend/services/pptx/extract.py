@@ -11,10 +11,12 @@ from pptx.text.text import TextFrame
 
 from backend.contracts import make_block
 from backend.services.extract_utils import (
+    is_exact_term_match,
     is_garbage_text,
     is_numeric_only,
     is_technical_terms_only,
 )
+
 
 def _safe_get_shape_type(shape) -> int | None:
     try:
@@ -57,6 +59,7 @@ def _extract_complex_text(shape) -> list[str]:
             if (
                 clean_t
                 and not is_numeric_only(clean_t)
+                and not is_exact_term_match(clean_t)
                 and not is_technical_terms_only(clean_t)
             ):
                 texts.append(clean_t)
@@ -110,6 +113,7 @@ def _iter_textbox_blocks(  # noqa: C901
         if (
             not text
             or is_numeric_only(text)
+            or is_exact_term_match(text)
             or is_technical_terms_only(text)
             or is_garbage_text(text)
         ):
@@ -190,6 +194,7 @@ def _iter_table_blocks(slide: Slide, slide_index: int) -> Iterable[dict]:
                         if (
                             not text
                             or is_numeric_only(text)
+                            or is_exact_term_match(text)
                             or is_technical_terms_only(text)
                             or is_garbage_text(text)
                         ):
@@ -227,6 +232,7 @@ def _iter_notes_blocks(slide: Slide, slide_index: int) -> Iterable[dict]:
             if (
                 not text
                 or is_numeric_only(text)
+                or is_exact_term_match(text)
                 or is_technical_terms_only(text)
                 or is_garbage_text(text)
             ):
@@ -269,6 +275,7 @@ def _iter_master_blocks(presentation: Presentation) -> Iterable[dict]:
                     if (
                         not text
                         or is_numeric_only(text)
+                        or is_exact_term_match(text)
                         or is_technical_terms_only(text)
                         or is_garbage_text(text)
                     ):

@@ -9,19 +9,36 @@ from fastapi.responses import FileResponse
 
 from backend.api.error_handler import api_error_handler, validate_json_blocks
 from backend.api.pptx_naming import generate_semantic_filename_with_ext
-from backend.api.pptx_translate import pptx_translate_stream
+from backend.api.pptx_translate import TranslateRequest, pptx_translate_stream
 from backend.api.pptx_utils import validate_file_type
 from backend.services.language_detect import detect_document_languages
 from backend.services.xlsx.apply import apply_bilingual, apply_translations
 from backend.services.xlsx.extract import extract_blocks as extract_xlsx_blocks
+from backend.services.document_cache import doc_cache
 
 router = APIRouter(prefix="/api/xlsx")
 
 
 @router.post("/extract")
 @api_error_handler(read_error_msg="XLSX 檔案無效")
-async def xlsx_extract(file: UploadFile = File(...)) -> dict:
-    xlsx_bytes = await file.read()  # File validation handled by decorator
+async def xlsx_extract(
+    file: UploadFile = File(...),
+    refresh: bool = False,
+) -> dict:
+    xlsx_bytes = await file.read()
+    file_hash = doc_cache.get_hash(xlsx_bytes)
+
+    if not refresh:
+        cached = doc_cache.get(file_hash)
+        if cached:
+            blocks = cached["blocks"]
+            meta = cached["metadata"]
+            return {
+                "blocks": blocks,
+                "language_summary": detect_document_languages(blocks),
+                "sheet_count": meta.get("sheet_count", 0),
+                "cache_hit": True,
+            }
 
     with tempfile.TemporaryDirectory() as temp_dir:
         input_path = os.path.join(temp_dir, "input.xlsx")
@@ -29,11 +46,16 @@ async def xlsx_extract(file: UploadFile = File(...)) -> dict:
             h.write(xlsx_bytes)
         data = extract_xlsx_blocks(input_path)
         blocks = data["blocks"]
+        sheet_count = data.get("sheet_count", 0)
+
+    # 更新快取
+    doc_cache.set(file_hash, blocks, {"sheet_count": sheet_count}, "xlsx")
 
     return {
         "blocks": blocks,
         "language_summary": detect_document_languages(blocks),
-        "sheet_count": data.get("sheet_count", 0),
+        "sheet_count": sheet_count,
+        "cache_hit": False,
     }
 
 
@@ -54,7 +76,9 @@ async def xlsx_apply(
     xlsx_bytes = await file.read()  # File read handled by decorator
 
     # Parse and validate JSON data
-    blocks_data = validate_json_blocks(blocks)
+    from backend.api.error_handler import parse_json_blocks
+
+    blocks_data = parse_json_blocks(blocks)
 
     if mode not in {"bilingual", "translated"}:
         raise HTTPException(status_code=400, detail="不支援的 mode")
@@ -98,22 +122,24 @@ async def xlsx_apply(
 async def xlsx_download(filename: str):
     import urllib.parse
 
-    if "%" in filename:
-        filename = urllib.parse.unquote(filename)
+    # Resolve the path relative to exports
     file_path = Path("data/exports") / filename
     if not file_path.exists():
-        raise HTTPException(status_code=404, detail="檔案不存在")
+        # Fallback to unquoted name
+        alt_path = Path("data/exports") / urllib.parse.unquote(filename)
+        if alt_path.exists():
+            file_path = alt_path
+        else:
+            raise HTTPException(status_code=404, detail="檔案不存在")
 
-    ascii_name = "".join(c if ord(c) < 128 else "_" for c in filename)
-    safe_name = urllib.parse.quote(filename, safe="")
-    disposition = (
-        f"attachment; filename=\"{ascii_name}\"; filename*=UTF-8''{safe_name}"
-    )
+    actual_filename = file_path.name
+    ascii_name = "".join(c if ord(c) < 128 else "_" for c in actual_filename)
+    safe_name = urllib.parse.quote(actual_filename, safe="")
+    disposition = f"attachment; filename=\"{ascii_name}\"; filename*=UTF-8''{safe_name}"
+
     return FileResponse(
         path=file_path,
-        media_type=(
-            "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-        ),
+        media_type=("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"),
         headers={
             "Content-Disposition": disposition,
             "Access-Control-Expose-Headers": "Content-Disposition",
@@ -124,39 +150,7 @@ async def xlsx_download(filename: str):
 
 @router.post("/translate-stream")
 async def xlsx_translate_stream(
-    blocks: str = Form(...),
-    source_language: str | None = Form(None),
-    target_language: str | None = Form(None),
-    mode: str = Form("bilingual"),
-    use_tm: bool = Form(False),
-    provider: str | None = Form(None),
-    model: str | None = Form(None),
-    api_key: str | None = Form(None),
-    base_url: str | None = Form(None),
-    ollama_fast_mode: bool = Form(False),
-    tone: str | None = Form(None),
-    vision_context: bool = Form(True),
-    smart_layout: bool = Form(True),
-    refresh: bool = Form(False),
-    completed_ids: str | None = Form(None),
-    similarity_threshold: float = Form(0.75),
+    request: TranslateRequest,
 ):
     """Reuse the core PPTX streaming translation logic for XLSX."""
-    return await pptx_translate_stream(
-        blocks=blocks,
-        source_language=source_language,
-        target_language=target_language,
-        mode=mode,
-        use_tm=use_tm,
-        provider=provider,
-        model=model,
-        api_key=api_key,
-        base_url=base_url,
-        ollama_fast_mode=ollama_fast_mode,
-        tone=tone,
-        vision_context=vision_context,
-        smart_layout=smart_layout,
-        refresh=refresh,
-        completed_ids=completed_ids,
-        similarity_threshold=similarity_threshold,
-    )
+    return await pptx_translate_stream(request)

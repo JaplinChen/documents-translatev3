@@ -5,12 +5,13 @@ const DEFAULT_FORM = {
     term: "",
     category_id: null,
     category_name: "",
-    status: "active",
-    case_rule: "",
-    note: "",
-    aliases: "",
     languages: [{ lang_code: "zh-TW", value: "" }],
     source: "",
+    source_lang: "",
+    target_lang: "",
+    case_rule: "preserve",
+    priority: 5,
+    filename: "",
     created_by: ""
 };
 
@@ -20,10 +21,10 @@ export function useTerms() {
     const [filters, setFilters] = useState({
         q: "",
         category_id: "",
-        status: "",
         missing_lang: "",
         has_alias: "",
-        source: ""
+        source: "",
+        filename: ""
     });
     const [selectedIds, setSelectedIds] = useState([]);
     const [loading, setLoading] = useState(false);
@@ -74,7 +75,9 @@ export function useTerms() {
     const upsert = async () => {
         const payload = {
             ...form,
-            aliases: form.aliases
+            // Fix: Convert empty string to null for category_id
+            category_id: form.category_id === "" || form.category_id === null ? null : Number(form.category_id),
+            aliases: (form.aliases || "")
                 .split("|")
                 .map((a) => a.trim())
                 .filter(Boolean),

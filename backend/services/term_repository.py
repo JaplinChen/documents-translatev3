@@ -19,9 +19,13 @@ CREATE TABLE IF NOT EXISTS terms (
   term_norm TEXT NOT NULL,
   category_id INTEGER,
   status TEXT NOT NULL,
+  target_lang TEXT,
   case_rule TEXT,
   note TEXT,
   source TEXT,
+  source_lang TEXT,
+  priority INTEGER DEFAULT 0,
+  filename TEXT,
   created_by TEXT,
   created_at TEXT DEFAULT CURRENT_TIMESTAMP,
   updated_at TEXT DEFAULT CURRENT_TIMESTAMP
@@ -75,8 +79,16 @@ def _ensure_db() -> None:
         # Check if source column exists
         cursor = conn.execute("PRAGMA table_info(terms)")
         columns = [row["name"] for row in cursor.fetchall()]
-        if "source" not in columns:
-            conn.execute("ALTER TABLE terms ADD COLUMN source TEXT")
+        if "priority" not in columns:
+            conn.execute("ALTER TABLE terms ADD COLUMN priority INTEGER DEFAULT 0")
+        if "source_lang" not in columns:
+            conn.execute("ALTER TABLE terms ADD COLUMN source_lang TEXT")
+        if "target_lang" not in columns:
+            conn.execute("ALTER TABLE terms ADD COLUMN target_lang TEXT")
+        if "case_rule" not in columns:
+            conn.execute("ALTER TABLE terms ADD COLUMN case_rule TEXT DEFAULT 'preserve'")
+        if "filename" not in columns:
+            conn.execute("ALTER TABLE terms ADD COLUMN filename TEXT")
     _DB_INITIALIZED = True
 
 
@@ -241,17 +253,21 @@ def create_term(payload: dict) -> dict:
         cur = conn.execute(
             (
                 "INSERT INTO terms "
-                "(term, term_norm, category_id, status, case_rule, note, source, created_by) "
-                "VALUES (?, ?, ?, ?, ?, ?, ?, ?)"
+                "(term, term_norm, category_id, status, target_lang, case_rule, note, source, source_lang, priority, filename, created_by) "
+                "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
             ),
             (
                 term,
                 term_norm,
                 category_id,
                 status,
+                payload.get("target_lang"),
                 case_rule,
                 note,
                 payload.get("source"),
+                payload.get("source_lang"),
+                payload.get("priority") or 0,
+                payload.get("filename"),
                 created_by,
             ),
         )
@@ -289,11 +305,25 @@ def update_term(term_id: int, payload: dict) -> dict:
         conn.execute(
             (
                 "UPDATE terms SET term = ?, term_norm = ?, category_id = ?, "
-                "status = ?, case_rule = ?, note = ?, source = ?, "
+                "status = ?, target_lang = ?, case_rule = ?, note = ?, source = ?, source_lang = ?, "
+                "priority = ?, filename = ?, "
                 "updated_at = CURRENT_TIMESTAMP "
                 "WHERE id = ?"
             ),
-            (term, term_norm, category_id, status, case_rule, note, payload.get("source"), term_id),
+            (
+                term,
+                term_norm,
+                category_id,
+                status,
+                payload.get("target_lang"),
+                case_rule,
+                note,
+                payload.get("source"),
+                payload.get("source_lang"),
+                payload.get("priority") or 0,
+                payload.get("filename"),
+                term_id,
+            ),
         )
         _upsert_languages(conn, term_id, payload.get("languages") or [])
         _replace_aliases(conn, term_id, aliases)
@@ -397,6 +427,11 @@ def list_terms(filters: dict) -> list[dict]:  # noqa: C901
         where.append("t.source = ?")
         params.append(source)
 
+    filename = _normalize_text(filters.get("filename"))
+    if filename:
+        where.append("t.filename LIKE ?")
+        params.append(f"%{filename}%")
+
     date_from = filters.get("date_from")
     if date_from:
         where.append("t.created_at >= ?")
@@ -448,6 +483,8 @@ def batch_update_terms(
     category_id: int | None = None,
     status: str | None = None,
     case_rule: str | None = None,
+    source: str | None = None,
+    priority: int | None = None,
 ) -> int:
     _ensure_db()
     if not term_ids:
@@ -463,6 +500,12 @@ def batch_update_terms(
     if case_rule is not None:
         updates.append("case_rule = ?")
         params.append(case_rule)
+    if source is not None:
+        updates.append("source = ?")
+        params.append(source)
+    if priority is not None:
+        updates.append("priority = ?")
+        params.append(priority)
     if not updates:
         return 0
     params.append(tuple(term_ids))
@@ -503,6 +546,12 @@ def sync_from_external(
     category_name: str | None = None,
     source: str = "manual",
     languages: list[dict] | None = None,
+    created_by: str | None = None,
+    filename: str | None = None,
+    source_lang: str | None = None,
+    target_lang: str | None = None,
+    priority: int | None = None,
+    case_rule: str | None = None,
 ) -> dict:
     """Sync a term from an external source. Merges languages if the term exists."""
     _ensure_db()
@@ -521,7 +570,8 @@ def sync_from_external(
             current_langs = _fetch_languages(conn, term_id)
             lang_dict = {l["lang_code"]: l["value"] for l in current_langs}
             for l in languages or []:
-                lang_dict[l["lang_code"]] = l["value"]
+                if l.get("value"):
+                    lang_dict[l["lang_code"]] = l["value"]
 
             merged_languages = [{"lang_code": k, "value": v} for k, v in lang_dict.items()]
 
@@ -529,8 +579,14 @@ def sync_from_external(
                 "term": term_text,
                 "category_name": category_name,
                 "source": source,
+                "source_lang": source_lang,
+                "target_lang": target_lang,
+                "priority": priority,
+                "case_rule": case_rule,
+                "filename": filename,
                 "languages": merged_languages,
                 "status": "active",
+                "created_by": created_by,
             }
             return update_term(term_id, payload)
     else:
@@ -539,8 +595,14 @@ def sync_from_external(
             "term": term_text,
             "category_name": category_name,
             "source": source,
+            "source_lang": source_lang,
+            "target_lang": target_lang,
+            "priority": priority,
+            "case_rule": case_rule,
+            "filename": filename,
             "languages": languages or [],
             "status": "active",
+            "created_by": created_by,
             "allow_create_category": True,
         }
         return create_term(payload)

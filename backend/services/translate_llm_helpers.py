@@ -27,6 +27,10 @@ from backend.services.translation_memory import (
 
 LOGGER = logging.getLogger(__name__)
 
+# Cache for unified terms to speed up chunked translation
+_UNIFIED_TERMS_CACHE: list[dict] | None = None
+_UNIFIED_TERMS_MTIME: float = 0
+
 
 def prepare_pending_blocks(
     blocks_list: list[dict],
@@ -135,6 +139,7 @@ def load_preferred_terms(
     source_lang: str, target_language: str, use_tm: bool
 ) -> list[tuple[str, str]]:
     """Load glossary/TM-based preferred terms for the request."""
+    # 1. Load from conventional Glossary/TM (translation_memory.db)
     if source_lang and source_lang != "auto":
         preferred_terms = get_glossary_terms(source_lang, target_language)
         if use_tm:
@@ -143,6 +148,41 @@ def load_preferred_terms(
         preferred_terms = get_glossary_terms_any(target_language)
         if use_tm:
             preferred_terms.extend(get_tm_terms_any(target_language))
+
+    # 2. Load from new Unified Terminology Center (terms.db)
+    # We map terms from term_repo into the (source, target) format used by LLM prompts
+    try:
+        from backend.services.term_repository import list_terms, DB_PATH
+
+        global _UNIFIED_TERMS_CACHE, _UNIFIED_TERMS_MTIME
+
+        # Simple file-mtime based cache
+        try:
+            current_mtime = DB_PATH.stat().st_mtime if DB_PATH.exists() else 0
+        except Exception:
+            current_mtime = 0
+
+        if _UNIFIED_TERMS_CACHE is None or current_mtime > _UNIFIED_TERMS_MTIME:
+            _UNIFIED_TERMS_CACHE = list_terms({"status": "active"})
+            _UNIFIED_TERMS_MTIME = current_mtime
+
+        for t in _UNIFIED_TERMS_CACHE:
+            source_text = t.get("term", "").strip()
+            if not source_text:
+                continue
+            # Find the translation for the target language in languages list
+            langs = t.get("languages", [])
+            target_text = None
+            for l_item in langs:
+                if l_item.get("lang_code") == target_language:
+                    target_text = l_item.get("value")
+                    break
+
+            if target_text:
+                preferred_terms.append((source_text, target_text))
+    except Exception as e:
+        LOGGER.error("Failed to load preferred terms from unified center: %s", e)
+
     return preferred_terms
 
 
@@ -205,11 +245,7 @@ async def process_chunk_async(
 
     if on_progress:
         completed_indices = [idx for idx, _ in chunk]
-        completed_ids = [
-            b.get("client_id")
-            for _, b in chunk
-            if b.get("client_id")
-        ]
+        completed_ids = [b.get("client_id") for _, b in chunk if b.get("client_id")]
         completed_blocks = []
         for idx, block in chunk:
             client_id = block.get("client_id")

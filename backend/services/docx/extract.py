@@ -6,10 +6,12 @@ from docx import Document
 
 from backend.contracts import make_block
 from backend.services.extract_utils import (
+    is_exact_term_match,
     is_garbage_text,
     is_numeric_only,
     is_technical_terms_only,
 )
+
 
 def extract_blocks(docx_path: str | bytes) -> dict:
     """Extract text blocks from a .docx file."""
@@ -26,15 +28,14 @@ def extract_blocks(docx_path: str | bytes) -> dict:
         if (
             not text
             or is_numeric_only(text)
+            or is_exact_term_match(text)
             or is_technical_terms_only(text)
             or is_garbage_text(text)
         ):
             continue
         # Note: slide_index is used as paragraph_index for UI expectations.
         # Use 'textbox' as 'paragraph' is not in PPTXBlock Literal
-        blocks.append(
-            make_block(i, i, "textbox", text, x=0, y=0, width=500, height=20)
-        )
+        blocks.append(make_block(i, i, "textbox", text, x=0, y=0, width=500, height=20))
 
     # 2. Extract Tables
     for t_idx, table in enumerate(doc.tables):
@@ -44,6 +45,7 @@ def extract_blocks(docx_path: str | bytes) -> dict:
                 if (
                     not text
                     or is_numeric_only(text)
+                    or is_exact_term_match(text)
                     or is_technical_terms_only(text)
                     or is_garbage_text(text)
                 ):

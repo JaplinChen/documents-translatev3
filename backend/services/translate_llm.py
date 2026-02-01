@@ -254,30 +254,39 @@ async def translate_blocks_async(
     )
 
     if tasks:
-        # Wrap tasks with a semaphore if it's Ollama to prevent overloading
-        final_tasks = tasks
-        if resolved_provider == "ollama":
-            sem = asyncio.Semaphore(2)
+        # Wrap tasks with a semaphore to prevent overloading.
+        # Use settings.llm_max_concurrency if set, otherwise auto-resolve.
+        if settings.llm_max_concurrency > 0:
+            sem_val = settings.llm_max_concurrency
+        else:
+            sem_val = 1 if resolved_provider == "ollama" else 5
 
-            async def sem_wrapped_task(task):
-                async with sem:
-                    return await task
+        sem = asyncio.Semaphore(sem_val)
 
-            final_tasks = [sem_wrapped_task(t) for t in tasks]
+        async def sem_wrapped_task(task):
+            async with sem:
+                try:
+                    # Apply individual task timeout to prevent hanging the whole process
+                    return await asyncio.wait_for(task, timeout=settings.llm_request_timeout)
+                except asyncio.TimeoutError:
+                    LOGGER.error("LLM Task timed out after %ss", settings.llm_request_timeout)
+                    return None
+                except Exception as e:
+                    LOGGER.error("LLM Task failed: %s", e)
+                    return None
+
+        final_tasks = [sem_wrapped_task(t) for t in tasks]
 
         if hasattr(translator, "set_async_client"):
-            async with httpx.AsyncClient(
-                timeout=settings.ollama_timeout
-            ) as client:
+            # Ensure timeout matches our request timeout
+            total_timeout = httpx.Timeout(settings.ollama_timeout, connect=10.0)
+            async with httpx.AsyncClient(timeout=total_timeout) as client:
                 translator.set_async_client(client)
                 await asyncio.gather(*final_tasks)
         else:
             await asyncio.gather(*final_tasks)
 
-    final_texts = [
-        text if text is not None else ""
-        for text in translated_texts
-    ]
+    final_texts = [text if text is not None else "" for text in translated_texts]
 
     # Result Migration Pass (Bilingual Alignment)
     for i, block in enumerate(blocks_list):
@@ -319,9 +328,7 @@ def _prepare_params(
     tone: str | None,
     vision_context: bool,
 ) -> dict[str, Any]:
-    overrides.update(
-        {"model": model, "tone": tone, "vision_context": vision_context}
-    )
+    overrides.update({"model": model, "tone": tone, "vision_context": vision_context})
     params = get_translation_params(resolved_provider, overrides=overrides)
     if params["single_request"]:
         params["chunk_delay"] = 0.0
@@ -358,9 +365,7 @@ def _translate_chunk_sync(
     chunk_blocks, placeholder_maps, placeholder_tokens = prepare_chunk(
         chunk, use_placeholders, preferred_terms
     )
-    context = build_context(
-        params["context_strategy"], blocks_list, chunk_blocks
-    )
+    context = build_context(params["context_strategy"], blocks_list, chunk_blocks)
     result = translate_chunk(
         translator,
         resolved_provider,
@@ -393,10 +398,7 @@ def _finalize_texts(
     blocks_list: list[dict],
     translated_texts: list[str | None],
 ) -> list[str]:
-    final_texts = [
-        text if text is not None else ""
-        for text in translated_texts
-    ]
+    final_texts = [text if text is not None else "" for text in translated_texts]
     for i, block in enumerate(blocks_list):
         if block.get("alignment_role") == "source":
             final_texts[i] = block.get("source_text", "")

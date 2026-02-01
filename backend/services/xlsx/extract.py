@@ -4,10 +4,12 @@ import openpyxl
 
 from backend.contracts import make_block
 from backend.services.extract_utils import (
+    is_exact_term_match,
     is_garbage_text,
     is_numeric_only,
     is_technical_terms_only,
 )
+
 
 def extract_blocks(xlsx_path: str) -> dict:
     """
@@ -32,13 +34,10 @@ def extract_blocks(xlsx_path: str) -> dict:
         block_id_counter = 0
 
         # Iterate through all cells that have values
-        # Filter numeric-only and technical-term-only content.
         for row_idx, row in enumerate(ws.iter_rows(), start=1):
             # Check if row is hidden
             is_row_hidden = (
-                ws.row_dimensions[row_idx].hidden
-                if row_idx in ws.row_dimensions
-                else False
+                ws.row_dimensions[row_idx].hidden if row_idx in ws.row_dimensions else False
             )
 
             for cell in row:
@@ -53,13 +52,27 @@ def extract_blocks(xlsx_path: str) -> dict:
                     else False
                 )
 
+                # Skip common Excel error values (#REF!, #DIV/0!, etc.)
+                cell_val_str = str(cell.value).strip()
+                if cell_val_str.startswith("#") and any(
+                    err in cell_val_str for err in ["REF!", "DIV/0!", "VALUE!", "N/A", "NAME?"]
+                ):
+                    continue
+
+                # Detect if cell contains a formula
+                # Note: with data_only=True, cell.value is the RESULT.
+                # To see the formula, we'd need another pass or different load_workbook params.
+                # However, the requirement is to PROTECT formulas during APPLY.
+                # In EXTRACT with data_only=True, we get what the user sees.
+
                 # Convert to string and clean
-                text = str(cell.value).strip()
+                text = cell_val_str
 
                 # Use heuristics to filter non-translatable content
                 if (
                     not text
                     or is_numeric_only(text)
+                    or is_exact_term_match(text)
                     or is_technical_terms_only(text)
                     or is_garbage_text(text)
                 ):
@@ -82,9 +95,10 @@ def extract_blocks(xlsx_path: str) -> dict:
                 # Add Excel-specific metadata for reconstruction
                 block["sheet_name"] = sheet_name
                 block["cell_address"] = cell.coordinate
-                block["is_hidden"] = (
-                    is_sheet_hidden or is_row_hidden or is_col_hidden
-                )
+                block["is_hidden"] = is_sheet_hidden or is_row_hidden or is_col_hidden
+
+                # Check for formula in a separate pass if needed, but for now mark as potential translatable
+                # We will handle formula protection in apply.py by loading with data_only=False.
 
                 blocks.append(block)
 

@@ -51,9 +51,7 @@ def api_error_handler(
                     await file.seek(0)
                 except Exception as exc:
                     error_msg = read_error_msg or f"{file.filename} 檔案無效"
-                    LOGGER.error(
-                        "File read error for %s: %s", file.filename, exc
-                    )
+                    LOGGER.error("File read error for %s: %s", file.filename, exc)
                     raise HTTPException(
                         status_code=400,
                         detail=error_msg,
@@ -67,9 +65,7 @@ def api_error_handler(
             except Exception as exc:
                 # Log unexpected errors
                 traceback.print_exc()
-                LOGGER.error(
-                    "Unexpected error in %s: %s", func.__name__, exc
-                )
+                LOGGER.error("Unexpected error in %s: %s", func.__name__, exc)
                 raise HTTPException(status_code=500, detail="內部伺服器錯誤") from exc
 
         return wrapper
@@ -77,18 +73,9 @@ def api_error_handler(
     return decorator
 
 
-def validate_json_blocks(blocks_str: str) -> dict:
+def validate_json_blocks(blocks_str: str) -> list[dict]:
     """
-    Validate and parse blocks JSON string.
-
-    Args:
-        blocks_str: JSON string containing blocks data
-
-    Returns:
-        Parsed blocks dictionary
-
-    Raises:
-        HTTPException: If JSON is invalid or blocks format is wrong
+    Validate and parse blocks JSON string using strict Pydantic models.
     """
     try:
         from backend.contracts import coerce_blocks
@@ -96,3 +83,17 @@ def validate_json_blocks(blocks_str: str) -> dict:
         return coerce_blocks(json.loads(blocks_str))
     except Exception as exc:
         raise HTTPException(status_code=400, detail="資料格式錯誤") from exc
+
+
+def parse_json_blocks(blocks_str: str) -> list[dict]:
+    """
+    Parse blocks JSON string without strict Pydantic coercion.
+    Used for XLSX where apply logic handles missing fields gracefully.
+    """
+    try:
+        data = json.loads(blocks_str)
+        if not isinstance(data, list):
+            raise ValueError("Blocks 必須是陣列格式")
+        return data
+    except Exception as exc:
+        raise HTTPException(status_code=400, detail=f"JSON 格式錯誤: {exc}") from exc

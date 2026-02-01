@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import hashlib
 import sqlite3
+import re
 from collections.abc import Iterable
 from pathlib import Path
 
@@ -93,6 +94,17 @@ CREATE TABLE IF NOT EXISTS tm (
   hash TEXT NOT NULL UNIQUE,
   created_at TEXT DEFAULT CURRENT_TIMESTAMP
 );
+
+CREATE TABLE IF NOT EXISTS term_feedback (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  source_text TEXT NOT NULL,
+  target_text TEXT NOT NULL,
+  source_lang TEXT,
+  target_lang TEXT,
+  correction_count INTEGER DEFAULT 1,
+  last_corrected_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  UNIQUE(source_text, target_text, source_lang, target_lang)
+);
 """
 
 
@@ -171,6 +183,29 @@ def lookup_tm(
     return row[0] if row else None
 
 
+def _is_low_quality_tm(source: str, target: str) -> bool:
+    """檢查是否為低質量的翻譯記憶條目（如型號轉量詞）。"""
+    s = source.strip()
+    t = target.strip()
+
+    # 模式 A: 原文等於譯文且為純西方字符 (IT 代碼/型號)
+    if s.lower() == t.lower():
+        if not re.search(r"[\u4e00-\u9fff\u3040-\u30ff\uac00-\ud7af]", s):
+            return True
+
+    # 模式 B: 原文為型號 (數字 + pro/max 等) 而譯文為中文量詞 (如 7 pro -> 七個)
+    model_pattern = r"^\d+\s*(pro|max|ultra|plus|s|ti|fe)$"
+    quantifier_pattern = r"^[一二三四五六七八九十百千萬\d]+[個筆台枝張顆]$"
+    if re.match(model_pattern, s, re.IGNORECASE) and re.match(quantifier_pattern, t):
+        return True
+
+    # 模式 C: 著名的 CPU 過度翻譯
+    if "Core Ultra" in s and "核心極致" in t:
+        return True
+
+    return False
+
+
 def save_tm(
     source_lang: str,
     target_lang: str,
@@ -179,6 +214,9 @@ def save_tm(
     context: dict | None = None,
 ) -> None:
     if not text or not translated:
+        return
+    if _is_low_quality_tm(text, translated):
+        print(f"攔截低質量 TM 寫入: {text} -> {translated}")
         return
     _ensure_db()
     source_text = text.strip()
@@ -442,6 +480,12 @@ def get_tm(limit: int = 200) -> list[dict]:
                 "SELECT t.id, t.source_lang, t.target_lang, t.source_text, "
                 "t.target_text, t.category_id, c.name as category_name, t.created_at "
                 "FROM tm t LEFT JOIN tm_categories c ON t.category_id = c.id "
+                "WHERE NOT EXISTS ("
+                "  SELECT 1 FROM glossary g "
+                "  WHERE g.source_text = t.source_text "
+                "  AND g.source_lang = t.source_lang "
+                "  AND g.target_lang = t.target_lang"
+                ") "
                 "ORDER BY t.id DESC LIMIT ?"
             ),
             (limit,),
@@ -485,31 +529,57 @@ def upsert_glossary(entry: dict) -> None:
     entry_target = _normalize_glossary_text(entry.get("target_text", ""))
     if _is_preserve_term(entry_source, preserve_terms):
         return
+    entry_id = entry.get("id")
     with sqlite3.connect(DB_PATH) as conn:
-        conn.execute(
-            ("DELETE FROM glossary WHERE source_lang = ? AND target_lang = ? AND source_text = ?"),
-            (
-                entry.get("source_lang"),
-                entry.get("target_lang"),
-                entry_source,
-            ),
-        )
-        conn.execute(
-            (
-                "INSERT INTO glossary "
-                "(source_lang, target_lang, source_text, "
-                "target_text, priority, category_id) "
-                "VALUES (?, ?, ?, ?, COALESCE(?, 0), ?)"
-            ),
-            (
-                entry.get("source_lang"),
-                entry.get("target_lang"),
-                entry_source,
-                entry_target,
-                entry.get("priority", 0),
-                entry.get("category_id"),
-            ),
-        )
+        if entry_id:
+            # Explicit update by ID
+            conn.execute(
+                (
+                    "UPDATE glossary SET "
+                    "source_lang = ?, target_lang = ?, source_text = ?, "
+                    "target_text = ?, priority = ?, category_id = ? "
+                    "WHERE id = ?"
+                ),
+                (
+                    entry.get("source_lang"),
+                    entry.get("target_lang"),
+                    entry_source,
+                    entry_target,
+                    entry.get("priority", 0),
+                    entry.get("category_id"),
+                    entry_id,
+                ),
+            )
+            print(f"Glossary updated by ID: {entry_id}")
+        else:
+            # Legacy INSERT OR REPLACE by source/target unique constraints
+            conn.execute(
+                (
+                    "DELETE FROM glossary WHERE source_lang = ? AND target_lang = ? AND source_text = ?"
+                ),
+                (
+                    entry.get("source_lang"),
+                    entry.get("target_lang"),
+                    entry_source,
+                ),
+            )
+            conn.execute(
+                (
+                    "INSERT INTO glossary "
+                    "(source_lang, target_lang, source_text, "
+                    "target_text, priority, category_id) "
+                    "VALUES (?, ?, ?, ?, COALESCE(?, 0), ?)"
+                ),
+                (
+                    entry.get("source_lang"),
+                    entry.get("target_lang"),
+                    entry_source,
+                    entry_target,
+                    entry.get("priority", 0),
+                    entry.get("category_id"),
+                ),
+            )
+            print(f"Glossary upserted by unique constraints: {entry_source}")
         conn.commit()
 
     # Sync to terms center
@@ -518,7 +588,7 @@ def upsert_glossary(entry: dict) -> None:
         term_repo.sync_from_external(
             entry_source,
             category_name=entry.get("category_name"),
-            source="terminology",
+            source="reference",
             languages=[{"lang_code": lang_code, "value": entry_target}],
         )
     except Exception as e:
@@ -575,7 +645,7 @@ def batch_upsert_glossary(entries: list[dict]) -> None:
             term_repo.sync_from_external(
                 entry_source,
                 category_name=entry.get("category_name"),
-                source="terminology",
+                source="reference",
                 languages=[{"lang_code": lang_code, "value": entry_target}],
             )
         except Exception as e:
@@ -629,27 +699,61 @@ def batch_delete_glossary(ids: list[int]) -> int:
 
 def upsert_tm(entry: dict) -> None:
     _ensure_db()
+
+    source_text = entry.get("source_text", "").strip()
+    target_text = entry.get("target_text", "").strip()
+
+    if _is_low_quality_tm(source_text, target_text):
+        print(f"攔截低質量 TM (Upsert): {source_text} -> {target_text}")
+        return
+
+    entry_id = entry.get("id")
     with sqlite3.connect(DB_PATH) as conn:
-        key = _hash_text(
-            entry.get("source_lang"),
-            entry.get("target_lang"),
-            entry.get("source_text"),
-        )
-        conn.execute(
-            (
-                "INSERT OR REPLACE INTO tm "
-                "(source_lang, target_lang, source_text, target_text, category_id, hash) "
-                "VALUES (?, ?, ?, ?, ?, ?)"
-            ),
-            (
+        if entry_id:
+            # Explicit update by ID
+            conn.execute(
+                (
+                    "UPDATE tm SET "
+                    "source_lang = ?, target_lang = ?, source_text = ?, "
+                    "target_text = ?, category_id = ?, hash = ? "
+                    "WHERE id = ?"
+                ),
+                (
+                    entry.get("source_lang"),
+                    entry.get("target_lang"),
+                    entry.get("source_text"),
+                    entry.get("target_text"),
+                    entry.get("category_id"),
+                    _hash_text(
+                        entry.get("source_lang"), entry.get("target_lang"), entry.get("source_text")
+                    ),
+                    entry_id,
+                ),
+            )
+            print(f"TM updated by ID: {entry_id}")
+        else:
+            # Fallback to hash-based INSERT OR REPLACE
+            key = _hash_text(
                 entry.get("source_lang"),
                 entry.get("target_lang"),
                 entry.get("source_text"),
-                entry.get("target_text"),
-                entry.get("category_id"),
-                key,
-            ),
-        )
+            )
+            conn.execute(
+                (
+                    "INSERT OR REPLACE INTO tm "
+                    "(source_lang, target_lang, source_text, target_text, category_id, hash) "
+                    "VALUES (?, ?, ?, ?, ?, ?)"
+                ),
+                (
+                    entry.get("source_lang"),
+                    entry.get("target_lang"),
+                    entry.get("source_text"),
+                    entry.get("target_text"),
+                    entry.get("category_id"),
+                    key,
+                ),
+            )
+            print(f"TM upserted by hash: {entry.get('source_text')}")
         conn.commit()
 
 
@@ -690,9 +794,36 @@ def clear_tm() -> int:
 
 def list_tm_categories() -> list[dict]:
     _ensure_db()
+    # 1. Proactively sync names from terms.db to tm_categories for UI consistency
+    terms_db = Path("data/terms.db")
+    if terms_db.exists():
+        try:
+            with sqlite3.connect(terms_db) as tconn:
+                tconn.row_factory = sqlite3.Row
+                t_rows = tconn.execute("SELECT name, sort_order FROM categories").fetchall()
+                t_names = {r["name"] for r in t_rows}
+                t_data = {r["name"]: r["sort_order"] for r in t_rows}
+
+            with sqlite3.connect(DB_PATH) as conn:
+                conn.row_factory = sqlite3.Row
+                c_rows = conn.execute("SELECT name FROM tm_categories").fetchall()
+                c_names = {r["name"] for r in c_rows}
+
+                missing = t_names - c_names
+                if missing:
+                    for name in missing:
+                        conn.execute(
+                            "INSERT OR IGNORE INTO tm_categories (name, sort_order) VALUES (?, ?)",
+                            (name, t_data[name]),
+                        )
+                    conn.commit()
+        except Exception as e:
+            print(f"Error syncing categories in list_tm_categories: {e}")
+
+    # 2. Return the merged list with accurate counts
     with sqlite3.connect(DB_PATH) as conn:
         conn.row_factory = sqlite3.Row
-        # Get counts from glossary and tm tables
+        # Get counts from glossary and tm tables in translation_memory.db
         query = """
             SELECT 
                 c.id, 
@@ -704,7 +835,24 @@ def list_tm_categories() -> list[dict]:
             ORDER BY c.sort_order, c.id
         """
         rows = conn.execute(query).fetchall()
-    return [dict(row) for row in rows]
+        result = [dict(row) for row in rows]
+
+    # 3. Augment with term_count from terms.db if possible
+    if terms_db.exists():
+        try:
+            with sqlite3.connect(terms_db) as tconn:
+                tconn.row_factory = sqlite3.Row
+                for item in result:
+                    trow = tconn.execute(
+                        "SELECT COUNT(*) as cnt FROM terms t JOIN categories c ON t.category_id = c.id WHERE c.name = ?",
+                        (item["name"],),
+                    ).fetchone()
+                    # Add unified terms count to the item
+                    item["unified_term_count"] = trow["cnt"] if trow else 0
+        except Exception:
+            pass
+
+    return result
 
 
 def create_tm_category(name: str, sort_order: int | None = None) -> dict:

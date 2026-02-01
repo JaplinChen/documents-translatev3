@@ -122,18 +122,12 @@ def create_preserve_term(
     term_text = (term or "").strip()
     if not term_text:
         raise ValueError("術語不可為空")
+    term_id = str(uuid4())
+    created_at = datetime.utcnow().isoformat() + "Z"
     with _connect() as conn:
-        existing = conn.execute(
-            "SELECT id FROM preserve_terms WHERE lower(term) = lower(?)",
-            (term_text,),
-        ).fetchone()
-        if existing:
-            raise ValueError(f"術語 '{term_text}' 已存在")
-        term_id = str(uuid4())
-        created_at = datetime.utcnow().isoformat() + "Z"
         conn.execute(
             (
-                "INSERT INTO preserve_terms "
+                "INSERT OR REPLACE INTO preserve_terms "
                 "(id, term, category, case_sensitive, created_at) "
                 "VALUES (?, ?, ?, ?, ?)"
             ),
@@ -195,7 +189,9 @@ def create_preserve_terms_batch(terms: list[dict]) -> dict:
     # Sync to terms center
     for t in created_terms:
         try:
-            term_repo.sync_from_external(t["term"], category_name=t["category"], source="reference")
+            term_repo.sync_from_external(
+                t["term"], category_name=t["category"], source="terminology"
+            )
         except Exception as e:
             print(f"Sync to terms center failed for {t['term']}: {e}")
 
@@ -240,7 +236,7 @@ def update_preserve_term(
         # If term changed, delete old and sync new
         if old_term and old_term != term_text:
             term_repo.delete_by_term(old_term)
-        term_repo.sync_from_external(term_text, category_name=category, source="reference")
+        term_repo.sync_from_external(term_text, category_name=category, source="terminology")
     except Exception as e:
         print(f"Sync to terms center failed: {e}")
 

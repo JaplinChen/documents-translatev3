@@ -5,7 +5,7 @@ import { CustomSelect } from "../common/CustomSelect";
 export function SidebarStep2({
     open, toggle, isExtracted, mode, setMode, bilingualLayout, setBilingualLayout,
     languageOptions, sourceLang, setSourceLang, setSourceLocked, targetLang, setTargetLang,
-    setTargetLocked, useTm, setUseTm, blockCount
+    setTargetLocked, useTm, setUseTm, blockCount, onExtract
 }) {
     const { t } = useTranslation();
     return (
@@ -53,7 +53,26 @@ export function SidebarStep2({
                         <input type="checkbox" checked={useTm} onChange={(e) => setUseTm(e.target.checked)} />
                         {t("sidebar.tm")}
                     </label>
-                    {isExtracted && <p className="field-hint">{t("sidebar.extract.summary", { count: blockCount })}</p>}
+                    <div className="flex flex-col gap-2 pt-2">
+                        <div className="flex items-center justify-between">
+                            <p className="field-hint mb-0">
+                                {isExtracted ? t("sidebar.extract.summary", { count: blockCount }) : t("sidebar.hint.step1")}
+                            </p>
+                            <button
+                                className={`btn compact ${!isExtracted ? "primary w-full" : "bg-blue-50 text-blue-600 hover:bg-blue-100 border border-blue-200"} transition-all flex items-center justify-center gap-1 px-3 py-1.5 rounded-xl`}
+                                onClick={(e) => {
+                                    e.stopPropagation();
+                                    if (!isExtracted || window.confirm(t("sidebar.extract.confirm_refresh"))) {
+                                        onExtract(true);
+                                    }
+                                }}
+                                title={t("sidebar.extract.refresh_hint")}
+                            >
+                                <span className="text-sm">🔄</span>
+                                <span className="font-bold whitespace-nowrap">{isExtracted ? t("sidebar.extract.refresh_button") : t("sidebar.extract.button")}</span>
+                            </button>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>

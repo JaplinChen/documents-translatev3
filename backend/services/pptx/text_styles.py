@@ -7,6 +7,7 @@ from pptx.text.text import TextFrame
 
 from backend.services.font_manager import clone_font_props
 
+
 def capture_full_frame_styles(
     text_frame: TextFrame,
 ) -> list[dict[str, Any]]:
@@ -23,14 +24,9 @@ def _capture_paragraph_style(paragraph) -> dict[str, Any]:
     p_pr_xml = None
     try:
         parent = paragraph._p
-        p_pr_xml = parent.find(
-            ".//{http://schemas.openxmlformats.org/presentationml/2006/main}"
-            "pPr"
-        )
+        p_pr_xml = parent.find(".//{http://schemas.openxmlformats.org/presentationml/2006/main}pPr")
         if p_pr_xml is None:
-            p_pr_xml = parent.find(
-                ".//{http://schemas.openxmlformats.org/drawingml/2006/main}pPr"
-            )
+            p_pr_xml = parent.find(".//{http://schemas.openxmlformats.org/drawingml/2006/main}pPr")
         if p_pr_xml is not None:
             p_pr_xml = etree.tostring(p_pr_xml)
     except Exception:
@@ -67,11 +63,7 @@ def _consolidate_empty_spacing(styles: list[dict[str, Any]]) -> None:
             continue
 
         para_height = _estimate_empty_paragraph_height(style)
-        extra_spacing = (
-            (style["space_before"] or 0)
-            + (style["space_after"] or 0)
-            + para_height
-        )
+        extra_spacing = (style["space_before"] or 0) + (style["space_after"] or 0) + para_height
         if last_text_idx >= 0:
             prev_after = styles[last_text_idx]["space_after"] or 0
             styles[last_text_idx]["space_after"] = prev_after + extra_spacing
@@ -121,10 +113,8 @@ def apply_paragraph_style(
                 target_language=target_language,
                 font_mapping=font_mapping,
             )
-            if scale != 1.0 and paragraph.runs[0].font.size:
-                paragraph.runs[0].font.size = int(
-                    paragraph.runs[0].font.size * scale
-                )
+            if scale != 1.0 and getattr(paragraph.runs[0].font, "size", None):
+                paragraph.runs[0].font.size = int(paragraph.runs[0].font.size * scale)
     except Exception:
         pass
 
@@ -134,8 +124,7 @@ def _apply_xml_style(paragraph, p_pr_xml_bytes: bytes) -> None:
         target_p = paragraph._p
         new_p_pr = etree.fromstring(p_pr_xml_bytes)
         old_p_pr = target_p.find(
-            ".//{http://schemas.openxmlformats.org/presentationml/2006/main}"
-            "pPr"
+            ".//{http://schemas.openxmlformats.org/presentationml/2006/main}pPr"
         )
         if old_p_pr is None:
             old_p_pr = target_p.find(

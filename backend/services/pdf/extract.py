@@ -10,6 +10,7 @@ except ImportError:
 
 from backend.contracts import make_block
 from backend.services.extract_utils import (
+    is_exact_term_match,
     is_garbage_text,
     is_numeric_only,
     is_technical_terms_only,
@@ -45,29 +46,20 @@ def extract_blocks(pdf_path: str) -> dict:  # noqa: C901
                 for line in b.get("lines", [])
                 for span in line.get("spans", [])
             ).strip()
-            if (
-                not text
-                or is_numeric_only(text)
-                or is_technical_terms_only(text)
-                or is_garbage_text(text)
-            ):
+            if not text or is_garbage_text(text):
                 continue
 
             x0, y0, x1, y1 = b.get("bbox")
-            first_span = (
-                b["lines"][0]["spans"][0]
-                if b["lines"] and b["lines"][0]["spans"]
-                else {}
-            )
+            first_span = b["lines"][0]["spans"][0] if b["lines"] and b["lines"][0]["spans"] else {}
             block = make_block(
-                page_index,
-                b_idx + 1,
-                "pdf_text_block",
-                text,
-                x0,
-                y0,
-                x1 - x0,
-                y1 - y0,
+                slide_index=page_index,
+                shape_id=b_idx + 1,
+                block_type="pdf_text_block",
+                source_text=text,
+                x=x0,
+                y=y0,
+                width=x1 - x0,
+                height=y1 - y0,
             )
             block.update(
                 {
@@ -110,9 +102,7 @@ def extract_blocks(pdf_path: str) -> dict:  # noqa: C901
         # 3. OCR Fallback if still no blocks
         if not page_blocks:
             ocr_func = (
-                perform_paddle_ocr_on_page
-                if cfg.get("engine") == "paddle"
-                else perform_ocr_on_page
+                perform_paddle_ocr_on_page if cfg.get("engine") == "paddle" else perform_ocr_on_page
             )
             ob, conf = ocr_func(pdf_path, page_index, cfg)
             if cfg.get("engine") != "paddle" and conf < 60 and len(ob) < 5:
@@ -126,10 +116,19 @@ def extract_blocks(pdf_path: str) -> dict:  # noqa: C901
     if plumber_doc:
         plumber_doc.close()
     clustered = cluster_blocks(blocks)
+
+    # Get dimensions for the first page for Slide Preview
+    sw, sh = 0, 0
+    if len(doc) > 0:
+        rect = doc[0].rect
+        sw, sh = rect.width, rect.height
+
     LOGGER.info(
-        "pdf_extract complete: pages=%s, refined blocks from %s to %s",
+        "pdf_extract complete: pages=%s, dimensions=%sx%s, refined blocks from %s to %s",
         len(doc),
+        sw,
+        sh,
         len(blocks),
         len(clustered),
     )
-    return {"blocks": clustered, "page_count": len(doc)}
+    return {"blocks": clustered, "page_count": len(doc), "slide_width": sw, "slide_height": sh}

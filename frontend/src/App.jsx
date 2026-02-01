@@ -28,9 +28,18 @@ function App() {
   const { t } = useTranslation();
 
   // --- Stores ---
-  const fileStore = useFileStore();
-  const settings = useSettingsStore();
-  const ui = useUIStore();
+  // Use selective subscription to avoid full app re-renders on every block change
+  const file = useFileStore(state => state.file);
+  const blocks = useFileStore(state => state.blocks);
+  const updateBlock = useFileStore(state => state.updateBlock);
+  const selectBlock = useFileStore(state => state.selectBlock);
+  const setFile = useFileStore(state => state.setFile);
+  const setBlocks = useFileStore(state => state.setBlocks);
+  const selectAllBlocks = useFileStore(state => state.selectAllBlocks);
+  const batchReplace = useFileStore(state => state.batchReplace);
+
+  const settings = useSettingsStore(); // Settings don't change often, keep for now
+  const ui = useUIStore(); // UI state changes often but usually isolated
 
   const leftPanelRef = useRef(null);
   const editorRefs = useRef({});
@@ -40,9 +49,9 @@ function App() {
   const processor = useDocumentProcessor();
 
 
-  usePanelResize(leftPanelRef, fileStore.blocks.length);
+  usePanelResize(leftPanelRef, blocks.length);
 
-  const filteredBlocks = useBlockFilter(fileStore.blocks, ui.filterType, ui.filterSlide, ui.filterText);
+  const filteredBlocks = useBlockFilter(blocks, ui.filterType, ui.filterSlide, ui.filterText);
 
   const applyDetectedLanguages = (summary) => {
     const primary = summary?.primary || "";
@@ -54,30 +63,44 @@ function App() {
 
   // --- Initial Extract Effect ---
   useEffect(() => {
-    if (!fileStore.file) return;
+    if (!file) return;
     processor.handleExtract().then(applyDetectedLanguages);
-  }, [fileStore.file]);
+  }, [file]);
 
   const handleBlockChange = (uid, value) => {
-    fileStore.updateBlock(uid, { translated_text: value });
+    // === 自動學習：捕捉用戶修正行為 ===
+    const block = blocks.find(b => b._uid === uid || b.client_id === uid);
+    if (block && block.translated_text && value && block.translated_text !== value) {
+      // 簡易啟發式偵測：如果長度變化不大，可能是術語修正
+      if (Math.abs(block.translated_text.length - value.length) < 10) {
+        // 延遲紀錄，避免頻繁打字觸發 (此處由 debounce 邏輯處理或簡單包裝)
+        tm.recordFeedback({
+          source: block.source_text,
+          target: value,
+          sourceLang: ui.sourceLang,
+          targetLang: ui.targetLang
+        });
+      }
+    }
+    updateBlock(uid, { translated_text: value });
   };
 
   const handleBlockSelect = (uid, checked) => {
-    fileStore.selectBlock(uid, checked);
+    selectBlock(uid, checked);
   };
 
   const handleOutputModeChange = (uid, value) => {
-    fileStore.updateBlock(uid, { output_mode: value });
+    updateBlock(uid, { output_mode: value });
   };
 
   // Robust stepper logic using Enum
   const isExportFinished = ui.appStatus === APP_STATUS.EXPORT_COMPLETED || ui.appStatus === APP_STATUS.EXPORTING;
-  const isTranslatingOrDone = fileStore.blocks.some(b => b.translated_text) || ui.appStatus === APP_STATUS.TRANSLATING || ui.appStatus === APP_STATUS.TRANSLATION_COMPLETED;
+  const isTranslatingOrDone = blocks.some(b => b.translated_text) || ui.appStatus === APP_STATUS.TRANSLATING || ui.appStatus === APP_STATUS.TRANSLATION_COMPLETED;
 
   let currentStep = 1;
   if (isExportFinished) currentStep = 4;
   else if (isTranslatingOrDone) currentStep = 3;
-  else if (fileStore.blocks.length > 0) currentStep = 2;
+  else if (blocks.length > 0) currentStep = 2;
 
   const steps = [
     { id: 1, label: t("nav.step1") },
@@ -110,7 +133,7 @@ function App() {
 
       <main className="main-grid">
         <Sidebar
-          file={fileStore.file} setFile={fileStore.setFile}
+          file={file} setFile={setFile}
           mode={ui.mode} setMode={ui.setMode}
           bilingualLayout={ui.bilingualLayout} setBilingualLayout={ui.setBilingualLayout}
           sourceLang={ui.sourceLang} setSourceLang={ui.setSourceLang} setSourceLocked={ui.setSourceLocked}
@@ -121,7 +144,7 @@ function App() {
           busy={ui.busy}
           onExtract={processor.handleExtract}
           onExtractGlossary={() => tm.handleExtractGlossary({
-            blocks: fileStore.blocks,
+            blocks: blocks,
             sourceLang: ui.sourceLang,
             targetLang: ui.targetLang,
             llmProvider: settings.llmProvider,
@@ -133,9 +156,9 @@ function App() {
           })}
           onTranslate={processor.handleTranslate}
           onApply={processor.handleApply}
-          canApply={fileStore.file && fileStore.blocks.length > 0 && !ui.busy}
-          blockCount={fileStore.blocks.length}
-          selectedCount={fileStore.blocks.filter(b => b.selected !== false).length}
+          canApply={file && blocks.length > 0 && !ui.busy}
+          blockCount={blocks.length}
+          selectedCount={blocks.filter(b => b.selected !== false).length}
           status={ui.status}
           appStatus={ui.appStatus}
           sidebarRef={leftPanelRef}
@@ -143,23 +166,27 @@ function App() {
           llmTone={settings.ai.tone} setLlmTone={(v) => settings.setAiOption("tone", v)}
           useVisionContext={settings.ai.useVision} setUseVisionContext={(v) => settings.setAiOption("useVision", v)}
           useSmartLayout={settings.ai.useSmartLayout} setUseSmartLayout={(v) => settings.setAiOption("useSmartLayout", v)}
-          blocks={fileStore.blocks}
+          blocks={blocks}
         />
 
         <EditorPanel
-          blockCount={fileStore.blocks.length}
+          blocks={blocks}
+          blockCount={blocks.length}
           filteredBlocks={filteredBlocks}
           filterText={ui.filterText} setFilterText={ui.setFilterText}
           filterType={ui.filterType} setFilterType={ui.setFilterType}
           filterSlide={ui.filterSlide} setFilterSlide={ui.setFilterSlide}
-          onSelectAll={() => fileStore.selectAllBlocks(true)}
-          onClearSelection={() => fileStore.selectAllBlocks(false)}
+          onSelectAll={(val) => {
+            if (val === "EXTRACT") processor.handleExtract(true);
+            else selectAllBlocks(true);
+          }}
+          onClearSelection={() => selectAllBlocks(false)}
           onBlockSelect={handleBlockSelect}
           onBlockChange={handleBlockChange}
           onOutputModeChange={handleOutputModeChange}
           onAddGlossary={tm.upsertGlossary}
           onAddMemory={tm.upsertMemory}
-          onBatchReplace={fileStore.batchReplace}
+          onBatchReplace={batchReplace}
           slideDimensions={ui.slideDimensions}
           mode={ui.mode}
 
@@ -212,7 +239,7 @@ function App() {
         useSmartLayout={settings.ai.useSmartLayout} setUseSmartLayout={(v) => settings.setAiOption("useSmartLayout", v)}
 
         onExtractGlossary={() => tm.handleExtractGlossary({
-          blocks: fileStore.blocks,
+          blocks: blocks,
           sourceLang: ui.sourceLang,
           targetLang: ui.targetLang,
           llmProvider: settings.llmProvider,
@@ -254,9 +281,9 @@ function App() {
         onClearMemory={tm.clearMemory}
         onConvertToGlossary={tm.convertMemoryToGlossary}
         onConvertToPreserveTerm={tm.convertGlossaryToPreserveTerm}
-        onLoadFile={(file) => {
-          fileStore.setFile(file);
-          fileStore.setBlocks([]);
+        onLoadFile={(f) => {
+          setFile(f);
+          setBlocks([]);
           ui.setAppStatus(APP_STATUS.IDLE);
           ui.setManageOpen(false); // Close modal on load
         }}

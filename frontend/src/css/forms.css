@@ -180,11 +180,11 @@
     }
 
     .readonly-box {
-        @apply min-h-16 p-3 rounded-lg bg-slate-100/50 border border-slate-200 text-slate-800 leading-snug text-sm font-medium;
+        @apply min-h-32 p-3 rounded-lg bg-slate-100/50 border border-slate-200 text-slate-800 leading-snug text-sm font-medium;
     }
 
     .textarea {
-        @apply w-full min-h-16 p-3 rounded-lg border border-slate-300 bg-white text-slate-900 leading-snug text-sm resize-y;
+        @apply w-full min-h-32 p-3 rounded-lg border border-slate-300 bg-white text-slate-900 leading-snug text-sm resize-y;
         @apply focus:outline-none focus:border-blue-600 shadow-sm;
     }
 

@@ -3,14 +3,21 @@ FROM python:3.11-slim AS base
 
 WORKDIR /app
 
-# Install only required system packages (including OCR and poppler)
+# Install only required system packages (including OCR, poppler, and LibreOffice)
 RUN apt-get update && apt-get install -y --no-install-recommends \
     build-essential \
     curl \
+    fonts-liberation \
+    fonts-noto-core \
+    fonts-noto-cjk \
     libgl1 \
     libglib2.0-0 \
     libfreetype6-dev \
     libjpeg62-turbo-dev \
+    libreoffice-calc \
+    libreoffice-impress \
+    libreoffice-draw \
+    libreoffice-script-provider-python \
     poppler-utils \
     tesseract-ocr \
     tesseract-ocr-chi-tra \

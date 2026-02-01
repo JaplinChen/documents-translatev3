@@ -5,6 +5,7 @@ from io import BytesIO
 from docx import Document
 from docx.shared import RGBColor
 
+
 def _copy_run_format(source_run, target_run):
     """Deep copy formatting from one run to another."""
     target_run.bold = source_run.bold
@@ -32,7 +33,10 @@ def _set_paragraph_text(paragraph, text, mode="replace", source_text=None):
         # Paragraph already contains source_text
         paragraph.add_run("\n")
         new_run = paragraph.add_run(text)
-        new_run.font.color.rgb = RGBColor(0x1F, 0x77, 0xB4)  # Accent color
+        try:
+            new_run.font.color.rgb = RGBColor(0x1F, 0x77, 0xB4)  # Accent color
+        except Exception:
+            pass
 
 
 def apply_translations(  # noqa: C901
@@ -50,11 +54,7 @@ def apply_translations(  # noqa: C901
 
     # Simple mapping: block_idx -> text
     # For Word, we use slide_index as paragraph/table index
-    para_map = {
-        b["slide_index"]: b
-        for b in blocks
-        if b.get("block_type") == "textbox"
-    }
+    para_map = {b["slide_index"]: b for b in blocks if b.get("block_type") == "textbox"}
     table_map = {}  # complex key: t{table_idx}_r{row_idx}_c{cell_idx}
     for b in blocks:
         if b.get("block_type") == "table_cell":

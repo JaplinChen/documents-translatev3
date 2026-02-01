@@ -1,10 +1,11 @@
 import { useTranslation } from "react-i18next";
-import { resolveOutputMode, normalizeText } from "../utils/appHelpers";
+import { memo } from "react";
+import { resolveOutputMode } from "../utils/appHelpers";
 
 /**
  * Single block card for displaying/editing translation block
  */
-export default function BlockCard({
+const BlockCard = memo(({
     block,
     index,
     mode,
@@ -17,7 +18,7 @@ export default function BlockCard({
     onEditorInput,
     onAddGlossary,
     onAddMemory
-}) {
+}) => {
     const { t } = useTranslation();
     const outputMode = resolveOutputMode(block);
     const isBilingual = mode === "bilingual" || block.mode === "bilingual";
@@ -35,12 +36,18 @@ export default function BlockCard({
                     <input type="checkbox" checked={block.selected !== false} onChange={(e) => onBlockSelect(e.target.checked)} />
                     <span>{t("components.block_card.apply")}</span>
                 </label>
-                <span>{t("components.block_card.slide")} {block.slide_index}</span>
-                <span>{t("components.block_card.shape")} {block.shape_id}</span>
-                {block.is_table && block.row_no != null && block.col_no != null && (
-                    <span className="pill">{`R${block.row_no}C${block.col_no}`}</span>
+                {block.block_type === "spreadsheet_cell" ? (
+                    <>
+                        <span>{block.sheet_name || `${t("components.block_card.slide")} ${block.slide_index}`}</span>
+                        <span className="pill font-mono">{block.cell_address}</span>
+                    </>
+                ) : (
+                    <>
+                        <span>{t("components.block_card.slide")} {block.slide_index}</span>
+                        <span>{t("components.block_card.shape")} {block.shape_id}</span>
+                        <span className="pill">{block.block_type}</span>
+                    </>
                 )}
-                <span className="pill">{block.block_type}</span>
                 {isBilingual && <span className="pill bg-indigo-100 text-indigo-700 border border-indigo-200">{t("components.block_card.bilingual")}</span>}
                 {isCorrection && <span className="pill bg-violet-100 text-violet-700 border border-violet-200">{t("components.block_card.correction")}</span>}
                 {block.isTranslating ? (
@@ -111,4 +118,6 @@ export default function BlockCard({
             </div>
         </div>
     );
-}
+});
+
+export default BlockCard;

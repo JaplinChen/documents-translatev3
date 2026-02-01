@@ -55,7 +55,7 @@ services:
       timeout: 5s
       retries: 3
       start_period: 10s
-    command: uvicorn backend.main:app --host 0.0.0.0 --port 5002 --reload
+    command: uvicorn backend.main:app --host 0.0.0.0 --port 5002 --reload --reload-exclude "data/*"
     develop:
       watch:
         - action: sync

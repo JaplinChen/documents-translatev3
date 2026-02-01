@@ -259,6 +259,23 @@ export default function ManageModal({
             : { ...draft, category_id: draft.category_id || "" };
         const originalKey = editingOriginal ? makeKey(editingOriginal) : editingKey;
         const nextKey = makeKey(payload);
+
+        // If this is a NEW entry (cloned, no editingOriginal), check for duplicates
+        if (!editingOriginal && editingKey?.startsWith("__clone__")) {
+            const items = isGlossary ? glossary : memory;
+            const exists = items.some(item => makeKey(item) === nextKey);
+            if (exists) {
+                const confirmed = window.confirm(
+                    t("manage.confirm.duplicate_source") ||
+                    "A record with the same source text already exists. Saving will overwrite it. Continue?"
+                );
+                if (!confirmed) {
+                    setSaving(false);
+                    return;
+                }
+            }
+        }
+
         if (editingOriginal && originalKey !== nextKey && editingOriginal.id) {
             const deletePayload = { id: editingOriginal.id };
             if (isGlossary) await onDeleteGlossary(deletePayload);
@@ -274,27 +291,55 @@ export default function ManageModal({
         if (isGlossary) setLastGlossaryAt(Date.now());
         else setLastMemoryAt(Date.now());
 
-        const payload = proto ? {
-            source_lang: proto.source_lang,
-            target_lang: proto.target_lang,
-            source_text: proto.source_text,
-            target_text: proto.target_text,
-            priority: proto.priority ?? 10,
-            category_id: proto.category_id || ""
-        } : {
+        // If proto is provided (cloning from existing row), enter EDIT MODE
+        // with all data copied. By not setting editingOriginal, save will create new record.
+        if (proto) {
+            const clonedEntry = {
+                // No id - this is a NEW record
+                source_lang: proto.source_lang,
+                target_lang: proto.target_lang,
+                source_text: proto.source_text,  // Keep source_text
+                target_text: proto.target_text,
+                priority: proto.priority ?? 10,
+                category_id: proto.category_id || ""
+            };
+            // Enter edit mode for this cloned entry (use a special key to identify as new)
+            const cloneKey = `__clone__${Date.now()}`;
+            setEditingKey(cloneKey);
+            setEditingOriginal(null);  // No original = will create new, not update
+            setDraft(clonedEntry);
+            return;
+        }
+
+        // Direct creation with newEntry values
+        const payload = {
             source_lang: newEntry.source_lang || defaultSourceLang || "vi",
             target_lang: newEntry.target_lang || defaultTargetLang || "zh-TW",
-            source_text: "",
-            target_text: "",
-            priority: 10,
-            category_id: ""
+            source_text: newEntry.source_text || "",
+            target_text: newEntry.target_text || "",
+            priority: newEntry.priority ?? 10,
+            category_id: newEntry.category_id || ""
         };
+
+        if (!payload.source_text.trim()) {
+            alert(t("manage.alerts.source_text_required") || "Please enter source text");
+            return;
+        }
 
         if (isGlossary) {
             await onUpsertGlossary(payload);
         } else {
             await onUpsertMemory(payload);
         }
+        // Reset the new entry form after successful creation
+        setNewEntry({
+            source_lang: defaultSourceLang || "vi",
+            target_lang: defaultTargetLang || "zh-TW",
+            source_text: "",
+            target_text: "",
+            priority: 10,
+            category_id: ""
+        });
     };
 
     const handleBatchDelete = async () => {
@@ -600,15 +645,15 @@ function TMCategoriesTab({ categories, onRefresh }) {
 
             <div className="manage-scroll-area flex-1">
                 <div className={`data-table ${compactTable ? "is-compact text-xs" : "text-sm"}`}>
-                    <div className="unified-data-row data-header" style={{ gridTemplateColumns: "1fr 120px 150px 80px 100px" }}>
+                    <div className="unified-data-row data-header" style={{ gridTemplateColumns: "1fr 120px 180px 80px 100px" }}>
                         <div className="data-cell">{t("manage.categories.name")}</div>
                         <div className="data-cell">{t("manage.categories.preview")}</div>
-                        <div className="data-cell">{t("manage.categories.usage")}</div>
+                        <div className="data-cell">{t("manage.categories.usage")} (G/TM/U)</div>
                         <div className="data-cell">{t("manage.categories.sort_order")}</div>
                         <div className="data-cell data-actions">{t("manage.categories.actions")}</div>
                     </div>
                     {categories.map(cat => (
-                        <div className="unified-data-row" key={cat.id} style={{ gridTemplateColumns: "1fr 120px 150px 80px 100px" }}>
+                        <div className="unified-data-row" key={cat.id} style={{ gridTemplateColumns: "1fr 120px 180px 80px 100px" }}>
                             <div className="data-cell">
                                 {editingId === cat.id ? (
                                     <input
@@ -623,10 +668,12 @@ function TMCategoriesTab({ categories, onRefresh }) {
                             <div className="data-cell flex items-center">
                                 <CategoryPill name={cat.name} />
                             </div>
-                            <div className="data-cell text-xs text-slate-500">
-                                <span className="text-blue-600 font-bold">{cat.glossary_count || 0}</span>
-                                <span className="mx-1">/</span>
-                                <span className="text-emerald-600 font-bold">{cat.tm_count || 0}</span>
+                            <div className="data-cell text-[10px] text-slate-500 flex gap-1">
+                                <span className="text-blue-600 font-bold" title="Glossary">{cat.glossary_count || 0}</span>
+                                <span>/</span>
+                                <span className="text-emerald-600 font-bold" title="TM">{cat.tm_count || 0}</span>
+                                <span>/</span>
+                                <span className="text-amber-600 font-bold" title="Unified Terms">{cat.unified_term_count || 0}</span>
                             </div>
                             <div className="data-cell text-center">
                                 {editingId === cat.id ? (

@@ -30,6 +30,7 @@
     .data-header .data-cell {
         @apply py-3 whitespace-nowrap;
         position: relative;
+        border-right: 1px solid var(--border-soft);
     }
 
     .table-header-sticky {
@@ -81,9 +82,14 @@
     }
 
     .data-cell {
-        @apply px-4 py-3 flex items-center text-sm text-slate-700 overflow-hidden min-h-[52px] leading-snug;
+        @apply px-4 py-2.5 flex items-center text-sm text-slate-700 overflow-hidden min-h-[48px] leading-snug;
         box-sizing: border-box;
         word-break: break-word;
+        border-right: 1px solid var(--border-soft);
+    }
+
+    .data-cell:last-child {
+        border-right: none;
     }
 
     /* Tooltip / Action Buttons */
@@ -149,7 +155,7 @@
     }
 
     .data-table.is-compact .data-cell {
-        @apply py-2 min-h-[40px] text-xs;
+        @apply py-1 min-h-[32px] text-xs;
     }
 
     .data-table.is-compact .data-header .data-cell {
@@ -189,5 +195,26 @@
     .create-fields .select-input,
     .create-fields .text-input {
         @apply w-full h-9 py-1 px-2 text-sm;
+    }
+
+    /* Resizer */
+    .col-resizer {
+        position: absolute;
+        right: 0;
+        top: 0;
+        bottom: 0;
+        width: 10px;
+        cursor: col-resize;
+        z-index: 20;
+        background-color: transparent;
+        transition: background-color 0.2s;
+    }
+
+    .col-resizer:hover {
+        background-color: rgba(59, 130, 246, 0.3);
+    }
+
+    .col-resizer:active {
+        background-color: rgba(37, 99, 235, 0.5);
     }
 }

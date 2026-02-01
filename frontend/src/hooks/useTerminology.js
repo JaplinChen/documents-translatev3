@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useTranslation } from "react-i18next";
 import { API_BASE } from "../constants";
 import { useUIStore } from "../store/useUIStore";
@@ -22,6 +22,7 @@ export function useTerminology() {
         setLastGlossaryAt, setLastMemoryAt, setLastPreserveAt
     } = useUIStore();
     const { useTm, setUseTm } = useSettingsStore();
+    const feedbackTimerRef = useRef(null);
 
     // --- Initial Load ---
     useEffect(() => {
@@ -74,6 +75,7 @@ export function useTerminology() {
         console.log("Upserting glossary with input:", blockOrEntry);
         setLastGlossaryAt(Date.now());
         // Ensure we prioritize data directly from the block to avoid stale context issues
+        const rawCategoryId = blockOrEntry.category_id;
         const entry = {
             id: blockOrEntry.id, // Support updating existing records
             source_lang: blockOrEntry.source_lang || sourceLang || "vi",
@@ -81,7 +83,9 @@ export function useTerminology() {
             source_text: (blockOrEntry.source_text || blockOrEntry.text || "").trim(),
             target_text: (blockOrEntry.target_text || blockOrEntry.translated_text || "").trim(),
             priority: blockOrEntry.priority != null ? Number(blockOrEntry.priority) : 0,
-            category_id: blockOrEntry.category_id
+            // Fix: Convert empty string to null for category_id
+            category_id: rawCategoryId === "" || rawCategoryId == null ? null : Number(rawCategoryId),
+            filename: blockOrEntry.filename || useFileStore.getState().file?.name || ""
         };
 
         if (!entry.source_text) {
@@ -120,12 +124,15 @@ export function useTerminology() {
     const upsertMemory = async (blockOrEntry) => {
         console.log("Upserting memory with input:", blockOrEntry);
         setLastMemoryAt(Date.now());
+        const rawCategoryId = blockOrEntry.category_id;
         const entry = {
+            id: blockOrEntry.id, // Support explicit update by ID
             source_lang: blockOrEntry.source_lang || sourceLang || "vi",
             target_lang: blockOrEntry.target_lang || targetLang || "zh-TW",
             source_text: (blockOrEntry.source_text || blockOrEntry.text || "").trim(),
             target_text: (blockOrEntry.target_text || blockOrEntry.translated_text || "").trim(),
-            category_id: blockOrEntry.category_id
+            // Fix: Convert empty string to null for category_id
+            category_id: rawCategoryId === "" || rawCategoryId == null ? null : Number(rawCategoryId)
         };
 
         if (!entry.source_text) {
@@ -250,68 +257,143 @@ export function useTerminology() {
         setLastPreserveAt(Date.now());
         setStatus(t("manage.glossary_extract.processing"));
         try {
-            const formData = new FormData();
-            formData.append("blocks", JSON.stringify(blocks));
-            formData.append("target_language", targetLang);
-            formData.append("provider", llmProvider);
-            if (llmModel) formData.append("model", llmModel);
-            if (llmApiKey) formData.append("api_key", llmApiKey);
-            if (llmBaseUrl) formData.append("base_url", llmBaseUrl);
+            const payload = {
+                blocks,
+                target_language: targetLang,
+                provider: llmProvider,
+                model: llmModel,
+                api_key: llmApiKey,
+                base_url: llmBaseUrl
+            };
 
-            const file = useFileStore.getState().file;
-            const fileType = file?.name?.split('.').pop().toLowerCase() === 'docx' ? 'docx' : 'pptx';
-
-            const response = await fetch(`${API_BASE}/api/${fileType}/extract-glossary`, {
+            const response = await fetch(`${API_BASE}/api/tm/extract-glossary-stream`, {
                 method: "POST",
-                body: formData
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(payload)
             });
 
-            if (!response.ok) throw new Error(t("manage.glossary_extract.failed"));
-            const data = await response.json();
-            if (data.error) {
-                setStatus(t("manage.glossary_extract.failed_detail", { message: data.error }));
-                return;
+            if (!response.ok) {
+                const errData = await response.json().catch(() => ({}));
+                throw new Error(errData.detail || t("manage.glossary_extract.failed"));
             }
-            const rawTerms = data.terms || [];
+
+            // Read the stream
+            const reader = response.body.getReader();
+            const decoder = new TextDecoder();
+            let rawTerms = [];
+
+            while (true) {
+                const { done, value } = await reader.read();
+                if (done) break;
+
+                const chunk = decoder.decode(value, { stream: true });
+                const lines = chunk.split("\n");
+
+                let currentEvent = null;
+                for (const line of lines) {
+                    if (line.startsWith("event: ")) {
+                        currentEvent = line.replace("event: ", "").trim();
+                    } else if (line.startsWith("data: ")) {
+                        const dataStr = line.replace("data: ", "").trim();
+                        try {
+                            const data = JSON.parse(dataStr);
+                            if (currentEvent === "progress") {
+                                setStatus(`${data.message} (${data.percent}%)`);
+                            } else if (currentEvent === "complete") {
+                                rawTerms = data.terms || [];
+                                window._lastExtractionDomain = data.domain || "general";
+                            } else if (currentEvent === "error") {
+                                throw new Error(data.detail || t("manage.glossary_extract.failed"));
+                            }
+                        } catch (e) {
+                            console.error("Failed to parse SSE data:", dataStr, e);
+                        }
+                    }
+                }
+            }
 
             if (rawTerms.length === 0) {
                 setStatus(t("manage.glossary_extract.empty"));
             } else {
                 // Client-side de-duplication based on source text
                 const uniqueTermsMap = new Map();
-                rawTerms.forEach(t => {
-                    const key = t.source.toLowerCase().trim();
+                rawTerms.forEach(term => {
+                    if (!term.source) return;
+                    const key = term.source.toLowerCase().trim();
                     if (!uniqueTermsMap.has(key)) {
+                        // Map category to display name
+                        const categoryMap = {
+                            product: "產品",
+                            brand: "品牌",
+                            person: "人名",
+                            place: "地名",
+                            technical: "技術",
+                            abbreviation: "縮寫",
+                            other: "其他"
+                        };
+                        const categoryName = categoryMap[term.category] || categoryMap.other;
+
                         uniqueTermsMap.set(key, {
                             source_lang: sourceLang || "auto",
                             target_lang: targetLang,
-                            source_text: t.source,
-                            target_text: t.target,
-                            priority: 5
+                            source_text: term.source,
+                            target_text: term.target || "",
+                            category_name: categoryName,
+                            confidence: term.confidence || 5,
+                            priority: term.confidence || 5,  // Use confidence as priority
+                            reason: term.reason || ""
                         });
                     }
                 });
-
                 const termsToUpsert = Array.from(uniqueTermsMap.values());
-                const payload = {
+
+                // Sort by confidence/priority descending
+                termsToUpsert.sort((a, b) => (b.confidence || 0) - (a.confidence || 0));
+
+                setStatus(t("status.saving"));
+                const currentFilename = useFileStore.getState().file?.name || "";
+
+                // Use a small delay to show the final result status
+                let finalMsg = t("manage.glossary_extract.success", { count: termsToUpsert.length }) + " " +
+                    t("manage.glossary_extract.learning_hint", { domain: window._lastExtractionDomain || "general" });
+                setStatus(finalMsg);
+
+                // Save to preserve terms (existing flow)
+                const preservePayload = {
                     terms: termsToUpsert.map((term) => ({
                         term: term.source_text,
-                        category: PRESERVE_CATEGORY_TRANSLATION,
+                        category: term.category_name || PRESERVE_CATEGORY_TRANSLATION,
                         case_sensitive: true
                     }))
                 };
-                const resp = await fetch(`${API_BASE}/api/preserve-terms/batch`, {
+                await fetch(`${API_BASE}/api/preserve-terms/batch`, {
                     method: "POST",
                     headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify(payload)
+                    body: JSON.stringify(preservePayload)
                 });
-                if (!resp.ok) throw new Error(t("manage.glossary_extract.failed"));
-                const result = await resp.json();
-                const createdCount = result.created ?? termsToUpsert.length;
 
-                setStatus(t("manage.glossary_extract.success", { count: createdCount }));
+                // ALSO Save to unified terms database (new requirement for "Translation Data")
+                for (const term of termsToUpsert) {
+                    await fetch(`${API_BASE}/api/terms/upsert`, {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({
+                            term: term.source_text,
+                            category_name: term.category_name || PRESERVE_CATEGORY_TRANSLATION,
+                            source: "terminology",
+                            filename: currentFilename,
+                            priority: term.priority,
+                            note: term.reason,
+                            languages: [{ lang_code: term.target_lang, value: term.target_text }]
+                        })
+                    });
+                }
+
+                finalMsg = t("manage.glossary_extract.success", { count: termsToUpsert.length }) + " " +
+                    t("manage.glossary_extract.learning_hint", { domain: rawTerms[0]?.domain || "general" });
+                setStatus(finalMsg);
                 setManageOpen(true);
-                setManageTab("preserve");
+                setManageTab("terms"); // Open the unified view
             }
         } catch (error) {
             console.error("Failed to extract glossary:", error);
@@ -329,6 +411,30 @@ export function useTerminology() {
     const loadMoreMemory = async () => {
         const next = tmLimit + 200;
         await loadMemory(next);
+    };
+
+    const recordFeedback = async ({ source, target, sourceLang, targetLang }) => {
+        if (!source || !target) return;
+        if (feedbackTimerRef.current) clearTimeout(feedbackTimerRef.current);
+        feedbackTimerRef.current = setTimeout(async () => {
+            try {
+                const response = await fetch(`${API_BASE}/api/tm/feedback`, {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({
+                        source,
+                        target,
+                        source_lang: sourceLang,
+                        target_lang: targetLang
+                    })
+                });
+                if (!response.ok) {
+                    console.warn("Feedback recording skipped or failed:", response.status);
+                }
+            } catch (error) {
+                console.error("Failed to record feedback:", error);
+            }
+        }, 2000); // 2 秒防抖
     };
 
     return {
@@ -349,6 +455,7 @@ export function useTerminology() {
         convertMemoryToGlossary,
         convertGlossaryToPreserveTerm,
         handleSeedTm,
-        handleExtractGlossary
+        handleExtractGlossary,
+        recordFeedback
     };
 }

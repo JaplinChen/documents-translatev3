@@ -12,6 +12,7 @@ from backend.services.font_manager import contains_cjk
 from .text_styles import apply_paragraph_style, capture_full_frame_styles
 from .text_utils import CJK_SPACE_PATTERN, sanitize_xml_text
 
+
 def apply_shape_highlight(
     shape: Any,
     fill_color: RGBColor | None = None,
@@ -55,21 +56,11 @@ def set_text_preserve_format(
         text_frame.clear()
         lines = [line for line in new_text.split("\n") if line.strip()]
         for index, line in enumerate(lines):
-            paragraph = (
-                text_frame.paragraphs[0]
-                if index == 0
-                else text_frame.add_paragraph()
-            )
+            paragraph = text_frame.paragraphs[0] if index == 0 else text_frame.add_paragraph()
             paragraph.text = line
-            style_idx = (
-                min(index, len(content_styles) - 1)
-                if content_styles
-                else -1
-            )
+            style_idx = min(index, len(content_styles) - 1) if content_styles else -1
             if style_idx >= 0:
-                apply_paragraph_style(
-                    paragraph, content_styles[style_idx], scale=scale
-                )
+                apply_paragraph_style(paragraph, content_styles[style_idx], scale=scale)
     except Exception:
         try:
             if auto_size:
@@ -88,15 +79,10 @@ def apply_cjk_line_breaking(text: str) -> str:
 
 def build_corrected_lines(source_text: str, translated_text: str) -> list[str]:
     non_cjk_lines = [
-        line
-        for line in source_text.split("\n")
-        if line.strip() and not contains_cjk(line)
+        line for line in source_text.split("\n") if line.strip() and not contains_cjk(line)
     ]
     translated_lines = (
-        [
-            apply_cjk_line_breaking(line)
-            for line in translated_text.split("\n")
-        ]
+        [apply_cjk_line_breaking(line) for line in translated_text.split("\n")]
         if translated_text
         else []
     )
@@ -126,31 +112,21 @@ def set_bilingual_text(
         if auto_size:
             text_frame.auto_size = MSO_AUTO_SIZE.TEXT_TO_FIT_SHAPE
         text_frame.clear()
-        source_lines = [
-            line for line in source_text.strip().split("\n") if line.strip()
-        ]
+        source_lines = [line for line in source_text.strip().split("\n") if line.strip()]
         for index, line in enumerate(source_lines):
-            paragraph = (
-                text_frame.paragraphs[0]
-                if index == 0
-                else text_frame.add_paragraph()
-            )
+            paragraph = text_frame.paragraphs[0] if index == 0 else text_frame.add_paragraph()
             paragraph.text = line
-            style_idx = (
-                min(index, len(content_styles) - 1)
-                if content_styles
-                else -1
-            )
+            style_idx = min(index, len(content_styles) - 1) if content_styles else -1
             if style_idx >= 0:
-                apply_paragraph_style(
-                    paragraph, content_styles[style_idx], scale=scale
-                )
+                apply_paragraph_style(paragraph, content_styles[style_idx], scale=scale)
         if source_lines and translated_text.strip():
             sep = text_frame.add_paragraph()
             sep.text = "─" * 5
             sz = (
                 para_styles[0]["font_obj"].size
-                if para_styles and para_styles[0].get("font_obj")
+                if para_styles
+                and para_styles[0].get("font_obj")
+                and para_styles[0]["font_obj"].size
                 else 120000
             )
             sep.font.size = int(sz * 0.3)
@@ -167,11 +143,7 @@ def set_bilingual_text(
                 else text_frame.add_paragraph()
             )
             paragraph.text = line
-            style_idx = (
-                min(index, len(content_styles) - 1)
-                if content_styles
-                else -1
-            )
+            style_idx = min(index, len(content_styles) - 1) if content_styles else -1
             if style_idx >= 0:
                 apply_paragraph_style(
                     paragraph,
@@ -195,17 +167,9 @@ def set_corrected_text(
         para_styles = capture_full_frame_styles(text_frame)
         text_frame.clear()
         for index, line in enumerate(lines):
-            paragraph = (
-                text_frame.paragraphs[0]
-                if index == 0
-                else text_frame.add_paragraph()
-            )
+            paragraph = text_frame.paragraphs[0] if index == 0 else text_frame.add_paragraph()
             paragraph.text = line
-            style_idx = (
-                min(index, len(para_styles) - 1)
-                if para_styles
-                else -1
-            )
+            style_idx = min(index, len(para_styles) - 1) if para_styles else -1
             if style_idx >= 0:
                 apply_paragraph_style(paragraph, para_styles[style_idx])
             if color and paragraph.runs:

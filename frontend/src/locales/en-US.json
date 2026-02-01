@@ -41,7 +41,10 @@
         "extract": {
             "button": "📊 Extract Terms",
             "hint": "Analyze content to set terms for consistency",
-            "summary": "✓ Parsed {{count}} blocks"
+            "summary": "✓ Parsed {{count}} blocks",
+            "refresh_button": "Re-extract",
+            "refresh_hint": "Force skip cache and re-scan document",
+            "confirm_refresh": "Are you sure you want to re-extract? This will skip cache and re-scan the document (PDF will re-run OCR)."
         },
         "translate": {
             "preparing": "Preparing...",
@@ -498,7 +501,8 @@
             "failed": "Extraction failed",
             "failed_detail": "Extraction failed: {{message}}",
             "empty": "No obvious terms detected",
-            "success": "Extraction succeeded, added {{count}} terms"
+            "success": "Extraction succeeded, added {{count}} terms",
+            "learning_hint": "System recognized domain: {{domain}}, and applied your learned preferences."
         }
     },
     "common": {

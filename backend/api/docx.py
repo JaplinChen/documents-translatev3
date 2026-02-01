@@ -13,12 +13,14 @@ import os
 import tempfile
 from pathlib import Path
 
-from fastapi import APIRouter, File, Form, HTTPException, UploadFile
+from fastapi import APIRouter, File, Form, HTTPException, UploadFile, Body
 from fastapi.responses import FileResponse, StreamingResponse
 
 from backend.api.error_handler import api_error_handler, validate_json_blocks
 from backend.api.pptx_history import delete_history_file, get_history_items
-from backend.api.pptx_naming import generate_semantic_filename
+from backend.api.pptx_naming import generate_semantic_filename_with_ext
+from backend.api.pptx_translate import TranslateRequest
+from backend.api.pptx_utils import validate_file_type
 from backend.contracts import coerce_blocks
 from backend.services.correction_mode import (
     apply_correction_mode,
@@ -30,6 +32,7 @@ from backend.services.docx.apply import (
     apply_translations,
 )
 from backend.services.docx.extract import extract_blocks as extract_docx_blocks
+from backend.services.document_cache import doc_cache
 from backend.services.language_detect import (
     detect_document_languages,
     resolve_source_language,
@@ -43,19 +46,48 @@ router = APIRouter(prefix="/api/docx")
 
 @router.post("/extract")
 @api_error_handler(validate_file=False, read_error_msg="DOCX 檔案無效")
-async def docx_extract(file: UploadFile = File(...)) -> dict:
+async def docx_extract(
+    file: UploadFile = File(...),
+    refresh: bool = False,
+) -> dict:
     if not file.filename.lower().endswith(".docx"):
         raise HTTPException(status_code=400, detail="只支援 .docx 檔案")
 
-    docx_bytes = await file.read()  # File read handled by decorator
+    docx_bytes = await file.read()
+    file_hash = doc_cache.get_hash(docx_bytes)
+
+    if not refresh:
+        cached = doc_cache.get(file_hash)
+        if cached:
+            blocks = cached["blocks"]
+            meta = cached["metadata"]
+            return {
+                "blocks": blocks,
+                "language_summary": detect_document_languages(blocks),
+                "slide_width": meta.get("slide_width"),
+                "slide_height": meta.get("slide_height"),
+                "cache_hit": True,
+            }
 
     data = extract_docx_blocks(docx_bytes)
     blocks = data["blocks"]
+    sw = data["slide_width"]
+    sh = data["slide_height"]
+
+    # 更新快取
+    doc_cache.set(
+        file_hash,
+        blocks,
+        {"slide_width": sw, "slide_height": sh},
+        "docx",
+    )
+
     return {
         "blocks": blocks,
         "language_summary": detect_document_languages(blocks),
-        "slide_width": data["slide_width"],
-        "slide_height": data["slide_height"],
+        "slide_width": sw,
+        "slide_height": sh,
+        "cache_hit": False,
     }
 
 
@@ -126,23 +158,24 @@ async def docx_apply(
 async def docx_download(filename: str):
     import urllib.parse
 
-    if "%" in filename:
-        filename = urllib.parse.unquote(filename)
+    # Resolve the path relative to exports
     file_path = Path("data/exports") / filename
     if not file_path.exists():
-        raise HTTPException(status_code=404, detail="檔案不存在")
+        # Fallback to unquoted name
+        alt_path = Path("data/exports") / urllib.parse.unquote(filename)
+        if alt_path.exists():
+            file_path = alt_path
+        else:
+            raise HTTPException(status_code=404, detail="檔案不存在")
 
-    ascii_name = "".join(c if ord(c) < 128 else "_" for c in filename)
-    safe_name = urllib.parse.quote(filename, safe="")
-    content_disposition = (
-        f"attachment; filename=\"{ascii_name}\"; filename*=UTF-8''{safe_name}"
-    )
+    actual_filename = file_path.name
+    ascii_name = "".join(c if ord(c) < 128 else "_" for c in actual_filename)
+    safe_name = urllib.parse.quote(actual_filename, safe="")
+    content_disposition = f"attachment; filename=\"{ascii_name}\"; filename*=UTF-8''{safe_name}"
+
     return FileResponse(
         path=file_path,
-        media_type=(
-            "application/vnd.openxmlformats-officedocument."
-            "wordprocessingml.document"
-        ),
+        media_type=("application/vnd.openxmlformats-officedocument.wordprocessingml.document"),
         headers={
             "Content-Disposition": content_disposition,
             "Access-Control-Expose-Headers": "Content-Disposition",
@@ -169,26 +202,31 @@ async def docx_delete_history(filename: str):
 
 @router.post("/translate-stream")
 async def docx_translate_stream(  # noqa: C901
-    blocks: str = Form(...),
-    source_language: str | None = Form(None),
-    target_language: str | None = Form(None),
-    mode: str = Form("bilingual"),
-    use_tm: bool = Form(False),
-    provider: str | None = Form(None),
-    model: str | None = Form(None),
-    api_key: str | None = Form(None),
-    base_url: str | None = Form(None),
-    ollama_fast_mode: bool = Form(False),
-    tone: str | None = Form(None),
-    vision_context: bool = Form(True),
-    smart_layout: bool = Form(True),
-    refresh: bool = Form(False),
-    completed_ids: str | None = Form(None),
-    similarity_threshold: float = Form(0.75),
+    request: TranslateRequest,
 ) -> StreamingResponse:
     """Translate text blocks and stream progress via SSE."""
+    blocks = request.blocks
+    source_language = request.source_language
+    target_language = request.target_language
+    mode = request.mode
+    use_tm = request.use_tm
+    provider = request.provider
+    model = request.model
+    api_key = request.api_key
+    base_url = request.base_url
+    ollama_fast_mode = request.ollama_fast_mode
+    tone = request.tone
+    vision_context = request.vision_context
+    smart_layout = request.smart_layout
+    refresh = request.refresh
+    completed_ids = request.completed_ids
+    similarity_threshold = request.similarity_threshold
+
     try:
-        blocks_data = coerce_blocks(json.loads(blocks))
+        if isinstance(blocks, str):
+            blocks_data = coerce_blocks(json.loads(blocks))
+        else:
+            blocks_data = coerce_blocks(blocks)
     except Exception as exc:
         raise HTTPException(status_code=400, detail="blocks 資料無效") from exc
 
@@ -205,7 +243,10 @@ async def docx_translate_stream(  # noqa: C901
     completed_id_set = set()
     if completed_ids:
         try:
-            completed_id_set = set(json.loads(completed_ids))
+            if isinstance(completed_ids, str):
+                completed_id_set = set(json.loads(completed_ids))
+            elif isinstance(completed_ids, list):
+                completed_id_set = set(completed_ids)
         except (json.JSONDecodeError, TypeError):
             pass
 
@@ -226,9 +267,7 @@ async def docx_translate_stream(  # noqa: C901
         queue = asyncio.Queue()
 
         async def progress_cb(progress_data):
-            await queue.put(
-                {"event": "progress", "data": json.dumps(progress_data)}
-            )
+            await queue.put({"event": "progress", "data": json.dumps(progress_data)})
 
         try:
             # yield initial progress
@@ -239,10 +278,7 @@ async def docx_translate_stream(  # noqa: C901
                 "total_pending": len(blocks_data),
                 "timestamp": 0,
             }
-            yield (
-                "event: progress\n"
-                f"data: {json.dumps(initial_payload)}\n\n"
-            )
+            yield (f"event: progress\ndata: {json.dumps(initial_payload)}\n\n")
 
             task = asyncio.create_task(
                 translate_blocks_async(
@@ -275,25 +311,18 @@ async def docx_translate_stream(  # noqa: C901
 
                 if get_queue_task in done:
                     event = get_queue_task.result()
-                    yield (
-                        f"event: {event['event']}\n"
-                        f"data: {event['data']}\n\n"
-                    )
+                    yield (f"event: {event['event']}\ndata: {event['data']}\n\n")
                 else:
                     get_queue_task.cancel()
 
                 if task in done:
                     while not queue.empty():
                         event = queue.get_nowait()
-                        yield (
-                            f"event: {event['event']}\n"
-                            f"data: {event['data']}\n\n"
-                        )
+                        yield (f"event: {event['event']}\ndata: {event['data']}\n\n")
                     result = await task
                     if mode == "correction":
                         translated_texts = [
-                            b.get("translated_text", "")
-                            for b in result.get("blocks", [])
+                            b.get("translated_text", "") for b in result.get("blocks", [])
                         ]
                         result["blocks"] = apply_correction_mode(
                             effective_blocks,

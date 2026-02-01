@@ -18,6 +18,7 @@ from backend.services.export_formats import (
     export_to_xlsx,
     get_export_formats,
 )
+from backend.api.pptx_naming import generate_semantic_filename_with_ext
 from backend.services.term_suggester import suggest_terms_for_blocks
 
 router = APIRouter(prefix="/api")
@@ -25,6 +26,9 @@ router = APIRouter(prefix="/api")
 
 class ExportRequest(BaseModel):
     blocks: list[dict[str, Any]]
+    original_filename: str | None = "translation"
+    mode: str = "translated"
+    layout: str = "none"
 
 
 class SuggestTermsRequest(BaseModel):
@@ -42,18 +46,18 @@ async def export_docx(request: ExportRequest):
     """Export translation blocks to Word document."""
     try:
         output = export_to_docx(request.blocks)
+        fname = generate_semantic_filename_with_ext(
+            request.original_filename, request.mode, request.layout, "docx"
+        )
+        safe_name = urllib.parse.quote(fname, safe="")
         return StreamingResponse(
             output,
-            media_type=(
-                "application/vnd.openxmlformats-officedocument."
-                "wordprocessingml.document"
-            ),
+            media_type=("application/vnd.openxmlformats-officedocument.wordprocessingml.document"),
             headers={
-                "Content-Disposition": "attachment; filename=translation.docx"
+                "Content-Disposition": f"attachment; filename*=UTF-8''{safe_name}",
+                "Access-Control-Expose-Headers": "Content-Disposition",
             },
         )
-    except ImportError as e:
-        raise HTTPException(status_code=500, detail=str(e)) from e
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"匯出失敗: {str(e)}") from e
 
@@ -63,18 +67,18 @@ async def export_xlsx(request: ExportRequest):
     """Export translation blocks to Excel spreadsheet."""
     try:
         output = export_to_xlsx(request.blocks)
+        fname = generate_semantic_filename_with_ext(
+            request.original_filename, request.mode, request.layout, "xlsx"
+        )
+        safe_name = urllib.parse.quote(fname, safe="")
         return StreamingResponse(
             output,
-            media_type=(
-                "application/vnd.openxmlformats-officedocument."
-                "spreadsheetml.sheet"
-            ),
+            media_type=("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"),
             headers={
-                "Content-Disposition": "attachment; filename=translation.xlsx"
+                "Content-Disposition": f"attachment; filename*=UTF-8''{safe_name}",
+                "Access-Control-Expose-Headers": "Content-Disposition",
             },
         )
-    except ImportError as e:
-        raise HTTPException(status_code=500, detail=str(e)) from e
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"匯出失敗: {str(e)}") from e
 
@@ -84,11 +88,16 @@ async def export_txt(request: ExportRequest):
     """Export translation blocks to plain text file."""
     try:
         output = export_to_txt(request.blocks)
+        fname = generate_semantic_filename_with_ext(
+            request.original_filename, request.mode, request.layout, "txt"
+        )
+        safe_name = urllib.parse.quote(fname, safe="")
         return StreamingResponse(
             output,
             media_type="text/plain; charset=utf-8",
             headers={
-                "Content-Disposition": "attachment; filename=translation.txt"
+                "Content-Disposition": f"attachment; filename*=UTF-8''{safe_name}",
+                "Access-Control-Expose-Headers": "Content-Disposition",
             },
         )
     except Exception as e:
@@ -100,11 +109,16 @@ async def export_md(request: ExportRequest):
     """Export translation blocks to Markdown file."""
     try:
         output = export_to_md(request.blocks)
+        fname = generate_semantic_filename_with_ext(
+            request.original_filename, request.mode, request.layout, "md"
+        )
+        safe_name = urllib.parse.quote(fname, safe="")
         return StreamingResponse(
             output,
             media_type="text/markdown; charset=utf-8",
             headers={
-                "Content-Disposition": "attachment; filename=translation.md"
+                "Content-Disposition": f"attachment; filename*=UTF-8''{safe_name}",
+                "Access-Control-Expose-Headers": "Content-Disposition",
             },
         )
     except Exception as e:
@@ -116,15 +130,18 @@ async def export_pdf(request: ExportRequest):
     """Export translation blocks to PDF document."""
     try:
         output = export_to_pdf(request.blocks)
+        fname = generate_semantic_filename_with_ext(
+            request.original_filename, request.mode, request.layout, "pdf"
+        )
+        safe_name = urllib.parse.quote(fname, safe="")
         return StreamingResponse(
             output,
             media_type="application/pdf",
             headers={
-                "Content-Disposition": "attachment; filename=translation.pdf"
+                "Content-Disposition": f"attachment; filename*=UTF-8''{safe_name}",
+                "Access-Control-Expose-Headers": "Content-Disposition",
             },
         )
-    except ImportError as e:
-        raise HTTPException(status_code=500, detail=str(e)) from e
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"匯出失敗: {str(e)}") from e
 

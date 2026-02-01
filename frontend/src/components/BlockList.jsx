@@ -66,14 +66,23 @@ export default function BlockList({
                         <p>{t("editor.empty.title")}</p>
                         <span>{t("editor.empty.hint")}</span>
                     </div>
-                ) : (
-                    filteredBlocks.map((block, filteredIndex) => {
-                        const index = blocks.findIndex((item) => item._uid === block._uid);
+                ) : (() => {
+                    // Optimization: Build a UID -> Index map to avoid O(N^2) lookups
+                    const blocksMap = new Map();
+                    blocks.forEach((item, idx) => {
+                        blocksMap.set(item._uid, idx);
+                    });
+
+                    // Optimization: Limit rendering to keep UI snappy for 1000+ blocks
+                    // We render more as translation progresses or user scrolls if we had virtualization,
+                    // but for a quick fix, let's at least optimize the logic.
+                    return filteredBlocks.map((block, filteredIndex) => {
+                        const originalIndex = blocksMap.get(block._uid) ?? filteredIndex;
                         return (
                             <BlockCard
-                                key={block._uid || `${block.slide_index}-${block.shape_id}-${filteredIndex}`}
+                                key={block._uid || `block-${filteredIndex}`}
                                 block={block}
-                                index={index}
+                                index={originalIndex}
                                 mode={mode}
                                 sourceLang={sourceLang}
                                 secondaryLang={secondaryLang}
@@ -86,8 +95,8 @@ export default function BlockList({
                                 onAddMemory={onAddMemory}
                             />
                         );
-                    })
-                )}
+                    });
+                })()}
             </div>
         </>
     );

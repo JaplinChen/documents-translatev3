@@ -16,6 +16,8 @@ _PRESERVE_TERMS_MTIME: float | None = None
 
 def _load_preserve_terms() -> tuple[list[dict], float | None]:
     """Load preserve terms from SQLite table."""
+    from backend.services.preserve_terms_repository import list_preserve_terms
+
     db_path = Path("data/translation_memory.db")
     try:
         mtime = db_path.stat().st_mtime if db_path.exists() else None
@@ -31,15 +33,38 @@ def _load_preserve_terms() -> tuple[list[dict], float | None]:
 def _get_preserve_terms() -> list[dict]:
     """Return preserve terms with simple mtime-based cache invalidation."""
     global _PRESERVE_TERMS_CACHE, _PRESERVE_TERMS_MTIME
-    terms, mtime = _load_preserve_terms()
-    if mtime is None:
-        _PRESERVE_TERMS_CACHE = []
-        _PRESERVE_TERMS_MTIME = None
-        return _PRESERVE_TERMS_CACHE
-    if _PRESERVE_TERMS_MTIME != mtime:
+    db_path = Path("data/translation_memory.db")
+    try:
+        current_mtime = db_path.stat().st_mtime if db_path.exists() else None
+    except Exception:
+        current_mtime = None
+
+    if _PRESERVE_TERMS_MTIME != current_mtime or not _PRESERVE_TERMS_CACHE:
+        terms, mtime = _load_preserve_terms()
         _PRESERVE_TERMS_CACHE = terms
         _PRESERVE_TERMS_MTIME = mtime
+
     return _PRESERVE_TERMS_CACHE
+
+
+def is_exact_term_match(text: str) -> bool:
+    """Check if text exactly matches a preserve term. Skip extraction if it does."""
+    if not text:
+        return False
+    text_clean = text.strip()
+    if not text_clean:
+        return False
+
+    for term_entry in _get_preserve_terms():
+        term = term_entry.get("term", "")
+        case_sensitive = term_entry.get("case_sensitive", True)
+        if case_sensitive:
+            if text_clean == term:
+                return True
+        else:
+            if text_clean.lower() == term.lower():
+                return True
+    return False
 
 
 def is_numeric_only(text: str) -> bool:
@@ -75,10 +100,19 @@ def is_technical_terms_only(text: str) -> bool:  # noqa: C901
                 return True
 
     # Priority 2: Auto-detection fallback
-    # Remove common separators
-    cleaned = re.sub(r"[,、，/\s]+", " ", text).strip()
+    text_clean = text.strip()
 
-    # If contains any CJK characters, it's not pure technical terms.
+    # Skip common IT prefixes (Check before normalization to preserve slashes/dots)
+    SKIP_PREFIXES = (
+        r"^(ID|UUID|SN|PN|IP|MAC|No|No\.|S/N|P/N|ID\s+No|Item\s+No|Part\s+No|Serial\s+No)[:：\s]"
+    )
+    if re.search(SKIP_PREFIXES, text_clean, re.IGNORECASE):
+        return True
+
+    # Remove common separators for further word-level checks
+    cleaned = re.sub(r"[,、，/\s]+", " ", text_clean).strip()
+
+    # If contains any CJK characters or Thai, it's not pure technical terms.
     if re.search(r"[\u4e00-\u9fff\u3040-\u30ff\u0e00-\u0e7f]", cleaned):
         return False
 
@@ -100,31 +134,27 @@ def is_technical_terms_only(text: str) -> bool:  # noqa: C901
         return False
 
     # Patterns:
-    # Employee ID or code patterns: #00661, ABC-1234, ID-999, etc.
+    # 1. Employee ID or code patterns: #00661, ABC-1234, ID-999, etc.
     is_all_caps_or_id = all(
-        (
-            re.match(r"^[#A-Z0-9_\-]+$", w)
-            or re.match(r"^#\d+$", w)
-        )
-        and len(w) <= 30
-        for w in words
+        (re.match(r"^[#A-Z0-9_\-]+$", w) or re.match(r"^#\d+$", w)) and len(w) <= 30 for w in words
     )
-    is_mixed_case = all(
-        re.match(r"^[A-Z][a-z]*[A-Z][a-zA-Z]*$", w) and len(w) <= 30
-        for w in words
-    )
+    # 2. MixedCase words (CamelCase)
+    is_mixed_case = all(re.match(r"^[A-Z][a-z]*[A-Z][a-zA-Z]*$", w) and len(w) <= 30 for w in words)
+    # 3. MAC address pattern
+    is_mac = any(re.match(r"^[0-9A-F]{2}([:\-][0-9A-F]{2}){5}$", w, re.IGNORECASE) for w in words)
+    # 4. IP address pattern
+    is_ip = any(re.match(r"^\d{1,3}(\.\d{1,3}){3}$", w) for w in words)
+    # 5. Version strings (e.g., v1.0.2)
+    is_version = any(re.match(r"^v?\d+(\.\d+){1,3}$", w, re.IGNORECASE) for w in words)
+
+    if is_all_caps_or_id or is_mixed_case or is_mac or is_ip or is_version:
+        return True
+
     is_title_case = all(re.match(r"^[A-Z][a-z]+$", w) for w in words)
     is_pure_lower = all(re.match(r"^[a-z]+$", w) for w in words)
 
-    if is_all_caps_or_id or is_mixed_case:
-        return True
-
     # TitleCase or pure lower is only filtered if very short (<= 3 chars)
-    if (
-        (is_title_case or is_pure_lower)
-        and word_count <= 1
-        and len(cleaned) <= 3
-    ):
+    if (is_title_case or is_pure_lower) and word_count <= 1 and len(cleaned) <= 3:
         return True
 
     return False

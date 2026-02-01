@@ -5,6 +5,7 @@ Export API endpoints for multi-format export functionality.
 from __future__ import annotations
 
 from typing import Any
+import urllib.parse
 
 from fastapi import APIRouter, HTTPException
 from fastapi.responses import StreamingResponse

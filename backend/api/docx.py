@@ -17,6 +17,7 @@ from fastapi import APIRouter, File, Form, HTTPException, UploadFile, Body
 from fastapi.responses import FileResponse, StreamingResponse
 
 from backend.api.error_handler import api_error_handler, validate_json_blocks
+from backend.api.pptx_naming import generate_semantic_filename
 from backend.api.pptx_history import delete_history_file, get_history_items
 from backend.api.pptx_naming import generate_semantic_filename_with_ext
 from backend.api.pptx_translate import TranslateRequest

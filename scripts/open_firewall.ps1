@@ -1,4 +1,4 @@
-$RuleName = "Allow-Documents-Translate-Docker"
+$RuleName = "Allow-documents-translatev3-Docker"
 $Ports = @(5194, 5002, 11434)
 
 Write-Host "--- Windows Firewall Configurator ---" -ForegroundColor Cyan

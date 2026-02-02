@@ -1,4 +1,4 @@
-# Documents-Translate Full Deployment Script
+# documents-translatev3 Full Deployment Script
 # Bundled operations: Down, Build, Up, Health, Clean
 
 Write-Host ">>> [1/5] Stopping services..." -ForegroundColor Cyan

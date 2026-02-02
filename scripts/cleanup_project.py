@@ -19,8 +19,19 @@ POTENTIAL_ORPHANS = [
     "check_db.py",
     "check_env.py",
     "one_time_sync.py",
+    "test_lang_speed.py",
+    "test_sql_speed.py",
+    "test_sync.py",
+    "test_tm_filter.py",
+    "verify_isolated.py",
+    "verify_optimization.py",
+    "verify_typo.py",
+    "tm_cleanup_automation.py",
+    "preserve_terms_dump.txt",
+    "xlsx.md",
     "install_log.txt",
-    "test_simple.png"
+    "test_simple.png",
+    "Improvement_Report.md"
 ]
 
 def cleanup(dry_run=True, auto_confirm=False):

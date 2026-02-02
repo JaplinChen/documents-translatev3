@@ -39,10 +39,10 @@ COPY docs/ ./docs/
 # Create data directory
 RUN mkdir -p /app/data
 
-EXPOSE 5002
+EXPOSE 5005
 
 HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
-    CMD curl -f http://localhost:5002/health || exit 1
+    CMD curl -f http://127.0.0.1:5005/health || exit 1
 
-CMD ["python", "-m", "uvicorn", "backend.main:app", "--host", "0.0.0.0", "--port", "5002"]
+CMD ["python", "-m", "uvicorn", "backend.main:app", "--host", "0.0.0.0", "--port", "5005"]
 

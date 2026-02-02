@@ -141,54 +141,58 @@ export function EditorPanel({
                         </div>
                     </div>
 
-                    {/* High-Fidelity Preview Integration */}
-                    {slideDimensions?.width > 0 && currentSlideBlocks.length > 0 ? (
-                        <div className="editor-preview-outer-container max-h-[50vh] overflow-y-auto shadow-inner bg-slate-100/50 rounded-xl mb-4 border border-slate-200">
-                            <div className="editor-preview-section p-4 pb-12">
-                                <SlidePreview
-                                    dimensions={slideDimensions}
-                                    blocks={currentSlideBlocks}
-                                    activeBlockId={activeBlockId}
-                                    thumbnailUrl={thumbnailUrl}
-                                    totalPages={totalPages}
-                                    currentPage={activeSlideIndex}
-                                    onPageChange={(index) => setManualSlideIndex(index)}
-                                />
+                    {/* Main Content Area - Unified Scrolling */}
+                    {/* Main Content Area - Unified Scrolling */}
+                    <div className="editor-content-area flex-1 overflow-y-auto pr-2 -mr-2">
+                        {/* High-Fidelity Preview Integration - Only show if thumbnails exist (PPTX) */}
+                        {slideDimensions?.width > 0 && currentSlideBlocks.length > 0 && slideDimensions?.thumbnails?.length > 0 ? (
+                            <div className="editor-preview-outer-container shadow-inner bg-slate-100/30 rounded-xl mb-6 border border-slate-200">
+                                <div className="editor-preview-section p-4 pt-0">
+                                    <SlidePreview
+                                        dimensions={slideDimensions}
+                                        blocks={currentSlideBlocks}
+                                        activeBlockId={activeBlockId}
+                                        thumbnailUrl={thumbnailUrl}
+                                        totalPages={totalPages}
+                                        currentPage={activeSlideIndex}
+                                        onPageChange={(index) => setManualSlideIndex(index)}
+                                    />
+                                </div>
                             </div>
-                        </div>
-                    ) : null}
+                        ) : null}
 
-                    <div className="block-list">
-                        {filteredBlocks.length > 200 && (
-                            <div className="p-3 bg-amber-50 border-b border-amber-100 text-amber-700 text-xs text-center flex items-center justify-center gap-2">
-                                <Layers size={14} />
-                                <span>{t("editor.rendering_limit_hint", "Large document detected. Showing first 200 blocks for stability. Use search or slide filters to find other blocks.")}</span>
-                            </div>
-                        )}
-                        {filteredBlocks.slice(0, 200).map((block, index) => (
-                            <div
-                                key={block._uid}
-                                onMouseEnter={() => setActiveBlockId(block._uid)}
-                                onMouseLeave={() => setActiveBlockId(null)}
-                                className={activeBlockId === block._uid ? "ring-2 ring-blue-500 rounded-lg" : ""}
-                            >
-                                <BlockCard
-                                    block={block}
-                                    index={index}
-                                    mode={mode}
-                                    sourceLang={sourceLang}
-                                    secondaryLang={secondaryLang}
-                                    extractLanguageLines={extractLanguageLines}
-                                    editorRefs={editorRefs}
-                                    onBlockSelect={(checked) => onBlockSelect(block._uid, checked)}
-                                    onBlockChange={(val) => onBlockChange(block._uid, val)}
-                                    onEditorInput={(val) => onBlockChange(block._uid, val)}
-                                    onOutputModeChange={(val) => onOutputModeChange(block._uid, val)}
-                                    onAddGlossary={() => onAddGlossary(block)}
-                                    onAddMemory={() => onAddMemory(block)}
-                                />
-                            </div>
-                        ))}
+                        <div className="block-list flex flex-col gap-3">
+                            {filteredBlocks.length > 200 && (
+                                <div className="p-3 bg-amber-50 border-b border-amber-100 text-amber-700 text-xs text-center flex items-center justify-center gap-2 mb-2 rounded-lg">
+                                    <Layers size={14} />
+                                    <span>{t("editor.rendering_limit_hint", "Large document detected. Showing first 200 blocks for stability. Use search or slide filters to find other blocks.")}</span>
+                                </div>
+                            )}
+                            {filteredBlocks.slice(0, 200).map((block, index) => (
+                                <div
+                                    key={block._uid}
+                                    onMouseEnter={() => setActiveBlockId(block._uid)}
+                                    onMouseLeave={() => setActiveBlockId(null)}
+                                    className={activeBlockId === block._uid ? "ring-2 ring-blue-500 rounded-lg transition-all" : ""}
+                                >
+                                    <BlockCard
+                                        block={block}
+                                        index={index}
+                                        mode={mode}
+                                        sourceLang={sourceLang}
+                                        secondaryLang={secondaryLang}
+                                        extractLanguageLines={extractLanguageLines}
+                                        editorRefs={editorRefs}
+                                        onBlockSelect={(checked) => onBlockSelect(block._uid, checked)}
+                                        onBlockChange={(val) => onBlockChange(block._uid, val)}
+                                        onEditorInput={(val) => onBlockChange(block._uid, val)}
+                                        onOutputModeChange={(val) => onOutputModeChange(block._uid, val)}
+                                        onAddGlossary={() => onAddGlossary(block)}
+                                        onAddMemory={() => onAddMemory(block)}
+                                    />
+                                </div>
+                            ))}
+                        </div>
                     </div>
                 </>
             )}

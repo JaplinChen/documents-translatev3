@@ -90,6 +90,25 @@ class DocumentCache:
         except Exception as err:
             LOGGER.error("DocumentCache set error: %s", err)
 
+    def update_metadata(self, file_hash: str, updates: dict) -> None:
+        """更新快取中的元數據。"""
+        try:
+            current = self.get(file_hash)
+            if not current:
+                return
+
+            metadata = current["metadata"]
+            metadata.update(updates)
+
+            query = "UPDATE document_cache SET metadata_json = ? WHERE file_hash = ?"
+            with sqlite3.connect(self.db_path) as conn:
+                conn.execute(
+                    query,
+                    (json.dumps(metadata, ensure_ascii=False), file_hash),
+                )
+        except Exception as err:
+            LOGGER.error("DocumentCache update_metadata error: %s", err)
+
 
 # 單例模式出口
 doc_cache = DocumentCache()

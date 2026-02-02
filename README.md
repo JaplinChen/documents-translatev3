@@ -1,4 +1,4 @@
-# 企業常用文件翻譯與校正控制台 (Documents-Translate)
+# 企業常用文件翻譯與校正控制台 (documents-translatev3)
 
 [![Python](https://img.shields.io/badge/python-3.10+-blue.svg)](https://www.python.org/)
 [![Docker](https://img.shields.io/badge/docker-ready-blue.svg)](https://www.docker.com/)
@@ -81,7 +81,7 @@ python scripts/cleanup_project.py --no-dry-run
 ## 📂 專案結構
 
 ```
-Documents-Translate/ (舊稱 PPTX-Translate)
+documents-translatev3/ (舊稱 PPTX-Translate)
 ├── install.bat          # [New] Windows 一鍵安裝進入點
 ├── scripts/             # 自動化腳本 (安裝、打包、清理)
 ├── backend/             # FastAPI 後端引擎

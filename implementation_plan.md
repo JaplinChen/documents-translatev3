@@ -1,7 +1,7 @@
 # 整合 Anthropic Skills 與擴充多格式支援改善計畫
 
 ## 背景與前提假設
-本計畫旨在將 Anthropic 提供的 PPTX, DOCX, XLSX, PDF 處理最佳實踐（Skills）應用於目前的 `Documents-Translate`（前身為 `PPTX-Translate`）專案中，並新增對 PDF 與 Excel (.xlsx) 的翻譯支援。
+本計畫旨在將 Anthropic 提供的 PPTX, DOCX, XLSX, PDF 處理最佳實踐（Skills）應用於目前的 `documents-translatev3`（前身為 `PPTX-Translate`）專案中，並新增對 PDF 與 Excel (.xlsx) 的翻譯支援。
 專案目前已具備 `pptx` 與 `docx` 的基本架構，後端使用 FastAPI，服務層採用模組化設計。
 
 ## 架構與技術選型建議

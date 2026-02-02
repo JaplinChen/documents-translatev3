@@ -5,7 +5,7 @@
 set -e
 
 echo "================================"
-echo "  Documents-Translate - Docker Setup  "
+echo "  documents-translatev3 - Docker Setup  "
 echo "================================"
 echo
 

@@ -1,4 +1,4 @@
-# 技術規格書 (PRD): Documents-Translate
+# 技術規格書 (PRD): documents-translatev3
 
 ## 1. 核心架構 (Core Architecture)
 

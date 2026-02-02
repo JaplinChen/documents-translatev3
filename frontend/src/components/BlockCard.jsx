@@ -85,13 +85,13 @@ const BlockCard = memo(({
                             </label>
                         )}
                     </div>
-                    {/* Source Content - filled height */}
-                    <div className="readonly-box flex-1 h-full overflow-y-auto">{block.source_text}</div>
+                    {/* Source Content - adaptive height */}
+                    <div className="readonly-box shrink-0 overflow-y-auto">{block.source_text}</div>
                 </div>
 
                 {/* Target Column */}
-                <div className="flex flex-col h-full min-h-0">
-                    <div className="field-label-row shrink-0">
+                <div className="flex flex-col min-h-0">
+                    <div className="field-label-row shrink-0 text-[10px] mb-1">
                         <span className="field-label">{t("components.block_card.target")}</span>
                         {mode === "correction" && (
                             <label className="toggle-check">
@@ -105,9 +105,9 @@ const BlockCard = memo(({
                             </label>
                         )}
                     </div>
-                    {/* Target Content - filled height */}
+                    {/* Target Content - adaptive height */}
                     <textarea
-                        className={`${isCorrection ? "correction-editor" : "textarea"} flex-1 h-full focus:ring-2 focus:ring-blue-100 outline-none resize-none`}
+                        className={`${isCorrection ? "correction-editor" : "textarea"} focus:ring-2 focus:ring-blue-100 outline-none resize-y`}
                         value={block.translated_text || ""}
                         onChange={(e) => onBlockChange(e.target.value)}
                         placeholder={t("components.block_card.placeholder")}

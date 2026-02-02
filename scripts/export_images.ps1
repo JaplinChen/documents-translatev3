@@ -6,7 +6,7 @@ $PSDefaultParameterValues['Out-File:Encoding'] = 'utf8'
 $ProjectRoot = Get-Item $PSScriptRoot\..
 Set-Location $ProjectRoot.FullName
 
-Write-Host "--- Documents-Translate Image Export Tool (Source Code Protection) ---" -ForegroundColor Cyan
+Write-Host "--- documents-translatev3 Image Export Tool (Source Code Protection) ---" -ForegroundColor Cyan
 
 # 1. Create export directory
 $ExportDir = Join-Path $ProjectRoot.FullName "release_package"
@@ -21,11 +21,11 @@ docker compose build
 # 3. Export images to .tar files
 Write-Host "[2/3] Exporting images to .tar files..." -ForegroundColor Yellow
 
-Write-Host "Exporting Backend Image (documents-translate-backend)..." -ForegroundColor Gray
-docker save documents-translate-backend:latest -o (Join-Path $ExportDir "backend_image.tar")
+Write-Host "Exporting Backend Image (documents-translatev3-backend)..." -ForegroundColor Gray
+docker save documents-translatev3-backend:latest -o (Join-Path $ExportDir "backend_image.tar")
 
-Write-Host "Exporting Frontend Image (documents-translate-frontend)..." -ForegroundColor Gray
-docker save documents-translate-frontend:latest -o (Join-Path $ExportDir "frontend_image.tar")
+Write-Host "Exporting Frontend Image (documents-translatev3-frontend)..." -ForegroundColor Gray
+docker save documents-translatev3-frontend:latest -o (Join-Path $ExportDir "frontend_image.tar")
 
 # 4. Copy necessary config files (NO source code)
 Write-Host "[3/3] Preparing release package content..." -ForegroundColor Yellow
@@ -34,8 +34,8 @@ Write-Host "[3/3] Preparing release package content..." -ForegroundColor Yellow
 $ComposeRelease = @"
 services:
   backend:
-    image: documents-translate-backend:latest
-    container_name: documents-translate-backend
+    image: documents-translatev3-backend:latest
+    container_name: documents-translatev3-backend
     ports:
       - "5002:5002"
     extra_hosts:
@@ -55,8 +55,8 @@ services:
       retries: 5
 
   frontend:
-    image: documents-translate-frontend:latest
-    container_name: documents-translate-frontend
+    image: documents-translatev3-frontend:latest
+    container_name: documents-translatev3-frontend
     ports:
       - "5194:80"
     depends_on:
@@ -66,7 +66,7 @@ services:
 
 networks:
   default:
-    name: documents-translate-network
+    name: documents-translatev3-network
 "@
 $ComposeRelease | Out-File -FilePath (Join-Path $ExportDir "docker-compose.yml") -Encoding utf8
 

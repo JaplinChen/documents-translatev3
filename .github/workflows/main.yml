@@ -1,4 +1,4 @@
-name: Documents-Translate CI
+name: documents-translatev3 CI
 
 on:
   push:
@@ -8,7 +8,7 @@ on:
 
 jobs:
   backend-check:
-    name: Documents-Translate backend-check
+    name: documents-translatev3 backend-check
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -30,7 +30,7 @@ jobs:
           python -m pytest backend/tests/ -v
 
   frontend-check:
-    name: Documents-Translate frontend-check
+    name: documents-translatev3 frontend-check
     runs-on: ubuntu-latest
     defaults:
       run:

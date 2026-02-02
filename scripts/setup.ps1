@@ -33,7 +33,7 @@ if (-NOT ([Security.Principal.WindowsPrincipal][Security.Principal.WindowsIdenti
 
 # The ProjectRoot is already determined above
 
-Write-Log "--- Documents-Translate One-Click Installer (Diagnostic Mode) ---" "Cyan"
+Write-Log "--- documents-translatev3 One-Click Installer (Diagnostic Mode) ---" "Cyan"
 
 # 0. Check winget
 Write-Log "`n[0/5] Checking winget..." "Yellow"
@@ -116,7 +116,7 @@ ollama pull translategemma:4b
 Write-Log "Model is ready." "Green"
 
 # 4. Load and start Docker project
-Write-Log "`n[4/5] Starting Documents-Translate system..." "Yellow"
+Write-Log "`n[4/5] Starting documents-translatev3 system..." "Yellow"
 
 # Load local images
 $BackendTar = Join-Path $ProjectRoot.FullName "backend_image.tar"

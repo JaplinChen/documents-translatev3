@@ -12,14 +12,15 @@
 
     .unified-data-row {
         display: grid;
-        align-items: center;
-        border-bottom: 1px solid var(--border-soft);
+        align-items: stretch;
+        /* border-bottom removed from row to allow cells to handle borders (continuous vertical lines) */
         background-color: var(--bg-card);
         transition: background-color 0.15s ease;
     }
 
     .data-header {
         background-color: var(--bg-sidebar);
+        /* Header keeps its bottom border as it is sticky and separates content strongly */
         border-bottom: 1px solid var(--border-strong);
         @apply font-bold text-xs uppercase tracking-wider text-slate-500;
         position: sticky;
@@ -33,6 +34,7 @@
         border-right: 1px solid var(--border-soft);
     }
 
+    /* ... sticky header styles ... */
     .table-header-sticky {
         position: sticky;
         top: 0;
@@ -86,11 +88,16 @@
         box-sizing: border-box;
         word-break: break-word;
         border-right: 1px solid var(--border-soft);
+        /* Critical Fix for Continuous Vertical Lines: Move bottom border to cell */
+        border-bottom: 1px solid var(--border-soft);
     }
 
     .data-cell:last-child {
         border-right: none;
     }
+
+    /* Remove bottom border from last local row cells IF desired, but usually table border handles surrounding.
+       For now, keeping it ensures visual consistency if content scrolls. */
 
     /* Tooltip / Action Buttons */
     .action-btn-sm {

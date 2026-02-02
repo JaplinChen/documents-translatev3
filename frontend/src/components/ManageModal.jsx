@@ -9,8 +9,10 @@ import PreserveTermsTab from "./manage/PreserveTermsTab";
 import TermsTab from "./manage/TermsTab";
 import HistoryTab from "./manage/HistoryTab";
 import { CategoryPill } from "./manage/CategoryPill";
+import TMCategoriesTab from "./manage/TMCategoriesTab";
 import { useSettingsStore } from "../store/useSettingsStore";
 import { useUIStore } from "../store/useUIStore";
+import { DataTable } from "./common/DataTable";
 
 export default function ManageModal({
     open,
@@ -140,6 +142,37 @@ export default function ManageModal({
         return options;
     }, [llmModels, llmModel]);
 
+    // Sort state
+    const [sortKey, setSortKey] = useState(isGlossary ? "priority" : null);
+    const [sortDir, setSortDir] = useState("asc");
+
+    const toggleSort = (key) => {
+        if (sortKey === key) {
+            setSortDir(p => p === "asc" ? "desc" : "asc");
+        } else {
+            setSortKey(key);
+            setSortDir("asc");
+        }
+    };
+
+    const sortedItems = useMemo(() => {
+        if (!items) return [];
+        const list = [...items];
+        if (!sortKey) return list;
+
+        list.sort((a, b) => {
+            const valA = a[sortKey];
+            const valB = b[sortKey];
+            const dir = sortDir === "asc" ? 1 : -1;
+
+            if (sortKey === "priority" || sortKey === "category_id") {
+                return (Number(valA || 0) - Number(valB || 0)) * dir;
+            }
+            return String(valA || "").localeCompare(String(valB || ""), "zh-Hant") * dir;
+        });
+        return list;
+    }, [items, sortKey, sortDir]);
+
     useEffect(() => {
         if (!open) return;
         setCustomModel(llmModel || "");
@@ -232,15 +265,7 @@ export default function ManageModal({
         setDraft(null);
     };
 
-    const handleKeyDown = (e, saveFn, cancelFn) => {
-        if (e.key === "Enter") {
-            e.preventDefault();
-            saveFn();
-        } else if (e.key === "Escape") {
-            e.preventDefault();
-            cancelFn();
-        }
-    };
+
 
     const handleDelete = async (item) => {
         if (!window.confirm(t("manage.confirm.delete"))) return;
@@ -413,6 +438,123 @@ export default function ManageModal({
         else setSelectedIds([]);
     };
 
+
+
+    const handleKeyDown = (e, saveFn, cancelFn) => {
+        if (e.key === "Enter") {
+            e.preventDefault();
+            saveFn();
+        } else if (e.key === "Escape") {
+            e.preventDefault();
+            cancelFn();
+        }
+    };
+
+    const columns = [
+        {
+            key: "source_lang",
+            label: t("manage.table.source_lang"),
+            width: "90px",
+            sortable: true,
+            render: (val, row) => editingKey === makeKey(row) ? (
+                <input className="data-input !bg-white !border-blue-200 font-bold" value={draft?.source_lang || ""} onChange={(e) => setDraft(p => ({ ...p, source_lang: e.target.value }))} onKeyDown={(e) => handleKeyDown(e, handleSave, handleCancel)} autoFocus />
+            ) : val
+        },
+        {
+            key: "target_lang",
+            label: t("manage.table.target_lang"),
+            width: "90px",
+            sortable: true,
+            render: (val, row) => editingKey === makeKey(row) ? (
+                <input className="data-input !bg-white !border-blue-200 font-bold" value={draft?.target_lang || ""} onChange={(e) => setDraft(p => ({ ...p, target_lang: e.target.value }))} onKeyDown={(e) => handleKeyDown(e, handleSave, handleCancel)} />
+            ) : val
+        },
+        {
+            key: "source_text",
+            label: t("manage.table.source"),
+            width: "1fr",
+            sortable: true,
+            render: (val, row) => editingKey === makeKey(row) ? (
+                <input className="data-input !bg-white !border-blue-200 font-bold" value={draft?.source_text || ""} onChange={(e) => setDraft(p => ({ ...p, source_text: e.target.value }))} onKeyDown={(e) => handleKeyDown(e, handleSave, handleCancel)} />
+            ) : val
+        },
+        {
+            key: "target_text",
+            label: t("manage.table.target"),
+            width: "1fr",
+            sortable: true,
+            render: (val, row) => editingKey === makeKey(row) ? (
+                <input className="data-input !bg-white !border-blue-200 font-bold" value={draft?.target_text || ""} onChange={(e) => setDraft(p => ({ ...p, target_text: e.target.value }))} onKeyDown={(e) => handleKeyDown(e, handleSave, handleCancel)} />
+            ) : val
+        },
+        ...(isGlossary ? [{
+            key: "priority",
+            label: t("manage.table.priority"),
+            width: "80px",
+            sortable: true,
+            render: (val, row) => editingKey === makeKey(row) ? (
+                <input type="number" className="data-input !bg-white !border-blue-200 font-bold" value={draft?.priority ?? 0} onChange={(e) => setDraft(p => ({ ...p, priority: e.target.value }))} onKeyDown={(e) => handleKeyDown(e, handleSave, handleCancel)} />
+            ) : (val ?? 0)
+        }] : []),
+        {
+            key: "category",
+            label: t("manage.fields.category", "分類"),
+            width: "100px",
+            render: (val, row) => editingKey === makeKey(row) ? (
+                <select
+                    className="data-input !bg-white !border-blue-200 font-bold !text-[12px]"
+                    value={draft?.category_id || ""}
+                    onChange={(e) => setDraft(p => ({ ...p, category_id: e.target.value ? parseInt(e.target.value) : null }))}
+                    onKeyDown={(e) => handleKeyDown(e, handleSave, handleCancel)}
+                >
+                    <option value="">{t("manage.fields.no_category", "無分類")}</option>
+                    {tmCategories.map(c => <option key={`cat-edit-${c.id}`} value={c.id}>{c.name}</option>)}
+                </select>
+            ) : (
+                <CategoryPill name={row.category_name} />
+            )
+        },
+        {
+            key: "actions",
+            label: t("manage.table.actions"),
+            width: "140px",
+            render: (_, row) => (
+                <div className="flex justify-end gap-1.5">
+                    {editingKey === makeKey(row) ? (
+                        <>
+                            <button className="action-btn-sm success" onClick={handleSave} disabled={saving} title={t("manage.actions.save")}>
+                                <img src="https://emojicdn.elk.sh/✅?style=apple" className="w-5 h-5 object-contain" alt="Save" />
+                            </button>
+                            <button className="action-btn-sm" onClick={handleCancel} disabled={saving} title={t("manage.actions.cancel")}>
+                                <img src="https://emojicdn.elk.sh/❌?style=apple" className="w-5 h-5 object-contain" alt="Cancel" />
+                            </button>
+                        </>
+                    ) : (
+                        <>
+                            <button className="action-btn-sm success" onClick={() => handleCreate(row)} title={t("manage.actions.add")}>
+                                <Plus size={18} className="text-emerald-600" />
+                            </button>
+                            <button className="action-btn-sm" onClick={() => handleEdit(row)} title={t("manage.actions.edit")}>
+                                <img src="https://emojicdn.elk.sh/✏️?style=apple" className="w-5 h-5 object-contain" alt="Edit" />
+                            </button>
+                            <button className="action-btn-sm primary" onClick={() => onConvertToPreserveTerm(row)} title={t("manage.actions.convert_preserve")}>
+                                <img src="https://emojicdn.elk.sh/🔒?style=apple" className="w-5 h-5 object-contain" alt="Preserve" />
+                            </button>
+                            {!isGlossary && (
+                                <button className="action-btn-sm primary" onClick={() => onConvertToGlossary(row)} title={t("manage.actions.convert_glossary")}>
+                                    <img src="https://emojicdn.elk.sh/📑?style=apple" className="w-5 h-5 object-contain" alt="To Glossary" />
+                                </button>
+                            )}
+                            <button className="action-btn-sm danger" onClick={() => handleDelete(row)} title={t("manage.actions.delete")}>
+                                <img src="https://emojicdn.elk.sh/🗑️?style=apple" className="w-5 h-5 object-contain" alt="Delete" />
+                            </button>
+                        </>
+                    )}
+                </div>
+            )
+        }
+    ];
+
     return (
         <div className="modal-backdrop">
             <div
@@ -470,20 +612,9 @@ export default function ManageModal({
                                     <button className="btn primary compact !px-3" type="button" onClick={() => handleCreate()} title={t("manage.actions.add")}>
                                         <Plus size={16} />
                                     </button>
-                                    <span className="text-xs font-bold text-slate-400 self-center">
-                                        {t("manage.list_summary", { shown: items.length, total: isGlossary ? glossaryTotal : tmTotal })}
-                                    </span>
-                                    {(isGlossary ? items.length < glossaryTotal : items.length < tmTotal) && (
-                                        <button
-                                            className="btn ghost compact"
-                                            type="button"
-                                            onClick={isGlossary ? onLoadMoreGlossary : onLoadMoreMemory}
-                                        >
-                                            {t("manage.actions.load_more")}
-                                        </button>
-                                    )}
                                 </div>
                                 <div className="flex items-center gap-3">
+
                                     {selectedIds.length > 0 && (
                                         <div className="batch-actions flex gap-2 animate-in fade-in slide-in-from-right-2">
                                             <span className="text-xs font-bold text-slate-400 self-center mr-2">{t("manage.batch.selected_count", { count: selectedIds.length })}</span>
@@ -493,528 +624,41 @@ export default function ManageModal({
                                             <button className="btn ghost compact !text-red-500" onClick={handleBatchDelete}>{t("manage.batch.delete")}</button>
                                         </div>
                                     )}
-                                    <label className="flex items-center gap-2 text-xs text-slate-600">
-                                        <input
-                                            type="checkbox"
-                                            checked={compactTable}
-                                            onChange={(e) => {
-                                                const checked = e.target.checked;
-                                                setCompactTable(checked);
-                                                try {
-                                                    localStorage.setItem(compactKey, JSON.stringify(checked));
-                                                } catch {
-                                                    // 忽略儲存失敗
-                                                }
-                                            }}
-                                        />
-                                        {t("manage.table.compact")}
-                                    </label>
+
                                 </div>
                             </div>
-                            <div className="manage-scroll-area">
-                                <UnifiedDataTable
-                                    items={items}
-                                    isGlossary={isGlossary}
-                                    compact={compactTable}
-                                    editingKey={editingKey}
-                                    draft={draft}
-                                    saving={saving}
+                            <div className="manage-scroll-area flex-1 pr-1 flex flex-col min-h-0">
+                                <DataTable
+                                    columns={columns}
+                                    data={sortedItems}
+                                    rowKey={(item) => makeKey(item)}
                                     selectedIds={selectedIds}
-                                    makeKey={makeKey}
-                                    setDraft={setDraft}
-                                    onEdit={handleEdit}
-                                    onSave={handleSave}
-                                    onCancel={handleCancel}
-                                    onDelete={handleDelete}
-                                    onAdd={handleCreate}
-                                    onSelectRow={handleSelectRow}
-                                    onSelectAll={handleSelectAll}
-                                    onConvertToGlossary={onConvertToGlossary}
-                                    onConvertToPreserveTerm={onConvertToPreserveTerm}
-                                    t={t}
+                                    onSelectionChange={(ids) => setSelectedIds(ids)}
+                                    sortKey={sortKey}
+                                    sortDir={sortDir}
+                                    onSort={toggleSort}
+                                    storageKey={isGlossary ? "manage_table_cols_glossary_v2" : "manage_table_cols_tm_v2"}
+                                    compact={compactTable}
+                                    onCompactChange={(checked) => {
+                                        setCompactTable(checked);
+                                        try {
+                                            localStorage.setItem(compactKey, JSON.stringify(checked));
+                                        } catch { }
+                                    }}
+                                    className={isGlossary ? "is-glossary" : "is-tm"}
                                     highlightColor={correctionFillColor}
-                                    categories={tmCategories}
+                                    canLoadMore={isGlossary ? items.length < glossaryTotal : items.length < tmTotal}
+                                    totalCount={isGlossary ? glossaryTotal : tmTotal}
+                                    onLoadMore={isGlossary ? onLoadMoreGlossary : onLoadMoreMemory}
                                 />
                             </div>
                         </div>
                     )}
                 </div>
             </div>
+
         </div>
     );
 }
 
-function TMCategoriesTab({ categories, onRefresh }) {
-    const { t } = useTranslation();
-    const [editingId, setEditingId] = useState(null);
-    const [draft, setDraft] = useState(null);
-    const [saving, setSaving] = useState(false);
-    const [compactTable, setCompactTable] = useState(() => {
-        try {
-            const saved = localStorage.getItem("manage_table_compact_categories");
-            return saved ? JSON.parse(saved) : false;
-        } catch {
-            return false;
-        }
-    });
 
-    const handleKeyDown = (e, saveFn, cancelFn) => {
-        if (e.key === "Enter") {
-            e.preventDefault();
-            saveFn();
-        } else if (e.key === "Escape") {
-            e.preventDefault();
-            cancelFn();
-        }
-    };
-
-    const handleCreate = async () => {
-        setSaving(true);
-        try {
-            const res = await fetch(`${API_BASE}/api/tm/categories`, {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ name: t("manage.categories.new_category"), sort_order: 0 })
-            });
-            if (res.ok) {
-                onRefresh();
-            }
-        } catch (err) {
-            console.error(err);
-        } finally {
-            setSaving(false);
-        }
-    };
-
-    const handleSave = async () => {
-        if (!draft?.name?.trim()) return;
-        setSaving(true);
-        try {
-            const res = await fetch(`${API_BASE}/api/tm/categories/${editingId}`, {
-                method: "PUT",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ name: draft.name.trim(), sort_order: draft.sort_order })
-            });
-            if (res.ok) {
-                setEditingId(null);
-                setDraft(null);
-                onRefresh();
-            }
-        } catch (err) {
-            console.error(err);
-        } finally {
-            setSaving(false);
-        }
-    };
-
-    const handleDelete = async (id) => {
-        if (!window.confirm(t("manage.confirm.delete"))) return;
-        try {
-            const res = await fetch(`${API_BASE}/api/tm/categories/${id}`, {
-                method: "DELETE"
-            });
-            if (res.ok) onRefresh();
-        } catch (err) {
-            console.error(err);
-        }
-    };
-
-    return (
-        <div className="flex flex-col h-full min-h-0">
-            <div className="flex items-center justify-between px-2 mb-3">
-                <span className="text-xs font-bold text-slate-400">
-                    {t("manage.list_summary", { shown: categories.length, total: categories.length })}
-                </span>
-                <label className="flex items-center gap-2 text-xs text-slate-600 cursor-pointer hover:text-slate-900 transition-colors">
-                    <input
-                        type="checkbox"
-                        checked={compactTable}
-                        onChange={(e) => {
-                            const checked = e.target.checked;
-                            setCompactTable(checked);
-                            try {
-                                localStorage.setItem("manage_table_compact_categories", JSON.stringify(checked));
-                            } catch {
-                                // 忽略儲存失敗
-                            }
-                        }}
-                    />
-                    {t("manage.table.compact")}
-                </label>
-            </div>
-
-            <div className="manage-scroll-area flex-1">
-                <div className={`data-table ${compactTable ? "is-compact text-xs" : "text-sm"}`}>
-                    <div className="unified-data-row data-header" style={{ gridTemplateColumns: "1fr 120px 180px 80px 100px" }}>
-                        <div className="data-cell">{t("manage.categories.name")}</div>
-                        <div className="data-cell">{t("manage.categories.preview")}</div>
-                        <div className="data-cell">{t("manage.categories.usage")} (G/TM/U)</div>
-                        <div className="data-cell">{t("manage.categories.sort_order")}</div>
-                        <div className="data-cell data-actions">{t("manage.categories.actions")}</div>
-                    </div>
-                    {categories.map(cat => (
-                        <div className="unified-data-row" key={cat.id} style={{ gridTemplateColumns: "1fr 120px 180px 80px 100px" }}>
-                            <div className="data-cell">
-                                {editingId === cat.id ? (
-                                    <input
-                                        className="data-input"
-                                        value={draft.name}
-                                        onChange={(e) => setDraft(prev => ({ ...prev, name: e.target.value }))}
-                                        onKeyDown={(e) => handleKeyDown(e, handleSave, () => { setEditingId(null); setDraft(null); })}
-                                        autoFocus
-                                    />
-                                ) : cat.name}
-                            </div>
-                            <div className="data-cell flex items-center">
-                                <CategoryPill name={cat.name} />
-                            </div>
-                            <div className="data-cell text-[10px] text-slate-500 flex gap-1">
-                                <span className="text-blue-600 font-bold" title="Glossary">{cat.glossary_count || 0}</span>
-                                <span>/</span>
-                                <span className="text-emerald-600 font-bold" title="TM">{cat.tm_count || 0}</span>
-                                <span>/</span>
-                                <span className="text-amber-600 font-bold" title="Unified Terms">{cat.unified_term_count || 0}</span>
-                            </div>
-                            <div className="data-cell text-center">
-                                {editingId === cat.id ? (
-                                    <input
-                                        className="data-input !text-center"
-                                        type="number"
-                                        value={draft.sort_order}
-                                        onChange={(e) => setDraft(prev => ({ ...prev, sort_order: parseInt(e.target.value) || 0 }))}
-                                        onKeyDown={(e) => handleKeyDown(e, handleSave, () => { setEditingId(null); setDraft(null); })}
-                                    />
-                                ) : cat.sort_order}
-                            </div>
-                            <div className="data-cell data-actions flex justify-end gap-1">
-                                {editingId === cat.id ? (
-                                    <>
-                                        <button className="action-btn-sm success" onClick={handleSave} disabled={saving} title={t("manage.actions.save")}>
-                                            <img src="https://emojicdn.elk.sh/✅?style=apple" className="w-5 h-5 object-contain" alt="Save" />
-                                        </button>
-                                        <button className="action-btn-sm" onClick={() => { setEditingId(null); setDraft(null); }} title={t("manage.actions.cancel")}>
-                                            <img src="https://emojicdn.elk.sh/❌?style=apple" className="w-5 h-5 object-contain" alt="Cancel" />
-                                        </button>
-                                    </>
-                                ) : (
-                                    <>
-                                        <button className="action-btn-sm success" onClick={handleCreate} disabled={saving} title={t("manage.categories.add_category")}>
-                                            <Plus size={18} className="text-emerald-600" />
-                                        </button>
-                                        <button className="action-btn-sm" onClick={() => { setEditingId(cat.id); setDraft({ ...cat }); }} title={t("manage.actions.edit")}>
-                                            <img src="https://emojicdn.elk.sh/✏️?style=apple" className="w-5 h-5 object-contain" alt="Edit" />
-                                        </button>
-                                        <button className="action-btn-sm danger" onClick={() => handleDelete(cat.id)} title={t("manage.actions.delete")}>
-                                            <img src="https://emojicdn.elk.sh/🗑️?style=apple" className="w-5 h-5 object-contain" alt="Delete" />
-                                        </button>
-                                    </>
-                                )}
-                            </div>
-                        </div>
-                    ))}
-                    {categories.length === 0 && <div className="data-empty">{t("manage.categories.empty")}</div>}
-                </div>
-            </div>
-        </div>
-    );
-}
-
-function UnifiedDataTable({ items, isGlossary, compact, editingKey, draft, saving, selectedIds, makeKey, setDraft, onEdit, onSave, onCancel, onDelete, onAdd, onSelectRow, onSelectAll, onConvertToGlossary, onConvertToPreserveTerm, t, highlightColor, categories }) {
-    const safeItems = Array.isArray(items) ? items : [];
-    const [sortKey, setSortKey] = useState(null);
-    const [sortDir, setSortDir] = useState("asc");
-    const storageKey = isGlossary ? "manage_table_cols_glossary" : "manage_table_cols_tm";
-    const [colWidths, setColWidths] = useState(() => {
-        try {
-            const saved = localStorage.getItem(storageKey);
-            return saved ? JSON.parse(saved) : {};
-        } catch {
-            return {};
-        }
-    });
-    const resizingRef = useRef(null);
-
-    const handleKeyDown = (e, saveFn, cancelFn) => {
-        if (e.key === "Enter") {
-            e.preventDefault();
-            saveFn();
-        } else if (e.key === "Escape") {
-            e.preventDefault();
-            cancelFn();
-        }
-    };
-
-    useEffect(() => {
-        try {
-            const saved = localStorage.getItem(storageKey);
-            setColWidths(saved ? JSON.parse(saved) : {});
-        } catch {
-            setColWidths({});
-        }
-    }, [storageKey]);
-
-    const allSelected = safeItems.length > 0 && selectedIds.length === safeItems.length;
-    const sortedItems = useMemo(() => {
-        if (safeItems.length === 0) return [];
-        if (!sortKey) return safeItems;
-        const withIndex = safeItems.map((item, idx) => ({ item, idx }));
-        const dir = sortDir === "asc" ? 1 : -1;
-        return withIndex.sort((a, b) => {
-            const av = a.item?.[sortKey];
-            const bv = b.item?.[sortKey];
-            if (sortKey === "priority") {
-                const an = Number(av ?? 0);
-                const bn = Number(bv ?? 0);
-                if (an !== bn) return (an - bn) * dir;
-            } else {
-                const as = String(av ?? "");
-                const bs = String(bv ?? "");
-                const cmp = as.localeCompare(bs, "zh-Hant", { numeric: true, sensitivity: "base" });
-                if (cmp !== 0) return cmp * dir;
-            }
-            return (a.idx - b.idx) * dir;
-        }).map(({ item }) => item);
-    }, [safeItems, sortKey, sortDir]);
-
-    if (safeItems.length === 0) return <div className="data-empty">{t("manage.empty")}</div>;
-
-    const toggleSort = (key) => {
-        if (sortKey === key) {
-            setSortDir((prev) => (prev === "asc" ? "desc" : "asc"));
-        } else {
-            setSortKey(key);
-            setSortDir("asc");
-        }
-    };
-
-    const sortIndicator = (key) => {
-        if (sortKey !== key) return "↕";
-        return sortDir === "asc" ? "▲" : "▼";
-    };
-
-    const columnKeys = [
-        "select",
-        "source_lang",
-        "target_lang",
-        "source_text",
-        "target_text",
-        ...(isGlossary ? ["priority"] : []),
-        "category",
-        "actions"
-    ];
-    const baseWidths = {
-        select: "40px",
-        source_lang: "90px",
-        target_lang: "90px",
-        source_text: "1fr",
-        target_text: "1fr",
-        priority: "80px",
-        category: "100px",
-        actions: "140px"
-    };
-    const gridTemplateColumns = columnKeys
-        .map((key) => (colWidths?.[key] ? `${colWidths[key]}px` : baseWidths[key]))
-        .join(" ");
-
-    const startResize = (key, event) => {
-        event.preventDefault();
-        event.stopPropagation();
-        const startX = event.clientX;
-        const currentWidth = event.currentTarget.parentElement?.offsetWidth || 120;
-        resizingRef.current = { key, startX, startWidth: currentWidth };
-        const handleMove = (moveEvent) => {
-            if (!resizingRef.current) return;
-            const delta = moveEvent.clientX - resizingRef.current.startX;
-            const nextWidth = Math.max(60, resizingRef.current.startWidth + delta);
-            setColWidths((prev) => {
-                const next = { ...(prev || {}), [key]: nextWidth };
-                try {
-                    localStorage.setItem(storageKey, JSON.stringify(next));
-                } catch {
-                    // 忽略儲存失敗
-                }
-                return next;
-            });
-        };
-        const handleUp = () => {
-            resizingRef.current = null;
-            document.removeEventListener("mousemove", handleMove);
-            document.removeEventListener("mouseup", handleUp);
-        };
-        document.addEventListener("mousemove", handleMove);
-        document.addEventListener("mouseup", handleUp);
-    };
-
-    return (
-        <div className={`data-table ${isGlossary ? "is-glossary" : "is-tm"} ${compact ? "is-compact text-xs" : "text-sm"}`}>
-            <div className="unified-data-row data-header" style={{ gridTemplateColumns }}>
-                <div className="data-cell w-10 shrink-0 flex items-center justify-center">
-                    <input type="checkbox" checked={allSelected} onChange={(e) => onSelectAll(e.target.checked)} />
-                    <span className="col-resizer" onMouseDown={(e) => startResize("select", e)} />
-                </div>
-                <div className="data-cell">
-                    <button type="button" className="sort-btn" onClick={() => toggleSort("source_lang")} aria-label={`${t("manage.table.source_lang")} 排序`}>
-                        {t("manage.table.source_lang")}
-                        <span className="sort-indicator">{sortIndicator("source_lang")}</span>
-                    </button>
-                    <span className="col-resizer" onMouseDown={(e) => startResize("source_lang", e)} />
-                </div>
-                <div className="data-cell">
-                    <button type="button" className="sort-btn" onClick={() => toggleSort("target_lang")} aria-label={`${t("manage.table.target_lang")} 排序`}>
-                        {t("manage.table.target_lang")}
-                        <span className="sort-indicator">{sortIndicator("target_lang")}</span>
-                    </button>
-                    <span className="col-resizer" onMouseDown={(e) => startResize("target_lang", e)} />
-                </div>
-                <div className="data-cell">
-                    <button type="button" className="sort-btn" onClick={() => toggleSort("source_text")} aria-label={`${t("manage.table.source")} 排序`}>
-                        {t("manage.table.source")}
-                        <span className="sort-indicator">{sortIndicator("source_text")}</span>
-                    </button>
-                    <span className="col-resizer" onMouseDown={(e) => startResize("source_text", e)} />
-                </div>
-                <div className="data-cell">
-                    <button type="button" className="sort-btn" onClick={() => toggleSort("target_text")} aria-label={`${t("manage.table.target")} 排序`}>
-                        {t("manage.table.target")}
-                        <span className="sort-indicator">{sortIndicator("target_text")}</span>
-                    </button>
-                    <span className="col-resizer" onMouseDown={(e) => startResize("target_text", e)} />
-                </div>
-                {isGlossary && (
-                    <div className="data-cell">
-                        <button type="button" className="sort-btn" onClick={() => toggleSort("priority")} aria-label={`${t("manage.table.priority")} 排序`}>
-                            {t("manage.table.priority")}
-                            <span className="sort-indicator">{sortIndicator("priority")}</span>
-                        </button>
-                        <span className="col-resizer" onMouseDown={(e) => startResize("priority", e)} />
-                    </div>
-                )}
-                <div className="data-cell">
-                    分類
-                    <span className="col-resizer" onMouseDown={(e) => startResize("category", e)} />
-                </div>
-                <div className="data-cell data-actions">
-                    {t("manage.table.actions")}
-                    <span className="col-resizer" onMouseDown={(e) => startResize("actions", e)} />
-                </div>
-            </div>
-            {(sortedItems || []).map((item, idx) => {
-                const rowKey = makeKey(item);
-                const isEditing = editingKey === rowKey;
-                const row = isEditing ? draft || item : item;
-                const isSelected = selectedIds.includes(item.id);
-                const rowStyle = row?.is_new ? { backgroundColor: highlightColor } : undefined;
-                return (
-                    <div className={`unified-data-row ${isSelected ? "is-selected" : ""}`} key={`tm-${idx}`} style={{ ...rowStyle, gridTemplateColumns }}>
-                        <div className="data-cell w-10 shrink-0 flex items-center justify-center">
-                            <input type="checkbox" checked={isSelected} onChange={(e) => onSelectRow(item.id, e.target.checked)} />
-                        </div>
-                        <div className="data-cell">
-                            {isEditing ? (
-                                <input
-                                    className="data-input !bg-white !border-blue-200 font-bold"
-                                    value={row.source_lang || ""}
-                                    onChange={(e) => setDraft((prev) => ({ ...prev, source_lang: e.target.value }))}
-                                    onKeyDown={(e) => handleKeyDown(e, onSave, onCancel)}
-                                    autoFocus
-                                />
-                            ) : row.source_lang}
-                        </div>
-                        <div className="data-cell">
-                            {isEditing ? (
-                                <input
-                                    className="data-input !bg-white !border-blue-200 font-bold"
-                                    value={row.target_lang || ""}
-                                    onChange={(e) => setDraft((prev) => ({ ...prev, target_lang: e.target.value }))}
-                                    onKeyDown={(e) => handleKeyDown(e, onSave, onCancel)}
-                                />
-                            ) : row.target_lang}
-                        </div>
-                        <div className="data-cell">
-                            {isEditing ? (
-                                <input
-                                    className="data-input !bg-white !border-blue-200 font-bold"
-                                    value={row.source_text || ""}
-                                    onChange={(e) => setDraft((prev) => ({ ...prev, source_text: e.target.value }))}
-                                    onKeyDown={(e) => handleKeyDown(e, onSave, onCancel)}
-                                />
-                            ) : row.source_text}
-                        </div>
-                        <div className="data-cell">
-                            {isEditing ? (
-                                <input
-                                    className="data-input !bg-white !border-blue-200 font-bold"
-                                    value={row.target_text || ""}
-                                    onChange={(e) => setDraft((prev) => ({ ...prev, target_text: e.target.value }))}
-                                    onKeyDown={(e) => handleKeyDown(e, onSave, onCancel)}
-                                />
-                            ) : row.target_text}
-                        </div>
-                        {isGlossary && (
-                            <div className="data-cell">
-                                {isEditing ? (
-                                    <input
-                                        className="data-input !bg-white !border-blue-200 font-bold"
-                                        type="number"
-                                        value={row.priority ?? 0}
-                                        onChange={(e) => setDraft((prev) => ({ ...prev, priority: e.target.value }))}
-                                        onKeyDown={(e) => handleKeyDown(e, onSave, onCancel)}
-                                    />
-                                ) : row.priority ?? 0}
-                            </div>
-                        )}
-                        <div className="data-cell">
-                            {isEditing ? (
-                                <select
-                                    className="data-input !bg-white !border-blue-200 font-bold !text-[12px]"
-                                    value={row.category_id || ""}
-                                    onChange={(e) => setDraft((prev) => ({ ...prev, category_id: e.target.value ? parseInt(e.target.value) : null }))}
-                                    onKeyDown={(e) => handleKeyDown(e, onSave, onCancel)}
-                                >
-                                    <option value="">{t("manage.fields.no_category", "無分類")}</option>
-                                    {categories.map(c => (
-                                        <option key={`cat-edit-${c.id}`} value={c.id}>{c.name}</option>
-                                    ))}
-                                </select>
-                            ) : (
-                                <CategoryPill name={row.category_name} />
-                            )}
-                        </div>
-                        <div className="data-cell data-actions flex justify-end gap-1.5">
-                            {isEditing ? (
-                                <>
-                                    <button className="action-btn-sm success" onClick={onSave} disabled={saving} title={t("manage.actions.save")}>
-                                        <img src="https://emojicdn.elk.sh/✅?style=apple" className="w-5 h-5 object-contain" alt="Save" />
-                                    </button>
-                                    <button className="action-btn-sm" onClick={onCancel} disabled={saving} title={t("manage.actions.cancel")}>
-                                        <img src="https://emojicdn.elk.sh/❌?style=apple" className="w-5 h-5 object-contain" alt="Cancel" />
-                                    </button>
-                                </>
-                            ) : (
-                                <>
-                                    <button className="action-btn-sm success" onClick={() => onAdd(item)} title={t("manage.actions.add")}>
-                                        <Plus size={18} className="text-emerald-600" />
-                                    </button>
-                                    <button className="action-btn-sm" onClick={() => onEdit(item)} title={t("manage.actions.edit")}>
-                                        <img src="https://emojicdn.elk.sh/✏️?style=apple" className="w-5 h-5 object-contain" alt="Edit" />
-                                    </button>
-                                    <button className="action-btn-sm primary" onClick={() => onConvertToPreserveTerm(item)} title={t("manage.actions.convert_preserve")}>
-                                        <img src="https://emojicdn.elk.sh/🔒?style=apple" className="w-5 h-5 object-contain" alt="Preserve" />
-                                    </button>
-                                    {!isGlossary && (
-                                        <button className="action-btn-sm primary" onClick={() => onConvertToGlossary(item)} title={t("manage.actions.convert_glossary")}>
-                                            <img src="https://emojicdn.elk.sh/📑?style=apple" className="w-5 h-5 object-contain" alt="To Glossary" />
-                                        </button>
-                                    )}
-                                    <button className="action-btn-sm danger" onClick={() => onDelete(item)} title={t("manage.actions.delete")}>
-                                        <img src="https://emojicdn.elk.sh/🗑️?style=apple" className="w-5 h-5 object-contain" alt="Delete" />
-                                    </button>
-                                </>
-                            )}
-                        </div>
-                    </div>
-                );
-            })}
-        </div>
-    );
-}

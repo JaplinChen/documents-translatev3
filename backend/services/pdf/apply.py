@@ -81,3 +81,23 @@ def apply_pdf_changes(
                     logging.error(f"Error inserting text blocks: {e}")
 
     doc.save(output_path)
+
+
+def apply_bilingual(
+    input_path: str,
+    output_path: str,
+    blocks: list[dict],
+    target_language: str | None = "zh-TW",
+) -> None:
+    """Apply bilingual changes to PDF (currently using the same logic as translated)."""
+    apply_pdf_changes(input_path, output_path, blocks, target_lang=target_language or "zh-TW")
+
+
+def apply_translations(
+    input_path: str,
+    output_path: str,
+    blocks: list[dict],
+    target_language: str | None = "zh-TW",
+) -> None:
+    """Apply translated changes to PDF."""
+    apply_pdf_changes(input_path, output_path, blocks, target_lang=target_language or "zh-TW")

@@ -3,10 +3,10 @@ services:
     build:
       context: .
       dockerfile: Dockerfile.backend
-    image: documents-translate-backend:latest
-    container_name: documents-translate-backend
+    image: documents-translatev3-backend:latest
+    container_name: documents-translatev3-backend
     ports:
-      - "5002:5002"
+      - "5005:5005"
     extra_hosts:
       - "host.docker.internal:host-gateway"
     environment:
@@ -50,12 +50,12 @@ services:
       - ./docs:/app/docs
     restart: unless-stopped
     healthcheck:
-      test: [ "CMD", "curl", "-f", "http://localhost:5002/health" ]
+      test: [ "CMD", "curl", "-f", "http://127.0.0.1:5005/health" ]
       interval: 10s
       timeout: 5s
       retries: 3
-      start_period: 10s
-    command: uvicorn backend.main:app --host 0.0.0.0 --port 5002 --reload --reload-exclude "data/*"
+      start_period: 30s
+    command: uvicorn backend.main:app --host 0.0.0.0 --port 5005 --reload --reload-exclude "data/*"
     develop:
       watch:
         - action: sync
@@ -69,10 +69,10 @@ services:
     build:
       context: .
       dockerfile: Dockerfile.frontend
-    image: documents-translate-frontend:latest
-    container_name: documents-translate-frontend
+    image: documents-translatev3-frontend:latest
+    container_name: documents-translatev3-frontend
     ports:
-      - "5194:80"
+      - "5195:80"
     depends_on:
       backend:
         condition: service_healthy
@@ -88,4 +88,4 @@ services:
 
 networks:
   default:
-    name: documents-translate-network
+    name: documents-translatev3-network

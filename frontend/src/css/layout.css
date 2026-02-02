@@ -3,7 +3,7 @@
 
     /* App Container & Hero */
     .app {
-        @apply min-h-screen p-8 max-w-7xl mx-auto;
+        @apply min-h-screen px-8 pb-8 pt-2 max-w-7xl mx-auto;
     }
 
     /* Grid Layout */
@@ -28,14 +28,14 @@
         border-color: var(--glass-border);
         background: var(--bg-sidebar);
         backdrop-filter: blur(var(--glass-blur));
-        height: calc(100vh - 12rem);
+        height: calc(100vh - 4rem);
     }
 
     .panel-right {
         @apply gap-4 p-6;
         background: var(--glass-bg);
         backdrop-filter: blur(var(--glass-blur));
-        height: calc(100vh - 12rem);
+        height: calc(100vh - 4rem);
     }
 
     /* Panel Header Titles */
@@ -123,44 +123,65 @@
 
     /* Block List */
     .block-list {
-        @apply flex-1 overflow-y-auto pr-2 flex flex-col gap-3;
-        margin-right: -0.5rem;
-        padding-right: 0.5rem;
+        @apply flex flex-col gap-3;
     }
 
     /* Block Cards (Compact Header) */
     .block-card {
         @apply bg-white border border-slate-300 rounded-lg p-3 flex flex-col gap-2 shadow-sm hover:shadow-md hover:border-blue-400/50 transition-all duration-200;
-    }
-
-    .block-card.is-muted {
-        @apply opacity-50;
-    }
-
-    .block-actions {
-        @apply flex gap-2 pt-3 border-t border-slate-100;
+        height: auto;
     }
 
     .block-body {
         @apply grid grid-cols-2 gap-3;
+        height: auto;
+    }
+
+    .slide-canvas {
+        @apply rounded-sm shadow-lg ring-1 ring-slate-200/50;
+    }
+
+    /* Textarea & Readonly Box */
+    .textarea,
+    .readonly-box {
+        @apply w-full p-3 rounded-lg border border-slate-200 bg-slate-50 text-sm text-slate-700;
+        @apply transition-all duration-200;
+        min-height: 50px;
+        line-height: 1.5;
+    }
+
+    .readonly-box {
+        @apply bg-slate-100/50 text-slate-500 cursor-default;
+        border-style: dashed;
+    }
+
+    .textarea:focus {
+        @apply bg-white border-blue-400 ring-2 ring-blue-100;
+    }
+
+    /* Select Input Compact */
+    .select-input {
+        @apply px-2 py-1 text-[11px] rounded-md border border-slate-200 bg-white text-slate-600 outline-none;
+        @apply focus:border-blue-400 focus:ring-1 focus:ring-blue-100 transition-all;
+        min-height: 24px;
     }
 
     /* Filter Row Compact */
     .filter-row {
-        @apply flex gap-3 items-center flex-wrap pt-0.5 pb-1.5 border-b border-slate-200/50;
+        @apply flex gap-2 items-center flex-wrap py-0.5 border-b border-transparent;
     }
 
     .filter-item {
-        @apply flex flex-row items-center gap-2;
+        @apply flex flex-row items-center gap-1.5;
     }
 
     .filter-item .field-label {
-        @apply m-0 text-xs text-slate-400 whitespace-nowrap;
+        @apply m-0 text-[11px] text-slate-500 whitespace-nowrap font-medium;
     }
 
     /* Action Row */
     .action-row {
-        @apply flex gap-3 flex-wrap items-center py-1 mb-1;
+        @apply flex gap-2 flex-wrap items-center py-0 mb-1;
     }
 
     /* Token Stats Component */

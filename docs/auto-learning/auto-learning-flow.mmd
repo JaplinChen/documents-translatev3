@@ -1,0 +1,33 @@
+%% Auto-Learning Pipeline Flow
+flowchart TD
+  A[Ingestion: bilingual files / corrections / TM] --> B[Cleaning & De-noise]
+  B --> C[Term Mining]
+  C --> D[Auto Classification]
+  D --> E[Auto Promotion]
+  E --> F[Glossary/TM/Staging]
+  F --> G[Translation & Extraction Feedback]
+  G --> H[Monitoring & Auto-Tuning]
+  H --> B
+
+  subgraph Promotion
+    E1[Score candidates]
+    E2[Promote to TM]
+    E3[Promote to Glossary]
+    E1 --> E2
+    E1 --> E3
+  end
+
+  E --> E1
+
+%% Runtime data flow
+flowchart TD
+  U[User edits translation] --> FB[/api/tm/feedback]
+  FB --> TF[(term_feedback)]
+  TF --> AUTO{count >= threshold}
+  AUTO -- yes --> GL[(glossary)]
+  AUTO -- no --> TF
+
+  TR[Translation complete] --> SAVE[save_tm]
+  SAVE --> TM[(tm)]
+  TM --> HIT[lookup_tm]
+  HIT --> OUT[Translation output]

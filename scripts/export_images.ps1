@@ -37,7 +37,7 @@ services:
     image: documents-translatev3-backend:latest
     container_name: documents-translatev3-backend
     ports:
-      - "5002:5002"
+      - "5005:5005"
     extra_hosts:
       - "host.docker.internal:host-gateway"
     environment:
@@ -49,7 +49,7 @@ services:
       - ./data:/app/data
     restart: unless-stopped
     healthcheck:
-      test: [ "CMD", "curl", "-f", "http://localhost:5002/health" ]
+      test: [ "CMD", "curl", "-f", "http://localhost:5005/health" ]
       interval: 30s
       timeout: 10s
       retries: 5
@@ -58,7 +58,7 @@ services:
     image: documents-translatev3-frontend:latest
     container_name: documents-translatev3-frontend
     ports:
-      - "5194:80"
+      - "5195:80"
     depends_on:
       backend:
         condition: service_healthy

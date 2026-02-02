@@ -43,9 +43,9 @@ echo.
 echo ========================================
 echo  Access URLs
 echo ========================================
-echo  Frontend: http://localhost:5194
-echo  Backend:  http://localhost:5002
-echo  API Docs: http://localhost:5002/docs
+echo  Frontend: http://localhost:5195
+echo  Backend:  http://localhost:5005
+echo  API Docs: http://localhost:5005/docs
 echo ========================================
 echo.
 

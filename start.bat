@@ -9,8 +9,8 @@ set "PROJECT_ROOT=%~dp0"
 set "BACKEND_DIR=%PROJECT_ROOT%backend"
 set "FRONTEND_DIR=%PROJECT_ROOT%frontend"
 set "VENV_DIR=%PROJECT_ROOT%.venv"
-set "BACKEND_PORT=5002"
-set "FRONTEND_PORT=5194"
+set "BACKEND_PORT=5005"
+set "FRONTEND_PORT=5195"
 set "OLLAMA_URL=http://127.0.0.1:11434"
 
 :: ========================================

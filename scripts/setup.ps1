@@ -100,7 +100,7 @@ Write-Log "`n[3/5] Configuring Ollama Model (translategemma:4b)..." "Yellow"
 $retry = 0
 while ($retry -lt 5) {
     try {
-        $void = Invoke-RestMethod -Uri "http://localhost:11434/api/version" -ErrorAction Stop
+        Invoke-RestMethod -Uri "http://localhost:11434/api/version" -ErrorAction Stop | Out-Null
         break
     }
     catch {
@@ -149,8 +149,8 @@ docker ps --format "table {{.Names}}\t{{.Status}}"
 
 Write-Log "`n===============================================" "Cyan"
 Write-Log "Setup and startup completed!" "Green"
-Write-Log "Frontend URL: http://localhost:5194" "White"
-Write-Log "Backend URL: http://localhost:5002" "White"
+Write-Log "Frontend URL: http://localhost:5195" "White"
+Write-Log "Backend URL: http://localhost:5005" "White"
 Write-Log "===============================================" "Cyan"
 Write-Log "Log saved to: $LogFile" "Gray"
 Pause

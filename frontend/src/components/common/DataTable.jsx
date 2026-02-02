@@ -32,6 +32,12 @@ import { X, ArrowUpDown, ArrowUp, ArrowDown } from "lucide-react";
  * @param {boolean} [props.compact] - Initial compact mode state
  * @param {function(boolean)} [props.onCompactChange] - Callback when compact mode changes
  * @param {Object} [props.emptyState] - Custom empty state content
+ * @param {string} [props.className] - Extra CSS classes
+ * @param {string} [props.highlightColor] - Background color for specific highlights
+ * @param {function(any)} [props.onRowClick] - Callback for row click
+ * @param {function} [props.onLoadMore] - Callback to load more data (pagination)
+ * @param {boolean} [props.canLoadMore] - Whether more data is available
+ * @param {number} [props.totalCount] - Total number of items (for footer display)
  */
 export function DataTable({
     columns = [],

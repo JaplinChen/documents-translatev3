@@ -10,9 +10,9 @@
 
 - 🌐 **高精度多語支援**：自動偵測語言，支援繁中、英、越、日、韓。
 - 🤖 **模型靈活切換**：整合 **Ollama (translategemma:4b)**、Gemini、OpenAI。
-- 💾 **翻譯記憶與術語**：內建 SQLite 儲存空間，支援高密度懸浮佈局 (Sticky Header) 管理。
+- 💾 **翻譯資料中樞 (Unified DataTable)**：全站統一使用高效能表格組件，支援動態排序、多選操作、欄位客製化配置與「載入更多」分頁機制。
 - 🎨 **智慧校正介面**：視覺化標注翻譯內容，支援流暢的非受控式編輯（Uncontrolled Editing）防止鍵入衝突。
-- 📦 **安全發布機制**：支援「鏡像打包」模式，可保護原始碼進行跨電腦分發。
+- 📦 **管理功能強化**：模組化的「管理彈窗」設計，包含對照表、術語庫、記憶庫與歷史紀錄，並支援 Compact Mode 持久化設定。
 
 ---
 
@@ -32,9 +32,9 @@
 
 ### 3. 存取位置
 
-- **前端介面**: [http://localhost:5194](http://localhost:5194)
-- **後端 API**: [http://localhost:5002](http://localhost:5002)
-- **API 文件**: [http://localhost:5002/docs](http://localhost:5002/docs)
+- **前端介面**: [http://localhost:5195](http://localhost:5195)
+- **後端 API**: [http://localhost:5005](http://localhost:5005)
+- **API 文件**: [http://localhost:5005/docs](http://localhost:5005/docs)
 
 ---
 

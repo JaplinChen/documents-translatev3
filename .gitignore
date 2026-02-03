@@ -50,6 +50,7 @@ frontend/.vite/
 
 # Mac
 .DS_Store
+frontend/test-results/
 
 # Logs
 *.log

@@ -1,9 +1,11 @@
 from __future__ import annotations
-import sqlite3
 import logging
-from pathlib import Path
-from datetime import datetime
-from backend.services.translation_memory import DB_PATH, _ensure_db
+
+import sqlite3
+
+from backend.config import settings
+from backend.services.translation_memory import DB_PATH, _ensure_db, _record_learning_event
+from backend.services import translation_memory_pg
 
 LOGGER = logging.getLogger(__name__)
 
@@ -18,6 +20,15 @@ def record_term_feedback(
     紀錄用戶對特定單詞/片語的修正行為。
     如果該組合已存在，則增加修正次數 (correction_count)。
     """
+    if (settings.database_url or "").startswith("postgresql"):
+        translation_memory_pg.record_term_feedback(
+            source_text=source_text,
+            target_text=target_text,
+            source_lang=source_lang,
+            target_lang=target_lang,
+        )
+        return
+
     _ensure_db()
     if not source_text or not target_text:
         return
@@ -35,6 +46,16 @@ def record_term_feedback(
                 query, (source_text.strip(), target_text.strip(), source_lang, target_lang)
             )
             conn.commit()
+            _record_learning_event(
+                "feedback",
+                source_text=source_text.strip(),
+                target_text=target_text.strip(),
+                source_lang=source_lang,
+                target_lang=target_lang,
+                entity_type="term_feedback",
+                scope_type="project",
+                scope_id="default",
+            )
 
             # --- 自動進化：若修正次數達標，自動寫入對照表 ---
             cursor = conn.execute(
@@ -43,7 +64,7 @@ def record_term_feedback(
             )
             row = cursor.fetchone()
             if row and row[0] >= 3:
-                from backend.services.translation_memory import upsert_glossary
+                from backend.services.translation_memory_adapter import upsert_glossary
 
                 LOGGER.info(
                     f"Auto-promoting to glossary: {source_text} -> {target_text} (count: {row[0]})"
@@ -58,6 +79,16 @@ def record_term_feedback(
                         "category_id": None,
                     }
                 )
+                _record_learning_event(
+                    "promote",
+                    source_text=source_text.strip(),
+                    target_text=target_text.strip(),
+                    source_lang=source_lang,
+                    target_lang=target_lang,
+                    entity_type="glossary",
+                    scope_type="project",
+                    scope_id="default",
+                )
     except Exception as e:
         LOGGER.error(f"Failed to record term feedback: {e}")
 
@@ -68,6 +99,11 @@ def get_learned_terms(
     """
     獲取系統已學習到的高頻修正術語。
     """
+    if (settings.database_url or "").startswith("postgresql"):
+        return translation_memory_pg.get_learned_terms(
+            target_lang=target_lang, min_count=min_count, limit=limit
+        )
+
     _ensure_db()
     query = """
     SELECT source_text, target_text, correction_count 

@@ -192,7 +192,7 @@ def apply_correction_mode(  # noqa: C901
                 # If no match found, keep the existing translation or
                 # LLM result.
                 # Do not set to empty string.
-                pass
+                block["translated_text"] = ""
             continue
 
         block["temp_translated_text"] = block.get("translated_text", "")
@@ -210,12 +210,11 @@ def apply_correction_mode(  # noqa: C901
 
     # Final Flush: If any items remain in pending, it means they were
     # not matched.
-    # We should restore their translated_text so they don't appear empty.
+    # Keep them in correction_temp state for user review.
     for matched in pending:
         source_idx = matched["source_index"]
         block = output_blocks[source_idx]
-        if not block.get("translated_text"):
-            block["translated_text"] = matched["translated_text"]
-            block["correction_temp"] = False
+        block["translated_text"] = ""
+        block["correction_temp"] = True
 
     return output_blocks

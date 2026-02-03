@@ -1,0 +1,57 @@
+{
+  "components": {
+    "quality_badge": {
+      "score_label": "品質分數",
+      "excellent": "優秀",
+      "good": "良好",
+      "fair": "尚可",
+      "poor": "待改進",
+      "review": "需審核"
+    },
+    "editor": {
+      "filter_textbox": "內文 / 方塊",
+      "filter_table": "表格儲存格",
+      "filter_notes": "補充說明 / 備忘錄"
+    },
+    "token_stats": {
+      "title": "Token 用量統計",
+      "session_title": "本次工作階段 (24h)",
+      "input_tokens": "輸入 Token",
+      "output_tokens": "輸出 Token",
+      "total_tokens": "總計 Token",
+      "estimated_cost": "預估成本",
+      "request_count": "請求次數",
+      "all_time_title": "累計統計",
+      "models_used": "使用模型",
+      "cost_tiny": "< $0.01"
+    },
+    "shortcuts": {
+      "title": "⌨️ 快捷鍵說明",
+      "confirm": "我知道了",
+      "actions": {
+        "save_progress": "儲存翻譯進度",
+        "start_translate": "開始 AI 翻譯",
+        "toggle_select": "全選/取消全選區塊",
+        "close_modal": "關閉彈窗"
+      }
+    },
+    "block_card": {
+      "apply": "套用",
+      "slide": "頁面 / 頁面",
+      "shape": "ID",
+      "translating": "正在翻譯",
+      "updated_at": "更新 {{time}}",
+      "glossary": "術語",
+      "memory": "記憶",
+      "source": "原文",
+      "target": "翻譯 / 校正",
+      "output": "輸出",
+      "placeholder": "輸入翻譯內容或校正文字",
+      "tools_glossary_title": "加入術語庫",
+      "tools_memory_title": "加入翻譯記憶",
+      "bilingual": "Bilingual",
+      "correction": "Correction",
+      "draft": "暫存"
+    }
+  }
+}

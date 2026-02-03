@@ -19,7 +19,8 @@
    - 理想校正：`Thay đổi hệ thống 全系統優化與調整`
 
 ## 參數與數據
-- 目標語言：{target_language_label} ({target_language_code})
+- 目標語言：{target_language_label}
+- 目標語言代碼：{target_language_code}
 - 輔助提示：{language_hint}
 
 {payload}

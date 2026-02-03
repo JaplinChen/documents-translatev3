@@ -1,0 +1,56 @@
+{
+  "components": {
+    "quality_badge": {
+      "score_label": "Điểm chất lượng",
+      "excellent": "Xuất sắc",
+      "good": "Tốt",
+      "fair": "Khá",
+      "poor": "Cần cải thiện",
+      "review": "Cần xem lại"
+    },
+    "editor": {
+      "filter_textbox": "Nội dung / Hộp văn bản",
+      "filter_table": "Ô bảng",
+      "filter_notes": "Ghi chú / Chú thích"
+    },
+    "token_stats": {
+      "title": "Thống kê Token",
+      "session_title": "Phiên làm việc (24h)",
+      "input_tokens": "Token đầu vào",
+      "output_tokens": "Token đầu ra",
+      "total_tokens": "Tổng Token",
+      "estimated_cost": "Chi phí ước tính",
+      "request_count": "Số yêu cầu",
+      "all_time_title": "Tổng cộng",
+      "models_used": "Mô hình đã dùng"
+    },
+    "block_card": {
+      "apply": "Áp dụng",
+      "slide": "Trang",
+      "shape": "ID",
+      "translating": "Đang dịch...",
+      "updated_at": "Cập nhật {{time}}",
+      "glossary": "Thuật ngữ",
+      "memory": "Bộ nhớ",
+      "source": "Nguồn",
+      "target": "Dịch / Hiệu đính",
+      "output": "Xuất",
+      "placeholder": "Nhập nội dung dịch hoặc hiệu đính",
+      "tools_glossary_title": "Thêm vào Thuật ngữ",
+      "tools_memory_title": "Thêm vào Bộ nhớ dịch",
+      "bilingual": "Song ngữ",
+      "correction": "Hiệu đính",
+      "draft": "Bản nháp"
+    },
+    "shortcuts": {
+      "actions": {
+        "save_progress": "Lưu tiến trình dịch",
+        "start_translate": "Bắt đầu dịch AI",
+        "toggle_select": "Chọn/Bỏ chọn tất cả khối",
+        "close_modal": "Đóng cửa sổ"
+      },
+      "title": "⌨️ Hướng dẫn phím tắt",
+      "confirm": "Đã hiểu"
+    }
+  }
+}

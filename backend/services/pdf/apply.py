@@ -56,10 +56,18 @@ def apply_pdf_changes(
 
         for block in p_blocks:
             # Draw white rectangle to cover old text
-            x0 = block["box_2d"][0]
-            y0 = block["box_2d"][1]
-            w = block["box_2d"][2]
-            h = block["box_2d"][3]
+            if "box_2d" in block and block["box_2d"]:
+                x0, y0, w, h = (
+                    block["box_2d"][0],
+                    block["box_2d"][1],
+                    block["box_2d"][2],
+                    block["box_2d"][3],
+                )
+            else:
+                x0 = block.get("x", 0)
+                y0 = block.get("y", 0)
+                w = block.get("width", 0)
+                h = block.get("height", 0)
 
             # Draw white background
             rect = fitz.Rect(x0, y0, x0 + w, y0 + h)
@@ -81,6 +89,7 @@ def apply_pdf_changes(
                     logging.error(f"Error inserting text blocks: {e}")
 
     doc.save(output_path)
+    doc.close()
 
 
 def apply_bilingual(

@@ -3,7 +3,7 @@ from __future__ import annotations
 from collections.abc import Iterable
 from typing import Any, Literal
 
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 
 class PPTXBlock(BaseModel):
     slide_index: int
@@ -22,8 +22,7 @@ class PPTXBlock(BaseModel):
     font_size: float | None = None
     font_name: str | None = None
 
-    class Config:
-        extra = "allow"
+    model_config = ConfigDict(extra="allow")
 
 
 class PPTXExtractResponse(BaseModel):

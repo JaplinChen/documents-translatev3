@@ -1,0 +1,38 @@
+{
+  "editor": {
+    "title": "Khối văn bản",
+    "summary": "Tổng {{total}}, Hiển thị {{filtered}}",
+    "empty": {
+      "title": "Chưa trích xuất khối văn bản nào",
+      "hint": "Vui lòng tải lên tài liệu và nhấp vào 'Phân tích' trước",
+      "preview": "Xem trước",
+      "batch": "Chỉnh sửa hàng loạt"
+    },
+    "filter": {
+      "search": "Tìm kiếm",
+      "type": "Loại",
+      "slide": "Trang / Slide"
+    },
+    "search_placeholder": "Tìm kiếm gốc/dịch",
+    "filter_type": "Tất cả loại",
+    "filter_slide": "Trang {{index}}",
+    "select_all": "Chọn tất cả",
+    "clear_selection": "Xóa",
+    "source_label": "Gốc",
+    "translate_label": "Dịch",
+    "batch": {
+      "toggle": "Thay thế hàng loạt",
+      "toggle_title": "Mở rộng công cụ thay thế hàng loạt",
+      "title": "Tìm & Thay thế",
+      "find": "Tìm",
+      "find_placeholder": "Nhập văn bản cần tìm",
+      "replace": "Thay thế bằng",
+      "replace_placeholder": "Nhập văn bản thay thế",
+      "regex": "Biểu thức chính quy",
+      "case_sensitive": "Phân biệt hoa thường",
+      "selected_only": "Chỉ khối đã chọn",
+      "replace_all": "Thay thế tất cả",
+      "result": "Đã thay thế {{count}} mục"
+    }
+  }
+}

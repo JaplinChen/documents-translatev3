@@ -1,0 +1,14 @@
+{
+  "nav": {
+    "title": "引導導航",
+    "subtitle": "請依序完成各項配置",
+    "step1": "上傳檔案",
+    "step2": "偏好設定",
+    "step3": "翻譯執行",
+    "step4": "完成下載",
+    "manage": "管理",
+    "settings": "設定",
+    "history": "歷史紀錄",
+    "status": "狀態"
+  }
+}

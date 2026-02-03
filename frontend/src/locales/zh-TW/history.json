@@ -1,0 +1,16 @@
+{
+  "history": {
+    "load_json_blocked": "JSON 歷史檔無法載入編輯器，請改用下載",
+    "confirm_delete": "確定要刪除這個檔案嗎？",
+    "confirm_reset_all": "警告：這將永久刪除所有翻譯記憶庫 (TM)、用語集快取以及歷史匯出檔案。是否確定執行？",
+    "reset_success": "清理完成，已刪除 {{count}} 個檔案",
+    "reset_warning": "管理提示：若想徹底重新翻譯或清除庫存，請點擊右側按鈕",
+    "reset_all": "清理所有快取與檔案",
+    "empty": "沒有歷史記錄",
+    "filename": "檔名",
+    "date": "日期",
+    "size": "大小",
+    "actions": "操作",
+    "load": "載入到編輯器"
+  }
+}

@@ -1,0 +1,11 @@
+{
+  "term_suggestions": {
+    "title": "🔍 Gợi ý thuật ngữ thông minh",
+    "count": "{{count}} thuật ngữ gợi ý",
+    "loading": "Đang phân tích văn bản...",
+    "empty": "Không có thuật ngữ gợi ý",
+    "add": "+ Thêm vào thuật ngữ",
+    "added": "✓ Đã thêm",
+    "fetch_failed": "Không thể lấy gợi ý thuật ngữ"
+  }
+}

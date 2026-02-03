@@ -3,10 +3,18 @@
 
 @import "./css/base.css";
 @import "./css/buttons.css";
-@import "./css/forms.css";
+@import "./css/forms/inputs.css";
+@import "./css/forms/selects.css";
+@import "./css/forms/file-input.css";
+@import "./css/forms/toggles.css";
+@import "./css/forms/textareas.css";
+@import "./css/forms/batch-replace.css";
 @import "./css/navbar.css";
 @import "./css/sidebar.css";
 @import "./css/data-table.css";
-@import "./css/layout.css";
+@import "./css/layout/base.css";
+@import "./css/layout/token-stats.css";
+@import "./css/layout/blocks.css";
+@import "./css/layout/animations.css";
 @import "./css/modal.css";
 @import "./css/responsive.css";

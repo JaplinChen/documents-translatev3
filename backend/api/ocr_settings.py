@@ -16,6 +16,8 @@ class OcrSettings(BaseModel):
     conf_min: int | None = None
     psm: int | None = None
     engine: str | None = None
+    allow_paddle: bool | None = None
+    paddle_fallback: bool | None = None
     poppler_path: str | None = None
 
 
@@ -43,6 +45,8 @@ async def get_settings() -> dict:
         "conf_min": cfg["conf_min"],
         "psm": cfg.get("psm", 6),
         "engine": cfg.get("engine", "tesseract"),
+        "allow_paddle": cfg.get("allow_paddle", False),
+        "paddle_fallback": cfg.get("paddle_fallback", False),
         "poppler_path": (
             os.getenv("PDF_POPPLER_PATH", "") or get_poppler_path() or ""
         ),
@@ -73,6 +77,10 @@ async def update_settings(payload: OcrSettings) -> dict:
         os.environ["PDF_OCR_PSM"] = str(payload.psm)
     if payload.engine is not None:
         os.environ["PDF_OCR_ENGINE"] = payload.engine
+    if payload.allow_paddle is not None:
+        os.environ["PDF_OCR_ALLOW_PADDLE"] = "1" if payload.allow_paddle else "0"
+    if payload.paddle_fallback is not None:
+        os.environ["PDF_OCR_PADDLE_FALLBACK"] = "1" if payload.paddle_fallback else "0"
     if payload.poppler_path is not None:
         os.environ["PDF_POPPLER_PATH"] = payload.poppler_path
 

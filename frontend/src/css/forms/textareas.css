@@ -1,0 +1,26 @@
+/* === Textareas === */
+@layer components {
+    .readonly-box {
+        @apply min-h-32 p-3 rounded-lg bg-slate-100/50 border border-slate-200 text-slate-800 leading-snug text-sm font-medium;
+    }
+
+    .textarea {
+        @apply w-full min-h-32 p-3 rounded-lg border border-slate-300 bg-white text-slate-900 leading-snug text-sm resize-y;
+        @apply focus:outline-none focus:border-blue-600 shadow-sm;
+    }
+
+    .correction-editor {
+        @apply p-2.5 rounded-lg leading-snug text-sm font-medium;
+        min-height: 48px;
+        max-height: 200px;
+        overflow-y: auto;
+        background: var(--correction-fill);
+        color: var(--correction-text);
+        border: 2px dashed var(--correction-line);
+    }
+
+    .correction-editor:focus {
+        @apply outline-none;
+        box-shadow: 0 0 0 4px rgba(147, 51, 234, 0.15);
+    }
+}

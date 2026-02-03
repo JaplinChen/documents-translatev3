@@ -1,128 +1,251 @@
-# Auto-Learning System Spec (Draft v1)
+# 自動學習系統規格書（草案 v2）
 
-## 1. Purpose
-Provide a fully automated learning pipeline that improves terminology extraction, translation consistency, and classification quality without human review. The system must be safe, self-correcting, and scalable for multi-user usage.
+## 1. 目的
+建立完全自動的學習管線，提升術語抽取、翻譯一致性與分類品質，且不需人工審核。系統需安全、自我修正並可擴展於多人使用情境。
 
-## 2. Scope
-- In scope:
-  - Automated learning from bilingual content and user feedback
-  - Term extraction improvement (prompt context + data quality)
-  - Translation Memory (TM) quality improvement
-  - Automatic domain/category classification
-  - PostgreSQL migration and Docker-based deployment
-- Out of scope:
-  - Model fine-tuning or external ML training pipelines
-  - Human review workflows
+## 2. 範圍
+- 納入範圍：
+  - 來自雙語內容與使用者回饋的自動學習
+  - 術語抽取強化（提示脈絡 + 資料品質）
+  - 翻譯記憶（TM）品質提升
+  - 自動領域/類別分類
+  - PostgreSQL 遷移與 Docker 佈署
+- 不在範圍：
+  - 模型微調或外部 ML 訓練管線
+  - 人工審核流程
 
-## 3. Current State Summary (Baseline)
-- Learning is event-driven only (no background worker).
-- Term feedback is stored in `term_feedback` and auto-promoted to `glossary` at a fixed threshold.
-- TM is written on translation completion and used via exact match.
-- Domain detection is keyword-based.
-- Storage is SQLite (`translation_memory.db`, `terms.db`).
+## 3. 現況摘要（Baseline）
+- 學習為事件觸發，已有每日統計背景 Worker（FastAPI lifespan 啟動）。
+- term_feedback 累積到固定門檻即自動升級 glossary。
+- 翻譯完成後寫入 TM，並支援 exact + fuzzy/partial 匹配。
+- 領域判斷為關鍵字規則。
+- 新增 learning_events、learning_stats（SQLite）。
+- TM/Glossary 擴充 scope_type/scope_id/domain/category/status/hit_count/last_hit_at/overwrite_count。
+- 資料儲存在 SQLite（translation_memory.db、terms.db）。
 
-## 4. Goals and Non-Goals
-### Goals
-- Fully automated learning without human intervention.
-- Improve correctness by reducing noisy/incorrect entries.
-- Scale for multi-user, multi-project usage.
-- Provide automated rollbacks via decay and overwrite signals.
+## 4. 目標與非目標
+### 目標
+- 完全自動化學習、不需人工介入。
+- 降低噪音與錯誤學習，提升正確率。
+- 支援多人/多專案規模。
+- 具備自動回滾與衰減機制。
 
-### Non-Goals
-- No training or fine-tuning of language models.
-- No manual approval steps.
+### 非目標
+- 不進行語言模型微調或訓練。
+- 不引入人工審核流程。
 
-## 5. High-Level Architecture
-- Services:
-  - API (backend)
-  - Worker (scheduled or continuous)
-  - PostgreSQL database
-- Storage:
-  - `translation_memory` tables (tm, glossary, term_feedback)
-  - `terms` (unified terminology)
-  - `learning_events`, `learning_stats`
+## 5. 高階架構
+- 服務：
+  - API（backend）
+  - Worker（backend/workers，排程與批次管線）
+  - PostgreSQL
+- 儲存：
+  - translation_memory 系列表（tm、glossary、term_feedback）
+  - terms（統一術語中心）
+  - learning_candidates、learning_events、learning_stats
+- 事件流：
+  - 翻譯查詢與回饋 -> learning_events
+  - 每日統計與衰減 -> learning_stats
 
-## 6. Auto-Learning Pipeline (8 Stages)
-1) Ingestion
-- Inputs: bilingual files, translation outputs, user corrections
-- Normalize and segment into aligned source/target pairs
+## 6. 自動學習管線（8 階段）
+1) 資料進入
+- 來源：雙語文件、翻譯結果、使用者修正
+- 正規化並切段成對齊的 source/target
 
-2) Cleaning and De-noise
-- Drop empty, numeric-only, language-mismatch pairs
-- Filter low-quality TM entries
-- Deduplicate by (source, target, lang)
+2) 清洗與去噪
+- 去除空白、純數字、語言不匹配
+- 過濾低品質 TM
+- 依 (source, target, lang, scope) 去重
 
-3) Term Mining
-- Rule-based extraction (acronyms, brands, technical terms)
-- LLM-assisted extraction from sampled content
+3) 術語抽取
+- 規則抽取（縮寫、品牌、技術詞）
+- LLM 抽取（樣本文本）
 
-4) Auto Classification
-- Assign domain/category using rules + embedding/LLM classification
-- Store `domain_score` and `category_score`
+4) 自動分類
+- 規則 + embedding/LLM 分類
+- 紀錄 domain_score、category_score
 
-5) Auto Promotion
-- Weighted confidence score for each candidate
-- Promote to:
-  - Staging pool
+5) 自動升級
+- 依權重分數評估
+- 升級到：
+  - 候選池
   - TM
-  - Glossary (only if score passes high threshold)
+  - Glossary（高分門檻）
 
-6) Auto Decay and Eviction
-- Decay by time or non-usage
-- Evict entries with high overwrite rate
+6) 自動衰減與淘汰
+- 依時間/未命中衰減
+- 高覆寫率移除
 
-7) Feedback Loop
-- Use learned terms as prompt context
-- Use TM/glossary to guide translation
+7) 回饋迴圈
+- 將學習結果注入提示語境
+- 使用 TM/Glossary 引導翻譯
 
-8) Monitoring and Auto-Tuning
-- Track hit-rate, overwrite-rate, and translation consistency
-- Auto-adjust thresholds
+8) 監控與自動調參
+- 追蹤命中率、覆寫率、一致性
+- 自動調整門檻
 
-## 7. Scoring and Promotion Rules
-- Candidate score = frequency * context_similarity * alignment_quality * recency
-- Example thresholds:
-  - score >= 0.85 -> glossary
-  - score >= 0.65 -> TM
-  - score >= 0.45 -> staging
+## 7. 評分與升級規則
+### 7.1 候選評分公式
+候選分數（0~1）：
+`score = w_f * freq_norm + w_c * context_similarity + w_a * alignment_quality + w_r * recency`
+- `freq_norm`：7/30/90 天滑動窗口出現次數的正規化值（0~1），採 min-max 或對數壓縮。
+- `context_similarity`：語境相似度（0~1），向量相似度或文字相似度。
+- `alignment_quality`：對齊品質（0~1），以對齊 ratio 或標點/長度一致性衡量。
+- `recency`：新鮮度（0~1），指數衰減 `exp(-age / half_life)`。
+- 權重建議：`w_f=0.30, w_c=0.30, w_a=0.25, w_r=0.15`（可調）。
 
-## 8. Data Model (Proposed)
-### Core Tables
+### 7.2 最小樣本與安全門檻
+- `min_count`：至少 3 次（同一 scope）。
+- `min_unique_users`：至少 2 位使用者（若 scope 為 user 則略過）。
+- `min_domain_confidence`：分類置信度 >= 0.60。
+- `min_alignment_quality`：對齊品質 >= 0.70。
+
+### 7.3 升級門檻（預設）
+- score >= 0.85 且 `min_count`、`min_alignment_quality` 通過 -> Glossary
+- score >= 0.65 且 `min_count` 通過 -> TM
+- score >= 0.45 -> Staging
+
+### 7.4 覆寫與降級
+- `overwrite_rate = overwrite_count / max(hit_count, 1)`
+- 當 `overwrite_rate >= 0.25` 且 `hit_count >= 10`：從 Glossary 降級到 TM
+- 當 `overwrite_rate >= 0.40` 且 `hit_count >= 10`：降級到 Staging 或標記 Inactive
+
+### 7.5 冷啟動策略
+新語料不足時，只進 Staging；待達到 `min_count` 與 `min_unique_users` 再升級。
+
+### 7.6 TM fuzzy/partial match 策略
+查詢優先序：
+1. Exact match（完全一致）
+2. Normalized exact（大小寫、全半形、標點正規化後一致）
+3. Fuzzy/partial（相似度排序）
+
+Fuzzy/partial 候選分數（0~1）：
+`match_score = 0.40 * token_overlap + 0.35 * char_similarity + 0.15 * length_ratio + 0.10 * domain_bonus`
+- `token_overlap`：分詞後 Jaccard（0~1）
+- `char_similarity`：normalized edit distance 相似度（0~1）
+- `length_ratio`：長度比例（0~1）
+- `domain_bonus`：同 domain +0.05，同 category +0.05（上限 0.10）
+
+最小門檻與回傳規則：
+- `match_score >= 0.78` 才可回傳
+- 只回傳前 3 筆（依 `match_score`）
+- 若 `scope` 不同，分數 -0.05（避免跨 scope 污染）
+
+## 8. ORM 與 DB schema 風格（建議）
+- ORM：SQLAlchemy 2.0（Declarative Base）
+- Migration：Alembic（單一版本線）
+- 命名：`snake_case` 表與欄位
+- 主鍵：`bigint` + `generated by default as identity`
+- 時間：`timestamptz`，以 UTC 儲存
+- JSON：事件欄位使用 `jsonb`
+- 索引命名：`idx_{table}_{cols}`
+- 軟刪除：必要時增加 `deleted_at`，但 learning_* 預設不軟刪
+- 更新時間：`updated_at` 以觸發器或應用程式更新
+
+## 9. 資料模型（提案）
+### 核心表
 - tm
 - glossary
 - term_feedback
 - terms
 
-### New Tables
+### 新增表
 - learning_candidates
 - learning_events
 - learning_stats
 
-### Key Fields (examples)
-- `source_text`, `target_text`, `source_lang`, `target_lang`
-- `domain`, `category`, `confidence`, `last_used_at`, `overwrite_count`
-- `source_type` (auto|feedback|import)
-- `scope_id` (project/user)
+### 關鍵欄位（例）
+- source_text, target_text, source_lang, target_lang
+- domain, category, confidence, last_used_at, overwrite_count
+- source_type（auto|feedback|import）
+- scope_id（project/user/org）
+- scope_type（user|project|org|global）
+- status（active|inactive|deprecated）
+- hit_count, last_hit_at
+- min_count, min_unique_users
+- origin_event_id
+- event_type, before_payload, after_payload
 
-## 9. Data Lifecycle
-- New entries are staged before promotion.
-- Stale or frequently overwritten entries decay and are removed.
-- All learning operations are append-only events in `learning_events` for traceability.
+## 10. 資料生命週期
+### 10.1 狀態機
+`staging -> tm -> glossary -> inactive -> removed`
+- `staging`：候選池，僅用於觀測
+- `tm`：可參與翻譯建議
+- `glossary`：高信心術語
+- `inactive`：停止使用但保留紀錄
+- `removed`：實際刪除或歸檔
 
-## 10. Operational Requirements
-- Must support concurrent users.
-- DB must scale to 1M+ TM entries.
-- Automated backups for PostgreSQL.
+### 10.2 轉移條件
+- `staging -> tm`：score >= 0.65 且達 `min_count`
+- `tm -> glossary`：score >= 0.85 且 `min_unique_users` 通過
+- `glossary -> tm`：`overwrite_rate >= 0.25`
+- `tm -> staging`：`overwrite_rate >= 0.40` 或 30 天無命中
+- `staging/tm/glossary -> inactive`：90 天無命中
+- `inactive -> removed`：180 天無命中，或手動清理
 
-## 11. Success Metrics (KPIs)
-- TM hit rate
-- Glossary hit rate
-- Overwrite rate
-- Term extraction precision/recall (sampled)
+### 10.3 Scope 繼承規則
+查詢優先序：`user -> project -> org -> global`  
+升級與衰減以同一 scope 為主，不跨 scope 自動合併。
 
-## 12. Risks and Mitigations
-- Risk: Wrong auto-learning from noisy input
-  - Mitigation: weighted scoring + decay + overwrite detection
-- Risk: DB growth
-  - Mitigation: decay/eviction and archiving
+## 11. 執行期整合
+- 翻譯流程新增 learning event 紀錄
+- 抽取術語使用 learned_context
+- TM/Glossary 查詢加上 scope 與衰減條件
+- TM 查詢新增 fuzzy/partial match（含最小信心閾值）
+- 建立 fuzzy/partial match 基準測試與 A/B 設定
 
+## 12. 觀測 API
+- `GET /api/tm/learning-events`：查詢 learning_events
+  - 參數：`limit`、`offset`、`event_type`、`entity_type`、`scope_type`、`scope_id`、`source_lang`、`target_lang`、`q`、`date_from`、`date_to`、`sort_by`、`sort_dir`
+- `GET /api/tm/learning-stats`：查詢 learning_stats
+  - 參數：`limit`、`offset`、`scope_type`、`scope_id`、`date_from`、`date_to`、`sort_by`、`sort_dir`
+
+## 13. 監控與指標（KPI）
+- TM 命中率
+- Glossary 命中率
+- 覆寫率
+- 術語抽取準確率（抽樣）
+- 自動升級錯誤率（抽樣）
+### 13.1 KPI 預設門檻（建議）
+- TM 命中率：>= 20%（上線 4 週後）
+- Glossary 命中率：>= 5%
+- 覆寫率：<= 8%（7 日移動平均）
+- 自動升級錯誤率：<= 3%（抽樣）
+- 錯誤建議率：<= 5%（抽樣）
+
+### 13.2 告警規則（建議）
+- 連續 3 天 TM 命中率 < 15% -> 降低升級門檻並啟用影子模式
+- 7 日覆寫率 > 12% -> 自動降級 Glossary -> TM
+- 7 日錯誤建議率 > 8% -> 暫停自動升級
+
+## 14. 安全與合規
+- 清洗與脫敏規則必須在寫入前完成
+- learning_events 僅儲存必要欄位，避免原文全量落地
+- 角色權限：查詢事件與統計需管理權限
+
+## 15. 效能與可擴展
+- PostgreSQL 索引與分區（按日期或 scope）
+- 讀寫分離或快取（必要時）
+- 批次處理與 idempotency key
+
+## 16. 風險與對策
+- 風險：噪音資料導致錯誤學習
+  - 對策：加權評分 + 衰減 + 覆寫偵測
+- 風險：資料庫膨脹
+  - 對策：衰減/淘汰與歸檔
+- 風險：多租戶資料污染
+  - 對策：scope 隔離與查詢優先序
+- 風險：敏感資料誤收錄
+  - 對策：清洗與脫敏規則、敏感詞屏蔽
+
+## 17. 測試策略
+- 評分、清洗、升級 unit tests
+- 端到端整合測試
+- PostgreSQL 併發壓力測試
+- 遷移一致性測試（checksum/row count）
+
+## 18. 上線與回滾
+- 先在 staging 啟用
+- 分批導入 production
+- 依 KPI 調整門檻
+- 回滾方案：保留 SQLite 快照、關閉 Worker、切回舊連線

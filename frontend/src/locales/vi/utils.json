@@ -1,0 +1,8 @@
+{
+  "utils": {
+    "model_detect_hint": {
+      "ollama": "Vui lòng kiểm tra:\n1. Dịch vụ Ollama đang chạy\n2. Base URL đúng\n3. Đã tải mô hình",
+      "generic": "Vui lòng kiểm tra:\n1. API Key đúng\n2. Tên mô hình tồn tại\n3. Mạng hoạt động bình thường"
+    }
+  }
+}

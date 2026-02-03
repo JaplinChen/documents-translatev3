@@ -1,0 +1,17 @@
+{
+  "status": {
+    "extracting": "Extracting...",
+    "error": "Error: {{message}}",
+    "no_file": "Please select a file first",
+    "format_error": "Only .pptx or .docx files currently supported",
+    "no_blocks": "No blocks extracted",
+    "api_key_missing": "Missing API Key in settings",
+    "interrupted": "Connection interrupted",
+    "extract_failed": "Extraction failed",
+    "translate_failed": "Translation failed",
+    "apply_failed": "Export failed",
+    "server_error": "Server connection error",
+    "server_timeout": "Server timeout",
+    "backend_generate_failed": "Backend generation failed"
+  }
+}

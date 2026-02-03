@@ -1,0 +1,11 @@
+{
+  "term_suggestions": {
+    "title": "🔍 Smart Term Suggestions",
+    "count": "{{count}} suggested terms",
+    "loading": "Analyzing text...",
+    "empty": "No suggested terms found",
+    "add": "+ Add to Glossary",
+    "added": "✓ Added",
+    "fetch_failed": "Failed to fetch term suggestions"
+  }
+}

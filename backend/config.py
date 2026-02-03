@@ -38,6 +38,9 @@ class Settings(BaseSettings):
     llm_glossary_path: str | None = None
     llm_fallback_on_error: bool = False
 
+    # Database Configuration
+    database_url: str | None = "postgresql+psycopg://app:app@localhost:5432/appdb"
+
     # Performance / Rate Limiting
     llm_single_request: bool = False
     llm_chunk_size: int = 10

@@ -1,0 +1,208 @@
+{
+  "manage": {
+    "title": "Quản lý dữ liệu",
+    "tabs": {
+      "glossary": "Bảng đối chiếu",
+      "preserve": "Thuật ngữ bảo lưu",
+      "tm": "Bộ nhớ dịch",
+      "history": "Lịch sử",
+      "tm_categories": "Quản lý danh mục",
+      "terms": "Dữ liệu dịch"
+    },
+    "categories": {
+      "name": "Tên danh mục",
+      "preview": "Xem trước",
+      "usage": "Sử dụng (Đối chiếu/Thuật ngữ)",
+      "sort_order": "Thứ tự",
+      "actions": "Thao tác",
+      "empty": "Chưa có danh mục nào",
+      "new_category": "Danh mục mới",
+      "add_category": "Thêm danh mục"
+    },
+    "terms_tab": {
+      "search_placeholder": "Tìm kiếm thuật ngữ/bí danh",
+      "filter_category_all": "Tất cả danh mục",
+      "filter_status_all": "Tất cả trạng thái",
+      "filter_status_active": "Đang dùng",
+      "filter_status_inactive": "Không dùng",
+      "filter_source_all": "Tất cả nguồn",
+      "filter_source_reference": "Bảng đối chiếu",
+      "filter_source_terminology": "Thuật ngữ chuyên ngành",
+      "filter_source_manual": "Nhập thủ công",
+      "missing_lang_placeholder": "Thiếu ngôn ngữ vd: en",
+      "sync_data": "Đồng bộ dữ liệu cũ",
+      "syncing": "Đang đồng bộ...",
+      "sync_confirm": "Bạn có chắc muốn đồng bộ tất cả dữ liệu \"Bảng đối chiếu\" và \"Thư viện thuật ngữ\" vào trang này không? Điều này có thể mất một chút thời gian.",
+      "sync_complete": "Đồng bộ hoàn tất!",
+      "columns": {
+        "term": "Thuật ngữ",
+        "category": "Danh mục",
+        "languages": "Ngôn ngữ",
+        "source": "Nguồn",
+        "status": "Trạng thái",
+        "aliases": "Bí danh",
+        "note": "Ghi chú",
+        "created_by": "Người tạo",
+        "actions": "Thao tác"
+      },
+      "columns_panel": {
+        "title": "Cấu hình cột hiển thị",
+        "apply_immediately": "Áp dụng ngay sau khi chọn",
+        "show_columns": "Hiển thị cột",
+        "click_to_configure": "Nhấp để cấu hình cột bảng",
+        "preset_basic": "Mặc định",
+        "preset_all": "Chọn tất cả"
+      },
+      "batch": {
+        "enable": "Bật hàng loạt",
+        "disable": "Tắt hàng loạt",
+        "category": "Danh mục hàng loạt",
+        "apply_category": "Áp dụng danh mục",
+        "source": "Nguồn hàng loạt",
+        "apply_source": "Áp dụng nguồn",
+        "case_rule": "Quy tắc chữ hoa/thường hàng loạt",
+        "apply_case_rule": "Áp dụng quy tắc",
+        "delete": "Xóa hàng loạt",
+        "delete_confirm": "Bạn có chắc muốn xóa {{count}} thuật ngữ đã chọn không?"
+      },
+      "import": {
+        "title": "Nhập CSV (Bước {{step}}/3)",
+        "close": "Đóng",
+        "select_csv": "Chọn CSV",
+        "select_hint": "Sau khi chọn tệp sẽ vào bước ánh xạ cột",
+        "next": "Tiếp theo",
+        "prev": "Quay lại",
+        "mapping_hint": "Ánh xạ cột (tùy chọn)",
+        "csv_column": "Tên cột CSV",
+        "system_column": "Cột hệ thống (term/category/lang_zh-TW)",
+        "add_mapping": "Thêm ánh xạ",
+        "apply_json": "Áp dụng làm JSON",
+        "clear_mapping": "Xóa ánh xạ",
+        "preview_result": "Xem trước kết quả",
+        "confirm_import": "Xác nhận nhập",
+        "import_complete": "Nhập hoàn tất: Thành công {{imported}} mục, thất bại {{failed}} mục",
+        "summary": "Tổng {{total}}｜Hợp lệ {{valid}}｜Lỗi {{invalid}}"
+      },
+      "version": {
+        "title": "Lịch sử phiên bản",
+        "empty": "Chưa có phiên bản nào",
+        "time": "Thời gian",
+        "operator": "Người thao tác"
+      },
+      "source_labels": {
+        "reference": "Đối chiếu",
+        "terminology": "Thuật ngữ",
+        "manual": "Thủ công"
+      },
+      "loading": "Đang tải...",
+      "version_btn": "Phiên bản",
+      "validation": {
+        "term_required": "Thuật ngữ không được để trống",
+        "term_exists": "Thuật ngữ đã tồn tại",
+        "alias_conflict": "Bí danh xung đột với thuật ngữ hiện có",
+        "alias_exists": "Bí danh đã tồn tại"
+      },
+      "no_diff": "Không có sự khác biệt",
+      "alias_separator": "(phân tách bằng |)"
+    },
+    "actions": {
+      "seed": "Tải dữ liệu",
+      "export_csv": "Xuất CSV",
+      "import_csv": "Nhập CSV",
+      "clear_all": "Xóa tất cả",
+      "add": "Thêm",
+      "edit": "Sửa",
+      "delete": "Xóa",
+      "save": "Lưu",
+      "cancel": "Hủy",
+      "convert_preserve": "Chuyển thành bảo lưu",
+      "convert_glossary": "Chuyển thành thuật ngữ",
+      "load_more": "Tải thêm"
+    },
+    "fields": {
+      "source_text": "Văn bản gốc",
+      "target_text": "Văn bản đích",
+      "priority": "Độ ưu tiên"
+    },
+    "table": {
+      "source_lang": "Ngôn ngữ nguồn",
+      "target_lang": "Ngôn ngữ đích",
+      "source": "Gốc",
+      "target": "Đích",
+      "priority": "Độ ưu tiên",
+      "actions": "Thao tác",
+      "compact": "Chế độ thu gọn"
+    },
+    "confirm": {
+      "delete": "Bạn có chắc chắn muốn xóa mục này không?",
+      "clear_memory": "Xóa toàn bộ bộ nhớ dịch? Hành động này không thể hoàn tác.",
+      "clear_glossary": "Xóa toàn bộ thuật ngữ? Hành động này không thể hoàn tác."
+    },
+    "empty": "Không có dữ liệu",
+    "list_summary": "Hiển thị {{shown}} / {{total}}",
+    "preserve": {
+      "search_placeholder": "Tìm kiếm thuật ngữ...",
+      "category_all": "Tất cả danh mục",
+      "export_csv": "Xuất CSV",
+      "import_csv": "Nhập CSV",
+      "term_placeholder": "Tên thuật ngữ (vd: Notion)",
+      "add": "+ Thêm",
+      "loading": "Đang tải...",
+      "no_results": "Không tìm thấy thuật ngữ phù hợp",
+      "empty": "Chưa có thuật ngữ nào, vui lòng thêm mới",
+      "table": {
+        "term": "Thuật ngữ",
+        "category": "Danh mục",
+        "case": "Phân biệt hoa thường",
+        "date": "Ngày tạo",
+        "actions": "Thao tác",
+        "yes": "Có",
+        "no": "Không"
+      },
+      "categories": {
+        "product": "Tên sản phẩm",
+        "abbr": "Viết tắt kỹ thuật",
+        "special": "Thuật ngữ chuyên ngành",
+        "other": "Khác",
+        "trans": "Thuật ngữ dịch"
+      },
+      "case_sensitive": "Phân biệt hoa thường",
+      "alerts": {
+        "add_fail": "Thêm thất bại",
+        "delete_confirm": "Bạn có chắc muốn xóa thuật ngữ này?",
+        "delete_fail": "Xóa thất bại",
+        "update_fail": "Cập nhật thất bại",
+        "export_fail": "Xuất thất bại",
+        "import_success": "Nhập thành công: {{imported}} trường hợp, Bỏ qua: {{skipped}} trường hợp",
+        "import_fail": "Nhập thất bại",
+        "convert_confirm": "Chuyển thuật ngữ này sang bảng đối chiếu? (Bản ghi gốc sẽ bị xóa)",
+        "batch_convert_confirm": "Chuyển các thuật ngữ đã chọn sang bảng đối chiếu? (Bản ghi gốc sẽ bị xóa)"
+      }
+    },
+    "batch": {
+      "confirm_delete": "Xóa {{count}} mục đã chọn?",
+      "confirm_convert": "Chuyển đổi {{count}} mục đã chọn {{action}}? (Bản ghi gốc sẽ bị xóa)",
+      "convert_success": "Đã chuyển đổi {{count}} mục",
+      "convert_failed": ", thất bại {{count}} mục",
+      "selected_count": "Đã chọn {{count}}",
+      "to_preserve": "thành thuật ngữ",
+      "to_glossary": "thành bảng đối chiếu",
+      "delete": "Xóa hàng loạt"
+    },
+    "alerts": {
+      "save_glossary_failed": "Lưu thuật ngữ thất bại: {{message}}",
+      "save_memory_failed": "Lưu bộ nhớ thất bại: {{message}}",
+      "convert_failed": "Chuyển đổi thất bại",
+      "convert_failed_detail": "Chuyển đổi thất bại: {{message}}",
+      "convert_success": "Đã thêm \"{{text}}\" vào thuật ngữ bảo lưu"
+    },
+    "glossary_extract": {
+      "processing": "Đang trích xuất thuật ngữ...",
+      "failed": "Trích xuất thất bại",
+      "failed_detail": "Trích xuất thất bại: {{message}}",
+      "empty": "Không phát hiện thuật ngữ rõ ràng",
+      "success": "Trích xuất thành công, thêm {{count}} thuật ngữ",
+      "learning_hint": "Hệ thống đã tự động nhận dạng lĩnh vực: {{domain}}, và áp dụng các thói quen sử dụng của bạn."
+    }
+  }
+}

@@ -10,7 +10,7 @@ export function SidebarStep2({
     const { t } = useTranslation();
     return (
         <div className={`accordion-section ${open ? "is-open" : ""} ${isExtracted ? "is-done" : ""}`}>
-            <div className="accordion-header" onClick={toggle}>
+            <div className="accordion-header" onClick={toggle} data-testid="step2-header">
                 <div className="flex items-center gap-2">
                     <span className={`step-number ${open ? "is-active" : ""} ${isExtracted ? "is-done" : ""}`}>
                         {isExtracted ? "✓" : "2"}
@@ -28,7 +28,7 @@ export function SidebarStep2({
                                 { value: "bilingual", label: t("sidebar.mode.bilingual") },
                                 { value: "translated", label: t("sidebar.mode.translated") },
                                 { value: "correction", label: t("sidebar.mode.correction") }
-                            ]} value={mode} onChange={(e) => setMode(e.target.value)} />
+                            ]} value={mode} onChange={(e) => setMode(e.target.value)} testId="mode-select" />
                         </div>
                         {mode === "bilingual" && (
                             <div className="form-group">
@@ -37,16 +37,16 @@ export function SidebarStep2({
                                     { value: "new_slide", label: t("sidebar.layout.new_slide") },
                                     { value: "inline", label: t("sidebar.layout.inline") },
                                     { value: "auto", label: t("sidebar.layout.auto") }
-                                ]} value={bilingualLayout} onChange={(e) => setBilingualLayout(e.target.value)} />
+                                ]} value={bilingualLayout} onChange={(e) => setBilingualLayout(e.target.value)} testId="layout-select" />
                             </div>
                         )}
                     </div>
                     <div className="form-group">
                         <label className="field-label">{t("sidebar.lang.label")}</label>
                         <div className="row-group-3">
-                            <CustomSelect options={languageOptions || []} value={sourceLang || "auto"} onChange={(e) => { setSourceLang(e.target.value); setSourceLocked(true); }} />
+                            <CustomSelect options={languageOptions || []} value={sourceLang || "auto"} onChange={(e) => { setSourceLang(e.target.value); setSourceLocked(true); }} testId="source-lang-select" />
                             <div className="text-center font-bold text-slate-300">→</div>
-                            <CustomSelect options={(languageOptions || []).filter(opt => opt.code !== "auto")} value={targetLang} onChange={(e) => { setTargetLang(e.target.value); setTargetLocked(true); }} />
+                            <CustomSelect options={(languageOptions || []).filter(opt => opt.code !== "auto")} value={targetLang} onChange={(e) => { setTargetLang(e.target.value); setTargetLocked(true); }} testId="target-lang-select" />
                         </div>
                     </div>
                     <label className="toggle-check">
@@ -67,6 +67,7 @@ export function SidebarStep2({
                                     }
                                 }}
                                 title={t("sidebar.extract.refresh_hint")}
+                                data-testid="extract-button"
                             >
                                 <span className="text-sm">🔄</span>
                                 <span className="font-bold whitespace-nowrap">{isExtracted ? t("sidebar.extract.refresh_button") : t("sidebar.extract.button")}</span>

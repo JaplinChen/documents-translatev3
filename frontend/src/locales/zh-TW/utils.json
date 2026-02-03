@@ -1,0 +1,8 @@
+{
+  "utils": {
+    "model_detect_hint": {
+      "ollama": "請檢查：\n1. Ollama 服務是否啟動\n2. Base URL 是否正確\n3. 模型是否已下載",
+      "generic": "請檢查：\n1. API Key 是否正確\n2. 模型名稱是否存在\n3. 網路連線是否正常"
+    }
+  }
+}

@@ -19,3 +19,12 @@
 ## 4. 品質要求
 - 必須保留原始閱讀順序（Reading Order）。
 - 遇到加密或掃描檔 (Image-only) 需標註不支援或建議先執行 OCR。
+
+## 5. OCR 設定
+- 預設引擎：Tesseract
+- 允許 PaddleOCR（需額外安裝 `requirements-ocr-paddle.txt`）
+- 環境變數：
+  - `PDF_OCR_ENGINE`: `tesseract` 或 `paddle`
+  - `PDF_OCR_ALLOW_PADDLE`: `1` 才允許自動選用 PaddleOCR
+  - `PDF_OCR_PADDLE_FALLBACK`: `1` 允許 Tesseract 低信心時改用 PaddleOCR
+  - `PDF_OCR_DPI`、`PDF_OCR_LANG`、`PDF_OCR_CONF_MIN`、`PDF_OCR_PSM`

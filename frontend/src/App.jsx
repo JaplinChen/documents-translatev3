@@ -192,6 +192,7 @@ function App() {
 
           sourceLang={ui.sourceLang}
           secondaryLang={ui.secondaryLang}
+          targetLang={ui.targetLang}
           extractLanguageLines={extractLanguageLines}
           editorRefs={editorRefs}
         />

@@ -43,7 +43,7 @@ async def pdf_extract(
                 "cache_hit": True,
             }
 
-    with tempfile.TemporaryDirectory() as temp_dir:
+    with tempfile.TemporaryDirectory(ignore_cleanup_errors=True) as temp_dir:
         input_path = os.path.join(temp_dir, "input.pdf")
         with open(input_path, "wb") as h:
             h.write(pdf_bytes)
@@ -98,7 +98,7 @@ async def pdf_apply(
     if mode not in {"bilingual", "translated"}:
         raise HTTPException(status_code=400, detail="不支援的 mode")
 
-    with tempfile.TemporaryDirectory() as temp_dir:
+    with tempfile.TemporaryDirectory(ignore_cleanup_errors=True) as temp_dir:
         in_p = os.path.join(temp_dir, "in.pdf")
         out_p = os.path.join(temp_dir, "out.pdf")
         with open(in_p, "wb") as h:

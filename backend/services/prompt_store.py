@@ -26,7 +26,8 @@ DEFAULT_PROMPTS = {
 - 翻譯內容請符合當地的商務/專業對話習慣。
 
 ## 參數與數據
-- 目標語言：{target_language_label} ({target_language_code})
+- 目標語言：{target_language_label}
+- 目標語言代碼：{target_language_code}
 - 輔助提示：{language_hint}
 
 {payload}"""

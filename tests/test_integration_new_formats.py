@@ -1,14 +1,36 @@
 import json
 import os
 
+import anyio
+import httpx
 import openpyxl
 import pytest
-from fastapi.testclient import TestClient
+from httpx import ASGITransport
 from reportlab.pdfgen import canvas
 
 from backend.main import app
 
-client = TestClient(app)
+class SyncASGIClient:
+    def request(self, method: str, url: str, **kwargs):
+        async def _run():
+            transport = ASGITransport(app=app, raise_app_exceptions=True)
+            async with httpx.AsyncClient(
+                transport=transport, base_url="http://test"
+            ) as client:
+                return await client.request(method, url, **kwargs)
+
+        return anyio.run(_run)
+
+    def get(self, url: str, **kwargs):
+        return self.request("GET", url, **kwargs)
+
+    def post(self, url: str, **kwargs):
+        return self.request("POST", url, **kwargs)
+
+
+@pytest.fixture
+def client():
+    return SyncASGIClient()
 
 @pytest.fixture
 def dummy_xlsx():
@@ -37,7 +59,7 @@ def dummy_pdf():
     if os.path.exists(file_path):
         os.remove(file_path)
 
-def test_xlsx_integration(dummy_xlsx):
+def test_xlsx_integration(dummy_xlsx, client):
     # 1. Test Extract
     with open(dummy_xlsx, "rb") as f:
         response = client.post(
@@ -84,7 +106,7 @@ def test_xlsx_integration(dummy_xlsx):
     assert "download_url" in response.json()
     assert response.json()["filename"].endswith(".xlsx")
 
-def test_pdf_integration(dummy_pdf):
+def test_pdf_integration(dummy_pdf, client):
     # 1. Test Extract
     with open(dummy_pdf, "rb") as f:
         response = client.post(

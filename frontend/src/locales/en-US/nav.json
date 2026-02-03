@@ -1,0 +1,14 @@
+{
+  "nav": {
+    "title": "Guide",
+    "subtitle": "Complete configuration in order",
+    "step1": "Upload File",
+    "step2": "Preferences",
+    "step3": "Translate",
+    "step4": "Download",
+    "manage": "Manage",
+    "settings": "Settings",
+    "history": "History",
+    "status": "Status"
+  }
+}

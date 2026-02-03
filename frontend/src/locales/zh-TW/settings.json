@@ -1,0 +1,141 @@
+{
+  "settings": {
+    "providers": {
+      "ollama": "本機模型 (Ollama)",
+      "gemini": "Gemini (Google)",
+      "chatgpt": "標準 API (OpenAI/Compatible)"
+    },
+    "title": "設定",
+    "tabs": {
+      "llm": "LLM",
+      "ai": "AI 智控",
+      "ocr": "OCR",
+      "correction": "校正",
+      "prompt": "Prompt",
+      "fonts": "字體"
+    },
+    "ocr": {
+      "title": "OCR 參數",
+      "desc": "調整掃描品質與辨識條件，僅影響 PDF OCR。",
+      "dpi": "DPI",
+      "dpi_hint": "建議 200-400，數值越高速度越慢",
+      "conf_min": "信心門檻",
+      "conf_min_hint": "0-100，數值越高越嚴格",
+      "psm": "PSM 模式",
+      "psm_hint": "建議 6/7（單行或單區塊）",
+      "engine": "OCR 引擎",
+      "engine_hint": "建議 PaddleOCR（掃描文件較準）",
+      "lang": "語言",
+      "lang_hint": "範例：chi_tra+vie+eng",
+      "poppler_path": "Poppler 路徑",
+      "poppler_hint": "本機模式需指定 poppler 的 bin 目錄"
+    },
+    "prompt": {
+      "empty": "尚無 Prompt",
+      "reset": "重置 Prompt",
+      "save": "儲存 Prompt",
+      "close": "關閉",
+      "select_prompt": "選擇 Prompt",
+      "prompt_placeholder": "請輸入 Prompt 內容",
+      "loading": "載入中..."
+    },
+    "prompt_labels": {
+      "translate_json": "翻譯 JSON 提示",
+      "system_message": "System 提示",
+      "ollama_batch": "Ollama 批次提示"
+    },
+    "fonts": {
+      "title": "字體對應設定",
+      "description": "設定不同語言在文件輸出時優先使用的字體 (逗號分隔，由左至右優先)。",
+      "lang_code": "語言代碼 (ISO)",
+      "font_list": "字體清單",
+      "lang": "語言",
+      "priority": "優先字體",
+      "no_rules": "尚無設定",
+      "reset": "重置預設值",
+      "reset_confirm": "確定要重置所有字體設定為預設值嗎？",
+      "hint": "這些設定將影響翻譯後文件文字方塊的字體選擇，有助於解決亂碼或顯示問題。"
+    },
+    "status": {
+      "saving": "儲存中...",
+      "saved": "已儲存",
+      "failed": "儲存失敗",
+      "api_key_missing": "請先輸入 API Key",
+      "models_detecting": "模型偵測中...",
+      "models_detected": "已偵測 {{count}} 個模型",
+      "models_not_found": "未偵測到模型",
+      "models_detect_failed": "模型偵測失敗",
+      "ocr_load_failed": "OCR 設定讀取失敗",
+      "ocr_save_failed": "OCR 設定儲存失敗"
+    },
+    "ai": {
+      "tone_title": "翻譯風格與語氣 (Tone)",
+      "tone_label": "目標語氣調性",
+      "tone_options": {
+        "professional": "專業商務 (預設)",
+        "concise": "極簡明瞭",
+        "pm": "產品經理 (PM) 視視角",
+        "humorous": "風趣幽默",
+        "creative": "富有創意",
+        "academic": "學術嚴謹"
+      },
+      "tone_hint": "這會顯著改變 AI 翻譯時的用詞偏好與句子長度。",
+      "context_title": "AI 多維增強功能",
+      "vision": "視覺情境輔助 (Vision Context)",
+      "vision_hint": "當模型支援時，自動分析文件圖片與版面資訊以提供更精準的翻譯。",
+      "layout": "智慧排版調整 (Layout Adjust)",
+      "layout_hint": "偵測字數溢出時，自動產出字體縮小或換行建議。"
+    },
+    "correction": {
+      "preview": "即時預覽",
+      "preview_content": "預覽內容 / Preview Text",
+      "fill_color": "底色",
+      "text_color": "文字",
+      "border_color": "外框",
+      "border_style": "外框線條",
+      "dash": "虛線",
+      "dot": "點線",
+      "dashdot": "點虛線",
+      "solid": "實線",
+      "sensitivity_label": "相似度閾值 (Sensitivity)",
+      "sensitivity_steps": {
+        "s1": "最寬鬆",
+        "s2": "寬鬆",
+        "s3": "平衡",
+        "s4": "嚴謹",
+        "s5": "最嚴謹"
+      },
+      "sensitivity_desc": {
+        "s1": "可大幅改寫",
+        "s2": "允許改寫",
+        "s3": "適度調整",
+        "s4": "少量調整",
+        "s5": "只修錯字"
+      },
+      "theme_title": "主題色彩規範",
+      "line_style_title": "線條樣式",
+      "hint": "提示：視覺樣式將套用於 Powerpoint 的校正標記中。調整閾值可控制校正強度。"
+    },
+    "llm": {
+      "api_key": "API Key",
+      "api_key_placeholder": "輸入 API Key",
+      "api_key_hint": "請輸入對應供應商的 API Key。",
+      "base_url": "Base URL",
+      "base_url_hint": "本機端預設為 {{url}}",
+      "fast_mode": "Ollama 快速模式",
+      "fast_mode_label": "小批次、關閉單次請求",
+      "model": "模型",
+      "refresh": "重新整理",
+      "select_model": "請選擇模型",
+      "custom_model": "輸入自訂模型",
+      "add": "加入",
+      "detect_hint": "請先偵測模型"
+    },
+    "global_status": {
+      "idle": "待命中",
+      "processing": "處理中",
+      "completed": "已完成",
+      "error": "錯誤"
+    }
+  }
+}

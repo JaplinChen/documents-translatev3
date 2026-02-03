@@ -1,0 +1,39 @@
+{
+  "editor": {
+    "title": "文字區塊",
+    "summary": "共 {{total}} 筆，顯示 {{filtered}} 筆",
+    "empty": {
+      "title": "尚未抽取任何文字區塊",
+      "hint": "請先上傳文件並按下「抽取區塊」",
+      "preview": "視覺預覽",
+      "batch": "批次編輯"
+    },
+    "filter": {
+      "search": "搜尋",
+      "type": "類型",
+      "slide": "頁面/投影片"
+    },
+    "search_placeholder": "搜尋原文/翻譯",
+    "filter_type": "全部類型",
+    "filter_slide": "第 {{index}} 頁",
+    "select_all": "全選",
+    "clear_selection": "清除",
+    "load_more": "載入更多 (剩餘 {{remaining}} 筆)",
+    "source_label": "原文",
+    "translate_label": "翻譯",
+    "batch": {
+      "toggle": "批次取代",
+      "toggle_title": "展開批次取代工具",
+      "title": "批次搜尋取代",
+      "find": "搜尋",
+      "find_placeholder": "輸入要搜尋的文字",
+      "replace": "取代為",
+      "replace_placeholder": "輸入取代後的文字",
+      "regex": "正則表達式",
+      "case_sensitive": "區分大小寫",
+      "selected_only": "僅選取的區塊",
+      "replace_all": "全部取代",
+      "result": "已取代 {{count}} 處"
+    }
+  }
+}

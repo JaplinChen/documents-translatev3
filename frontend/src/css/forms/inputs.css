@@ -1,0 +1,98 @@
+/* === Form & Input Styles === */
+@layer components {
+    .form-group {
+        @apply flex flex-col gap-2;
+    }
+
+    .field-label {
+        @apply text-sm font-bold text-slate-800;
+    }
+
+    .field-hint {
+        @apply text-xs text-slate-500 font-medium;
+    }
+
+    .field-label-row {
+        @apply flex justify-between items-center mb-1.5;
+    }
+
+    .text-input {
+        @apply w-full h-11 px-4 text-sm;
+        border-radius: var(--radius-md);
+        border: 1px solid var(--border-soft);
+        background-color: var(--bg-card);
+        color: var(--text-heading);
+        @apply transition-all duration-200;
+        @apply hover:border-slate-400;
+        @apply focus:outline-none focus:border-blue-600 focus:ring-4 focus:ring-blue-600/10;
+    }
+
+    .text-input.compact {
+        @apply h-8 px-3 text-xs;
+    }
+
+    .data-input {
+        @apply h-11 px-3 border border-slate-200 rounded-lg text-sm bg-white text-slate-700;
+        @apply focus:outline-none focus:border-blue-500;
+    }
+
+    .color-input {
+        @apply w-full h-10 rounded-lg border border-slate-200 cursor-pointer;
+        @apply focus:outline-none focus:ring-2 focus:ring-blue-100;
+    }
+
+    .hidden-input {
+        @apply hidden;
+    }
+
+    .hint {
+        @apply text-xs text-slate-400 mt-1;
+    }
+
+    .row-group {
+        @apply grid grid-cols-2 gap-3 items-end;
+    }
+
+    .row-group-3 {
+        @apply grid gap-1.5 items-center;
+        grid-template-columns: 1fr auto 1fr;
+    }
+
+    .manage-create-row {
+        @apply flex flex-wrap items-center gap-2 w-full;
+    }
+
+    .manage-field-short {
+        @apply w-28 max-w-[120px];
+    }
+
+    .manage-field-number {
+        @apply w-12 max-w-[60px] text-center;
+    }
+
+    .manage-btn-square {
+        @apply w-9 h-9 min-h-[2.25rem] p-0 flex items-center justify-center;
+    }
+
+    .manage-scroll-area {
+        @apply relative flex-1 min-h-0 overflow-auto;
+        scrollbar-gutter: stable;
+    }
+
+    .inline-row {
+        @apply flex gap-2 items-center;
+    }
+
+    .inline-row.between {
+        @apply justify-between;
+    }
+
+    .inline-row input {
+        @apply flex-1;
+    }
+
+    .block-number {
+        @apply inline-flex items-center justify-center px-2 font-mono font-bold rounded bg-slate-100 text-slate-500 border border-slate-200 min-w-[2.5rem] h-5;
+        @apply tracking-tighter subpixel-antialiased leading-none text-[10px];
+    }
+}

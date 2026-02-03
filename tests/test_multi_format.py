@@ -1,4 +1,8 @@
 
+import pytest
+
+pytest.skip("此檔為手動測試腳本，需啟動後端與樣本檔案，測試時略過", allow_module_level=True)
+
 import requests
 
 API_BASE = "http://localhost:5002"

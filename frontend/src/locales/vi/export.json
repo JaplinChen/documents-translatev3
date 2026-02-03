@@ -1,0 +1,13 @@
+{
+  "export": {
+    "title": "Chọn định dạng xuất",
+    "error": "Xuất thất bại ({{status}})",
+    "formats": {
+      "pptx": "PowerPoint (.pptx)",
+      "docx": "Word (.docx)",
+      "xlsx": "Excel (.xlsx)",
+      "txt": "Văn bản thuần (.txt)",
+      "md": "Markdown (.md)"
+    }
+  }
+}

@@ -3,31 +3,45 @@ flowchart TD
   A[資料進入：雙語文件/修正/TM] --> B[清洗與去噪]
   B --> C[術語抽取]
   C --> D[自動分類]
-  D --> E[自動升級]
-  E --> F[Glossary/TM/候選池]
-  F --> G[翻譯與抽取回饋]
-  G --> H[監控與自動調參]
-  H --> B
+  D --> E[候選評分]
+  E --> F[升級/降級決策]
+  F --> G[Glossary/TM/候選池]
+  G --> H[翻譯與抽取回饋]
+  H --> I[監控與自動調參]
+  I --> B
+  G --> J[衰減與淘汰]
+  J --> G
 
   subgraph 升級邏輯
     E1[計算候選分數]
     E2[升級到 TM]
     E3[升級到 Glossary]
+    E4[降級到 Inactive]
     E1 --> E2
     E1 --> E3
+    E1 --> E4
   end
 
   E --> E1
 
-%% 執行期資料流
+%% 執行期資料流（落地）
 flowchart TD
   U[使用者修正翻譯] --> FB[/api/tm/feedback]
   FB --> TF[(term_feedback)]
   TF --> AUTO{次數 >= 門檻}
   AUTO -- 是 --> GL[(glossary)]
   AUTO -- 否 --> TF
+  FB --> LE[(learning_events)]
 
   TR[翻譯完成] --> SAVE[save_tm]
   SAVE --> TM[(tm)]
   TM --> HIT[lookup_tm]
   HIT --> OUT[翻譯輸出]
+  HIT --> LE
+  TM --> DECAY{覆寫率/未命中}
+  DECAY -- 高 --> INACTIVE[(inactive)]
+  DECAY -- 低 --> TM
+
+  LE --> STATS[每日統計 Worker]
+  STATS --> LS[(learning_stats)]
+  LS --> ALERT[告警與調參]

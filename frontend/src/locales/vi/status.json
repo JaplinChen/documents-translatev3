@@ -1,0 +1,17 @@
+{
+  "status": {
+    "extracting": "Đang trích xuất...",
+    "error": "Lỗi: {{message}}",
+    "no_file": "Vui lòng chọn tập tin",
+    "format_error": "Chỉ hỗ trợ .pptx hoặc .docx",
+    "no_blocks": "Chưa có khối văn bản",
+    "api_key_missing": "Thiếu API Key trong cài đặt",
+    "interrupted": "Kết nối bị gián đoạn",
+    "extract_failed": "Trích xuất thất bại",
+    "translate_failed": "Dịch thuật lỗi",
+    "apply_failed": "Xuất lỗi",
+    "server_error": "Lỗi kết nối máy chủ",
+    "server_timeout": "Hết thời gian chờ",
+    "backend_generate_failed": "Tạo dữ liệu từ backend thất bại"
+  }
+}

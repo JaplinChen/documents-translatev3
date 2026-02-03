@@ -1,0 +1,57 @@
+{
+  "components": {
+    "quality_badge": {
+      "score_label": "Quality Score",
+      "excellent": "Excellent",
+      "good": "Good",
+      "fair": "Fair",
+      "poor": "Needs Improvement",
+      "review": "Needs Review"
+    },
+    "editor": {
+      "filter_textbox": "Content / Textbox",
+      "filter_table": "Table Cell",
+      "filter_notes": "Notes / Speaker Notes"
+    },
+    "token_stats": {
+      "title": "Token Usage Stats",
+      "session_title": "Current Session (24h)",
+      "input_tokens": "Input Tokens",
+      "output_tokens": "Output Tokens",
+      "total_tokens": "Total Tokens",
+      "estimated_cost": "Estimated Cost",
+      "request_count": "Request Count",
+      "all_time_title": "All-time Stats",
+      "models_used": "Models Used",
+      "cost_tiny": "< $0.01"
+    },
+    "shortcuts": {
+      "title": "⌨️ Shortcuts Guide",
+      "confirm": "Got it",
+      "actions": {
+        "save_progress": "Save translation progress",
+        "start_translate": "Start AI translation",
+        "toggle_select": "Select/Deselect all blocks",
+        "close_modal": "Close modal"
+      }
+    },
+    "block_card": {
+      "apply": "Apply",
+      "slide": "Page",
+      "shape": "ID",
+      "translating": "Translating...",
+      "updated_at": "Updated {{time}}",
+      "glossary": "Terms",
+      "memory": "TM",
+      "source": "Source",
+      "target": "Translation / Correction",
+      "output": "Output",
+      "placeholder": "Enter translation or correction text",
+      "tools_glossary_title": "Add to Glossary",
+      "tools_memory_title": "Add to Translation Memory",
+      "bilingual": "Bilingual",
+      "correction": "Correction",
+      "draft": "Draft"
+    }
+  }
+}

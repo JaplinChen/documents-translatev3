@@ -1,0 +1,86 @@
+/* === Token Stats Component === */
+@layer components {
+    .token-stats {
+        @apply relative;
+    }
+
+    .token-stats-toggle {
+        @apply flex items-center gap-2 px-3 py-1.5 bg-slate-100 hover:bg-slate-200 rounded-md text-sm font-medium transition-colors cursor-pointer border-none;
+    }
+
+    .token-icon {
+        @apply text-base;
+    }
+
+    .token-count {
+        @apply text-slate-700;
+    }
+
+    .token-cost {
+        @apply text-emerald-600 font-semibold;
+    }
+
+    .token-stats-dropdown {
+        @apply absolute top-full right-0 mt-2 w-72 bg-white rounded-xl shadow-2xl border border-slate-200 z-50 overflow-hidden;
+    }
+
+    .token-stats-header {
+        @apply flex justify-between items-center px-4 py-3 bg-gradient-to-r from-indigo-500 to-purple-500 text-white;
+    }
+
+    .token-stats-header h4 {
+        @apply font-bold text-sm;
+    }
+
+    .token-stats-header .close-btn {
+        @apply w-6 h-6 flex items-center justify-center text-white/80 hover:text-white hover:bg-white/20 rounded-full cursor-pointer border-none bg-transparent;
+    }
+
+    .token-stats-section {
+        @apply px-4 py-3 border-b border-slate-100 last:border-b-0;
+    }
+
+    .token-stats-section h5 {
+        @apply text-xs font-semibold text-slate-500 mb-2;
+    }
+
+    .stats-grid {
+        @apply grid grid-cols-2 gap-2;
+    }
+
+    .stat-item {
+        @apply flex flex-col;
+    }
+
+    .stat-label {
+        @apply text-xs text-slate-400;
+    }
+
+    .stat-value {
+        @apply text-lg font-bold text-slate-700;
+    }
+
+    .stat-value.highlight {
+        @apply text-indigo-600;
+    }
+
+    .stat-value.cost {
+        @apply text-emerald-600;
+    }
+
+    .stat-hint {
+        @apply text-xs text-slate-400 mt-2;
+    }
+
+    .stats-row {
+        @apply flex justify-between text-sm text-slate-600;
+    }
+
+    .model-tags {
+        @apply flex flex-wrap gap-1;
+    }
+
+    .model-tag {
+        @apply px-2 py-0.5 bg-slate-100 text-slate-600 text-xs rounded-full;
+    }
+}

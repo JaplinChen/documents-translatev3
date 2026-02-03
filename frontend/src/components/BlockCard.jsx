@@ -1,6 +1,6 @@
 import { useTranslation } from "react-i18next";
 import { memo } from "react";
-import { resolveOutputMode } from "../utils/appHelpers";
+import { resolveOutputMode, stripBilingualText } from "../utils/appHelpers";
 
 /**
  * Single block card for displaying/editing translation block
@@ -11,6 +11,7 @@ const BlockCard = memo(({
     mode,
     sourceLang,
     secondaryLang,
+    targetLang,
     editorRefs,
     onBlockSelect,
     onBlockChange,
@@ -23,6 +24,7 @@ const BlockCard = memo(({
     const outputMode = resolveOutputMode(block);
     const isBilingual = mode === "bilingual" || block.mode === "bilingual";
     const isCorrection = mode === "correction" || block.mode === "correction";
+    const displayTranslatedText = stripBilingualText(block.source_text, block.translated_text, targetLang);
 
     return (
         <div className={`block-card 
@@ -86,7 +88,7 @@ const BlockCard = memo(({
                         )}
                     </div>
                     {/* Source Content - adaptive height */}
-                    <div className="readonly-box shrink-0 overflow-y-auto">{block.source_text}</div>
+                    <div className="readonly-box shrink-0 overflow-y-auto" data-testid="block-source-text">{block.source_text}</div>
                 </div>
 
                 {/* Target Column */}
@@ -108,10 +110,12 @@ const BlockCard = memo(({
                     {/* Target Content - adaptive height */}
                     <textarea
                         className={`${isCorrection ? "correction-editor" : "textarea"} focus:ring-2 focus:ring-blue-100 outline-none resize-y`}
-                        value={block.translated_text || ""}
+                        value={displayTranslatedText || ""}
                         onChange={(e) => onBlockChange(e.target.value)}
                         placeholder={t("components.block_card.placeholder")}
                         disabled={block.isTranslating}
+                        data-testid="block-target-text"
+                        data-uid={block._uid}
                         ref={(node) => { if (editorRefs.current) editorRefs.current[block._uid] = node; }}
                     />
                 </div>

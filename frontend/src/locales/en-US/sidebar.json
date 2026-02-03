@@ -1,0 +1,54 @@
+{
+  "sidebar": {
+    "mode": {
+      "label": "Mode",
+      "bilingual": "Bilingual",
+      "translated": "Translated Doc",
+      "correction": "Correction Mode",
+      "translate": "Translation Mode"
+    },
+    "layout": {
+      "label": "Layout",
+      "inline": "Inline",
+      "auto": "Auto",
+      "new_slide": "New Slide"
+    },
+    "lang": {
+      "label": "Languages"
+    },
+    "upload": {
+      "placeholder": "Select or Drop Document File",
+      "limit": "Supports Microsoft Word (.docx) or PowerPoint (.pptx)",
+      "ready": "✓ Ready"
+    },
+    "tm": "Use Translation Memory",
+    "preprocess": "Preprocessing",
+    "extract": {
+      "button": "📊 Extract Terms",
+      "hint": "Analyze content to set terms for consistency",
+      "summary": "✓ Parsed {{count}} blocks",
+      "refresh_button": "Re-extract",
+      "refresh_hint": "Force skip cache and re-scan document",
+      "confirm_refresh": "Are you sure you want to re-extract? This will skip cache and re-scan the document (PDF will re-run OCR)."
+    },
+    "translate": {
+      "preparing": "Preparing...",
+      "translating": "Translating... ({{current}}/{{total}})",
+      "completed": "Translation Complete",
+      "button": "🚀 Auto Translate",
+      "stop": "Stop"
+    },
+    "apply": {
+      "button": "📊 Apply Layout & Download Document",
+      "applying": "Applying...",
+      "completed": "File Exported"
+    },
+    "export": {
+      "others": "Download Translation Table"
+    },
+    "hint": {
+      "step12": "Please complete steps 1-2 first",
+      "step3": "Please complete translation first"
+    }
+  }
+}

@@ -1,0 +1,13 @@
+{
+  "export": {
+    "title": "Select Export Format",
+    "error": "Export failed ({{status}})",
+    "formats": {
+      "pptx": "PowerPoint (.pptx)",
+      "docx": "Word (.docx)",
+      "xlsx": "Excel (.xlsx)",
+      "txt": "Plain Text (.txt)",
+      "md": "Markdown (.md)"
+    }
+  }
+}

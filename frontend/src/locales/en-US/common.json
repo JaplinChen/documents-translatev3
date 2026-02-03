@@ -1,0 +1,16 @@
+{
+  "common": {
+    "add": "Add",
+    "update": "Update",
+    "edit": "Edit",
+    "action": "Actions",
+    "delete": "Delete",
+    "note": "Note",
+    "cancel": "Cancel",
+    "confirm": "Confirm",
+    "select_placeholder": "Select",
+    "unknown_error": "Unknown error",
+    "loading": "Loading...",
+    "download": "Download"
+  }
+}

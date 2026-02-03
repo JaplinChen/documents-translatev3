@@ -10,6 +10,7 @@ export default function BlockList({
     mode,
     sourceLang,
     secondaryLang,
+    targetLang,
     editorRefs,
     filterText,
     filterType,
@@ -86,6 +87,7 @@ export default function BlockList({
                                 mode={mode}
                                 sourceLang={sourceLang}
                                 secondaryLang={secondaryLang}
+                                targetLang={targetLang}
                                 editorRefs={editorRefs}
                                 onBlockSelect={onBlockSelect}
                                 onBlockChange={onBlockChange}

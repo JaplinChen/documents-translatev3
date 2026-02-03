@@ -8,11 +8,7 @@ from __future__ import annotations
 
 import asyncio
 import logging
-import random
 import time
-from urllib.error import HTTPError
-
-from backend.services.language_detect import detect_language
 from backend.services.llm_placeholders import apply_placeholders
 from backend.services.translate_chunk_cache import (
     get_from_cache,
@@ -29,6 +25,11 @@ from backend.services.translate_retry import (
     has_language_mismatch,
     retry_for_language,
     retry_for_language_async,
+)
+from backend.services.translate_chunk_utils import (
+    calculate_backoff,
+    detect_top_language,
+    is_vision_error,
 )
 
 LOGGER = logging.getLogger(__name__)
@@ -148,7 +149,7 @@ def translate_chunk(
             return result
 
         except Exception as exc:
-            if _is_vision_error(str(exc)):
+            if is_vision_error(str(exc)):
                 raise ValueError("偵測到圖片相關錯誤") from exc
 
             if attempt > params["max_retries"]:
@@ -162,7 +163,7 @@ def translate_chunk(
                     )
                 raise
 
-            sleep_for = _calculate_backoff(
+            sleep_for = calculate_backoff(
                 exc,
                 attempt,
                 params["backoff"],
@@ -257,7 +258,7 @@ async def translate_chunk_async(
             return result
 
         except Exception as exc:
-            if _is_vision_error(str(exc)):
+            if is_vision_error(str(exc)):
                 raise ValueError("偵測到圖片相關錯誤") from exc
 
             if attempt > params["max_retries"]:
@@ -271,46 +272,10 @@ async def translate_chunk_async(
                     )
                 raise
 
-            sleep_for = _calculate_backoff(
+            sleep_for = calculate_backoff(
                 exc,
                 attempt,
                 params["backoff"],
                 params["max_backoff"],
             )
             await asyncio.sleep(sleep_for)
-
-
-def detect_top_language(texts: list[str]) -> str | None:
-    """Detect the most common language in texts."""
-    counts: dict[str, int] = {}
-    for text in texts:
-        detected = detect_language((text or "").strip())
-        if detected:
-            counts[detected] = counts.get(detected, 0) + 1
-    if not counts:
-        return None
-    return sorted(counts.items(), key=lambda x: x[1], reverse=True)[0][0]
-
-
-def _is_vision_error(error_msg: str) -> bool:
-    """Check if error is related to vision/image."""
-    lower = error_msg.lower()
-    return "image" in lower or "vision" in lower
-
-
-def _calculate_backoff(
-    exc: Exception,
-    attempt: int,
-    backoff: float,
-    max_backoff: float,
-) -> float:
-    """Calculate backoff time for retry."""
-    retry_after = None
-    if isinstance(exc, HTTPError) and exc.code in {429, 503}:
-        retry_after = exc.headers.get("Retry-After")
-    if retry_after:
-        try:
-            return max(float(retry_after), 0)
-        except ValueError:
-            pass
-    return min(backoff * attempt, max_backoff) + random.uniform(0, 0.5)

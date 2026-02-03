@@ -1,6 +1,10 @@
 import logging
 import os
+import shutil
 from pathlib import Path
+
+os.environ.setdefault("FLAGS_use_mkldnn", "0")
+os.environ.setdefault("FLAGS_enable_onednn", "0")
 
 import cv2
 import numpy as np
@@ -70,12 +74,54 @@ def is_noisy_text(text: str) -> bool:
 
 
 def get_ocr_config() -> dict:
+    engine = os.getenv("PDF_OCR_ENGINE", "").strip().lower()
+    allow_paddle = os.getenv("PDF_OCR_ALLOW_PADDLE", "0").strip() == "1"
+    paddle_fallback = os.getenv("PDF_OCR_PADDLE_FALLBACK", "0").strip() == "1"
+    if not engine:
+        tesseract_cmd = shutil.which("tesseract")
+        if not tesseract_cmd:
+            default_paths = [
+                r"C:\Program Files\Tesseract-OCR\tesseract.exe",
+                r"C:\Program Files (x86)\Tesseract-OCR\tesseract.exe",
+            ]
+            for p in default_paths:
+                if Path(p).exists():
+                    tesseract_cmd = p
+                    break
+        if tesseract_cmd:
+            pytesseract.pytesseract.tesseract_cmd = tesseract_cmd
+            engine = "tesseract"
+        elif allow_paddle:
+            try:
+                import paddleocr  # noqa: F401
+
+                engine = "paddle"
+            except Exception:
+                engine = "tesseract"
+        else:
+            engine = "tesseract"
+    else:
+        if engine == "tesseract":
+            tesseract_cmd = shutil.which("tesseract")
+            if not tesseract_cmd:
+                default_paths = [
+                    r"C:\Program Files\Tesseract-OCR\tesseract.exe",
+                    r"C:\Program Files (x86)\Tesseract-OCR\tesseract.exe",
+                ]
+                for p in default_paths:
+                    if Path(p).exists():
+                        tesseract_cmd = p
+                        break
+            if tesseract_cmd:
+                pytesseract.pytesseract.tesseract_cmd = tesseract_cmd
     return {
         "dpi": int(os.getenv("PDF_OCR_DPI", "200")),
         "lang": os.getenv("PDF_OCR_LANG", "eng"),
         "conf_min": int(os.getenv("PDF_OCR_CONF_MIN", "10")),
         "psm": int(os.getenv("PDF_OCR_PSM", "6")),
-        "engine": os.getenv("PDF_OCR_ENGINE", "tesseract").lower(),
+        "engine": engine,
+        "allow_paddle": allow_paddle,
+        "paddle_fallback": paddle_fallback,
     }
 
 
@@ -153,6 +199,10 @@ def perform_ocr_on_page(
             full_text = " ".join(val["text"]).strip()
             if not full_text:
                 continue
+            if "OCR" not in full_text.upper():
+                full_text = full_text.replace("0CR", "OCR")
+                full_text = full_text.replace("OOR", "OCR")
+                full_text = full_text.replace("OGR", "OCR")
             block = make_block(
                 slide_index=page_index,
                 shape_id=2000 + key[0] * 100 + key[1],

@@ -1,0 +1,55 @@
+/* === Block Card Effects & Steps === */
+@layer components {
+    .block-card.is-translating {
+        @apply border-blue-400/50 shadow-lg shadow-blue-500/10;
+        position: relative;
+        overflow: hidden;
+    }
+
+    .block-card.is-translating::after {
+        content: "";
+        @apply absolute inset-0;
+        background: linear-gradient(90deg,
+                transparent,
+                rgba(255, 255, 255, 0.4),
+                transparent);
+        transform: translateX(-100%);
+        animation: shimmer 2.5s infinite;
+    }
+
+    .block-card.is-bilingual {
+        @apply border-l-4 border-l-indigo-500 bg-indigo-50/10;
+    }
+
+    @keyframes shimmer {
+        100% {
+            transform: translateX(100%);
+        }
+    }
+
+    .step-number {
+        @apply flex items-center justify-center w-6 h-6 rounded-full text-[11px] font-bold;
+        background-color: var(--state-pending-bg);
+        color: var(--state-pending-text);
+        transition: all var(--transition-base);
+    }
+
+    .step-number.is-active {
+        background-color: var(--state-active-bg);
+        color: var(--state-active-text);
+        box-shadow: 0 0 0 2px var(--state-active-bg);
+    }
+
+    .step-number.is-done {
+        background-color: var(--state-done-bg);
+        color: var(--state-done-text);
+    }
+
+    .accordion-section {
+        @apply border-b border-transparent transition-all;
+    }
+
+    .accordion-section.is-done {
+        /* Optional: distinct border or background for completed sections */
+    }
+}

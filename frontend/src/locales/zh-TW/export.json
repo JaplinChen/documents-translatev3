@@ -1,0 +1,13 @@
+{
+  "export": {
+    "title": "選擇匯出格式",
+    "error": "匯出失敗 ({{status}})",
+    "formats": {
+      "pptx": "PowerPoint (.pptx)",
+      "docx": "Word (.docx)",
+      "xlsx": "Excel (.xlsx)",
+      "txt": "純文字 (.txt)",
+      "md": "Markdown (.md)"
+    }
+  }
+}

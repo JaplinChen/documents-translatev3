@@ -1,0 +1,54 @@
+{
+  "sidebar": {
+    "mode": {
+      "label": "Chế độ",
+      "bilingual": "Song ngữ",
+      "translated": "Văn bản dịch",
+      "correction": "Chế độ hiệu đính",
+      "translate": "Chế độ dịch"
+    },
+    "layout": {
+      "label": "Bố cục",
+      "inline": "Cùng khung",
+      "auto": "Tự động",
+      "new_slide": "Slide mới"
+    },
+    "lang": {
+      "label": "Ngôn ngữ"
+    },
+    "upload": {
+      "placeholder": "Chọn hoặc kéo thả tập tin tài liệu",
+      "limit": "Hỗ trợ Microsoft Word (.docx) hoặc PowerPoint (.pptx)",
+      "ready": "✓ Sẵn sàng"
+    },
+    "tm": "Sử dụng bộ nhớ dịch",
+    "preprocess": "Tiền xử lý",
+    "extract": {
+      "button": "📊 Trích xuất thuật ngữ",
+      "hint": "Phân tích nội dung để thiết lập thuật ngữ nhằm đảm bảo tính nhất quán",
+      "summary": "✓ Đã phân tích {{count}} khối",
+      "refresh_button": "Trích xuất lại",
+      "refresh_hint": "Bắt buộc bỏ qua bộ đệm và quét lại tài liệu",
+      "confirm_refresh": "Bạn có chắc muốn trích xuất lại không? Thao tác này sẽ bỏ qua bộ đệm và quét lại tài liệu (PDF sẽ chạy lại OCR)."
+    },
+    "translate": {
+      "preparing": "Đang chuẩn bị...",
+      "translating": "Đang dịch... ({{current}}/{{total}})",
+      "completed": "Dịch hoàn tất",
+      "button": "🚀 Dịch tự động",
+      "stop": "Dừng"
+    },
+    "apply": {
+      "button": "📊 Áp dụng bố cục và tải xuống tài liệu",
+      "applying": "Đang áp dụng...",
+      "completed": "Đã xuất tập tin"
+    },
+    "export": {
+      "others": "Tải bảng đối chiếu dịch"
+    },
+    "hint": {
+      "step12": "Vui lòng hoàn thành bước 1-2 trước",
+      "step3": "Vui lòng hoàn thành dịch trước"
+    }
+  }
+}

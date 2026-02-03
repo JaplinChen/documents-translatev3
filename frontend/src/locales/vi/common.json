@@ -1,0 +1,16 @@
+{
+  "common": {
+    "add": "Thêm",
+    "update": "Cập nhật",
+    "edit": "Sửa",
+    "action": "Thao tác",
+    "delete": "Xóa",
+    "note": "Lưu ý",
+    "cancel": "Hủy",
+    "confirm": "Xác nhận",
+    "select_placeholder": "Chọn",
+    "unknown_error": "Lỗi không xác định",
+    "loading": "Đang tải...",
+    "download": "Tải xuống"
+  }
+}

@@ -1,0 +1,141 @@
+{
+  "settings": {
+    "providers": {
+      "ollama": "Mô hình cục bộ (Ollama)",
+      "gemini": "Gemini (Google)",
+      "chatgpt": "API chuẩn (OpenAI/Compatible)"
+    },
+    "title": "Cài đặt",
+    "tabs": {
+      "llm": "LLM",
+      "ai": "Điều khiển AI",
+      "ocr": "OCR",
+      "correction": "Hiệu đính",
+      "prompt": "Lời nhắc",
+      "fonts": "Phông chữ"
+    },
+    "ocr": {
+      "title": "Cai dat OCR",
+      "desc": "Dieu chinh chat luong quet va dieu kien nhan dang cho PDF OCR.",
+      "dpi": "DPI",
+      "dpi_hint": "Khuyen nghi 200-400, gia tri cao se cham hon",
+      "conf_min": "Nguong do tin cay",
+      "conf_min_hint": "0-100, gia tri cao nghiem ngat hon",
+      "psm": "Che do PSM",
+      "psm_hint": "Goi y 6/7 (dong hoac khoi don)",
+      "engine": "OCR Engine",
+      "engine_hint": "Nen dung PaddleOCR cho PDF scan",
+      "lang": "Ngon ngu",
+      "lang_hint": "Vi du: chi_tra+vie+eng",
+      "poppler_path": "Duong dan Poppler",
+      "poppler_hint": "Che do local can duong dan bin cua poppler"
+    },
+    "prompt": {
+      "empty": "Không có lời nhắc",
+      "reset": "Đặt lại lời nhắc",
+      "save": "Lưu lời nhắc",
+      "close": "Đóng",
+      "select_prompt": "Chọn Prompt",
+      "prompt_placeholder": "Nhập nội dung Prompt",
+      "loading": "Đang tải..."
+    },
+    "prompt_labels": {
+      "translate_json": "Lời nhắc dịch JSON",
+      "system_message": "Tin nhắn hệ thống",
+      "ollama_batch": "Lời nhắc hàng loạt Ollama"
+    },
+    "fonts": {
+      "title": "Cấu hình Phông chữ",
+      "description": "Thiết lập phông chữ ưu tiên cho các ngôn ngữ khi xuất tài liệu (Phân cách bằng dấu phẩy, ưu tiên từ trái sang phải).",
+      "lang_code": "Mã ngôn ngữ (ISO)",
+      "font_list": "Danh sách phông chữ",
+      "lang": "Ngôn ngữ",
+      "priority": "Phông chữ ưu tiên",
+      "no_rules": "Chưa có quy tắc",
+      "reset": "Khôi phục mặc định",
+      "reset_confirm": "Khôi phục tất cả cài đặt phông chữ về mặc định?",
+      "delete_confirm": "Xóa quy tắc này?",
+      "hint": "Các cài đặt này ảnh hưởng đến việc chọn phông chữ trong các hộp văn bản đã dịch, giúp giải quyết lỗi hiển thị hoặc ký tự lạ."
+    },
+    "status": {
+      "saving": "Đang lưu...",
+      "saved": "Đã lưu",
+      "failed": "Lưu thất bại",
+      "api_key_missing": "Vui lòng nhập API Key",
+      "models_detecting": "Đang phát hiện mô hình...",
+      "models_detected": "Đã phát hiện {{count}} mô hình",
+      "models_not_found": "Không phát hiện mô hình",
+      "models_detect_failed": "Phát hiện mô hình thất bại",
+      "ocr_load_failed": "Tải cài đặt OCR thất bại",
+      "ocr_save_failed": "Lưu cài đặt OCR thất bại"
+    },
+    "ai": {
+      "tone_title": "Phong cách & Giọng điệu (Tone)",
+      "tone_label": "Giọng điệu mục tiêu",
+      "tone_options": {
+        "professional": "Chuyên nghiệp (Mặc định)",
+        "concise": "Ngắn gọn",
+        "pm": "Góc nhìn Quản lý sản phẩm (PM)",
+        "humorous": "Hài hước",
+        "creative": "Sáng tạo",
+        "academic": "Hàn lâm"
+      },
+      "tone_hint": "Ảnh hưởng lớn đến từ ngữ và độ dài câu.",
+      "context_title": "Tính năng AI Nâng cao",
+      "vision": "Hỗ trợ ngữ cảnh hình ảnh (Vision Context)",
+      "vision_hint": "Phân tích hình ảnh tài liệu để dịch chính xác hơn (nếu mô hình hỗ trợ).",
+      "layout": "Điều chỉnh bố cục thông minh (Layout Adjust)",
+      "layout_hint": "Tự động đề xuất giảm cỡ chữ hoặc ngắt dòng khi tràn văn bản."
+    },
+    "correction": {
+      "preview": "Xem trước",
+      "preview_content": "Nội dung xem trước",
+      "fill_color": "Màu nền",
+      "text_color": "Màu chữ",
+      "border_color": "Viền",
+      "border_style": "Kiểu viền",
+      "dash": "Gạch đứt",
+      "dot": "Chấm",
+      "dashdot": "Gạch chấm",
+      "solid": "Nét liền",
+      "hint": "Gợi ý: Kiểu hiển thị sẽ áp dụng cho đánh dấu hiệu đính trong Powerpoint. Điều chỉnh ngưỡng để kiểm soát mức hiệu đính.",
+      "sensitivity_steps": {
+        "s1": "Rất thoáng",
+        "s2": "Thoáng",
+        "s3": "Cân bằng",
+        "s4": "Nghiêm",
+        "s5": "Rất nghiêm"
+      },
+      "sensitivity_desc": {
+        "s1": "Có thể viết lại nhiều",
+        "s2": "Cho phép viết lại",
+        "s3": "Điều chỉnh vừa phải",
+        "s4": "Điều chỉnh ít",
+        "s5": "Chỉ sửa lỗi chính tả"
+      },
+      "sensitivity_label": "Ngưỡng tương đồng (Sensitivity)",
+      "line_style_title": "Kiểu đường viền"
+    },
+    "llm": {
+      "api_key": "API Key",
+      "api_key_placeholder": "Nhập API Key",
+      "api_key_hint": "Vui lòng nhập API Key của nhà cung cấp.",
+      "base_url": "Base URL",
+      "base_url_hint": "Mặc định localhost: {{url}}",
+      "fast_mode": "Chế độ nhanh Ollama",
+      "fast_mode_label": "Lô nhỏ, tắt yêu cầu đơn lẻ",
+      "model": "Mô hình",
+      "refresh": "Làm mới",
+      "select_model": "Chọn mô hình",
+      "custom_model": "Nhập mô hình tùy chỉnh",
+      "add": "Thêm",
+      "detect_hint": "Vui lòng phát hiện mô hình trước"
+    },
+    "global_status": {
+      "idle": "Chờ",
+      "processing": "Đang xử lý",
+      "completed": "Hoàn tất",
+      "error": "Lỗi"
+    }
+  }
+}

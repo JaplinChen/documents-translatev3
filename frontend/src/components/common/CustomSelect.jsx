@@ -7,7 +7,7 @@ import { createPortal } from 'react-dom';
  * CustomSelect - 專業級自定義下拉選單 (Portal 版本)
  * 使用 ReactDOM.createPortal 將選單清單渲染至 body，徹底解決 overflow: hidden 的裁剪問題。
  */
-export function CustomSelect({ options = [], value, onChange, className = "", placeholder = "" }) {
+export function CustomSelect({ options = [], value, onChange, className = "", placeholder = "", testId = "" }) {
     const { t } = useTranslation();
     const [isOpen, setIsOpen] = useState(false);
     const [coords, setCoords] = useState({ top: 0, left: 0, width: 0 });
@@ -56,6 +56,7 @@ export function CustomSelect({ options = [], value, onChange, className = "", pl
         <ul
             className="custom-select-options portal-dropdown"
             ref={dropdownRef}
+            data-testid={testId ? `${testId}-options` : undefined}
             style={{
                 position: 'absolute',
                 top: `${coords.top}px`,
@@ -71,6 +72,7 @@ export function CustomSelect({ options = [], value, onChange, className = "", pl
                     <li
                         key={index}
                         className={`custom-option ${isSelected ? 'is-selected' : ''}`}
+                        data-testid={testId ? `${testId}-option-${optValue}` : undefined}
                         onClick={() => {
                             onChange({ target: { value: optValue } });
                             setIsOpen(false);
@@ -84,9 +86,10 @@ export function CustomSelect({ options = [], value, onChange, className = "", pl
     );
 
     return (
-        <div className={`custom-select-container ${className}`} ref={containerRef}>
+        <div className={`custom-select-container ${className}`} ref={containerRef} data-testid={testId || undefined}>
             <div
                 className={`custom-select-trigger ${isOpen ? 'is-active' : ''}`}
+                data-testid={testId ? `${testId}-trigger` : undefined}
                 onClick={() => setIsOpen(!isOpen)}
             >
                 <span className="selected-text">

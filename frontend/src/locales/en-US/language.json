@@ -1,0 +1,18 @@
+{
+  "language": {
+    "options": {
+      "auto": "Auto",
+      "vi": "Tiếng Việt",
+      "zh_tw": "Traditional Chinese",
+      "zh_cn": "Simplified Chinese",
+      "en": "English",
+      "ja": "日本語",
+      "ko": "한국어"
+    },
+    "ui": {
+      "zh_tw": "繁體中文",
+      "en_us": "English",
+      "vi": "Tiếng Việt"
+    }
+  }
+}

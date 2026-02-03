@@ -1,0 +1,144 @@
+{
+  "settings": {
+    "providers": {
+      "ollama": "Local Model (Ollama)",
+      "gemini": "Gemini (Google)",
+      "chatgpt": "Standard API (OpenAI/Compatible)"
+    },
+    "title": "Settings",
+    "tabs": {
+      "llm": "LLM",
+      "ai": "AI Control",
+      "ocr": "OCR",
+      "correction": "Correction",
+      "prompt": "Prompt",
+      "fonts": "Fonts"
+    },
+    "ocr": {
+      "title": "OCR Settings",
+      "desc": "Adjust scan quality and recognition conditions for PDF OCR.",
+      "dpi": "DPI",
+      "dpi_hint": "Recommended 200-400, higher is slower",
+      "conf_min": "Confidence Threshold",
+      "conf_min_hint": "0-100, higher is stricter",
+      "psm": "PSM Mode",
+      "psm_hint": "Suggested 6/7 (single block or line)",
+      "engine": "OCR Engine",
+      "engine_hint": "Recommend PaddleOCR for scanned PDFs",
+      "lang": "Language",
+      "lang_hint": "Example: chi_tra+vie+eng",
+      "poppler_path": "Poppler Path",
+      "poppler_hint": "Local mode needs poppler bin path"
+    },
+    "prompt": {
+      "empty": "No Prompts",
+      "reset": "Reset Prompt",
+      "save": "Save Prompt",
+      "close": "Close",
+      "select_prompt": "Select Prompt",
+      "prompt_placeholder": "Enter Prompt Content",
+      "loading": "Loading..."
+    },
+    "prompt_labels": {
+      "translate_json": "Translate JSON Prompt",
+      "system_message": "System Message",
+      "ollama_batch": "Ollama Batch Prompt"
+    },
+    "fonts": {
+      "title": "Font Mapping",
+      "description": "Set priority fonts for different languages in document output (Comma separated, left-to-right priority).",
+      "lang_code": "Lang Code (ISO)",
+      "font_list": "Font List",
+      "lang": "Language",
+      "priority": "Priority Fonts",
+      "no_rules": "No rules set",
+      "reset": "Reset Default",
+      "reset_confirm": "Reset all font rules to default?",
+      "delete_confirm": "Delete this rule?",
+      "hint": "These settings affect font selection in translated text boxes, helping resolve tofu characters or display issues."
+    },
+    "status": {
+      "saving": "Saving...",
+      "saved": "Saved",
+      "failed": "Save Failed",
+      "api_key_missing": "Please enter API Key",
+      "models_detecting": "Detecting models...",
+      "models_detected": "Detected {{count}} models",
+      "models_not_found": "No models detected",
+      "models_detect_failed": "Model detection failed",
+      "ocr_load_failed": "OCR settings load failed",
+      "ocr_save_failed": "OCR settings save failed"
+    },
+    "ai": {
+      "tone_title": "Translation Style & Tone",
+      "tone_label": "Target Tone",
+      "tone_options": {
+        "professional": "Professional (Default)",
+        "concise": "Concise",
+        "pm": "Product Manager (PM)",
+        "humorous": "Humorous",
+        "creative": "Creative",
+        "academic": "Academic"
+      },
+      "tone_hint": "Significantly affects word choice and sentence length.",
+      "context_title": "AI Enhancements",
+      "vision": "Vision Context",
+      "vision_hint": "Analyzes document images and layout for better context (if supported).",
+      "layout": "Smart Layout Adjust",
+      "layout_hint": "Detects overflow and suggests font resizing or line breaks."
+    },
+    "correction": {
+      "preview": "Live Preview",
+      "preview_content": "Preview Content / Text",
+      "fill_color": "Fill Color",
+      "text_color": "Text Color",
+      "border_color": "Border Color",
+      "border_style": "Border Style",
+      "dash": "Dash",
+      "dot": "Dot",
+      "dashdot": "Dash-Dot",
+      "solid": "Solid",
+      "sensitivity_label": "Similarity Threshold (Sensitivity)",
+      "sensitivity_loose": "Loose (More Rewrites)",
+      "sensitivity_strict": "Strict (Review Only)",
+      "theme_title": "Theme Color Specs",
+      "line_style_title": "Line Style",
+      "hint": "Hint: Visual styles apply to PPT correction marks. Adjust the threshold to control correction strength.",
+      "sensitivity_steps": {
+        "s1": "Most Loose",
+        "s2": "Loose",
+        "s3": "Balanced",
+        "s4": "Strict",
+        "s5": "Most Strict"
+      },
+      "sensitivity_desc": {
+        "s1": "Allow heavy rewrites",
+        "s2": "Allow rewrites",
+        "s3": "Moderate edits",
+        "s4": "Minor edits",
+        "s5": "Fix typos only"
+      }
+    },
+    "llm": {
+      "api_key": "API Key",
+      "api_key_placeholder": "Enter API Key",
+      "api_key_hint": "Enter the API Key for the provider.",
+      "base_url": "Base URL",
+      "base_url_hint": "Localhost default: {{url}}",
+      "fast_mode": "Ollama Fast Mode",
+      "fast_mode_label": "Small batch, disable single request",
+      "model": "Model",
+      "refresh": "Refresh",
+      "select_model": "Select Model",
+      "custom_model": "Custom Model",
+      "add": "Add",
+      "detect_hint": "Please detect model first"
+    },
+    "global_status": {
+      "idle": "Idle",
+      "processing": "Processing",
+      "completed": "Completed",
+      "error": "Error"
+    }
+  }
+}

@@ -5,6 +5,7 @@ from pathlib import Path
 
 from langdetect import DetectorFactory, detect
 from backend.services.preserve_terms_repository import list_preserve_terms
+from backend.services.language_detect import _VI_DIACRITIC_RE
 
 # Set seed for consistent langdetect results
 DetectorFactory.seed = 0
@@ -71,8 +72,8 @@ def is_numeric_only(text: str) -> bool:
     """Check if text is only numbers, punctuation, or whitespace."""
     if not text or not text.strip():
         return True
-    # If it contains any letter (English, CJK), it's not numeric-only.
-    if re.search(r"[a-zA-Z\u4e00-\u9fff\u3040-\u30ff\uac00-\ud7af]", text):
+    # If it contains any letter (Unicode alpha), it's not numeric-only.
+    if any(ch.isalpha() for ch in text):
         return False
     return True
 
@@ -111,6 +112,9 @@ def is_technical_terms_only(text: str) -> bool:  # noqa: C901
 
     # Remove common separators for further word-level checks
     cleaned = re.sub(r"[,、，/\s]+", " ", text_clean).strip()
+
+    if _VI_DIACRITIC_RE.search(text_clean):
+        return False
 
     # If contains any CJK characters or Thai, it's not pure technical terms.
     if re.search(r"[\u4e00-\u9fff\u3040-\u30ff\u0e00-\u0e7f]", cleaned):

@@ -77,6 +77,52 @@ export function resolveOutputMode(block) {
 }
 
 /**
+ * Remove bilingual mixed content and keep translated text only.
+ */
+export function stripBilingualText(sourceText, translatedText, targetLang) {
+    const raw = translatedText || "";
+    if (!raw) return "";
+    const sourceNorm = normalizeText(sourceText).toLowerCase();
+
+    if (!raw.includes("\n")) {
+        if (sourceText && raw.includes(sourceText)) {
+            const cleaned = raw.replace(sourceText, "").replace(/\s{2,}/g, " ").trim();
+            if (cleaned) return cleaned;
+        }
+
+        if (sourceNorm) {
+            const rawNorm = normalizeText(raw).toLowerCase();
+            if (rawNorm.startsWith(sourceNorm)) {
+                const idx = raw.indexOf(sourceText);
+                if (idx >= 0) {
+                    const cleaned = raw.slice(0, idx) + raw.slice(idx + sourceText.length);
+                    const trimmed = cleaned.replace(/\s{2,}/g, " ").trim();
+                    if (trimmed) return trimmed;
+                }
+            }
+        }
+
+        return raw;
+    }
+
+    const parts = raw.split("\n").map(p => p.trim()).filter(Boolean);
+    if (parts.length <= 1) return parts[0] || "";
+
+    if (sourceNorm) {
+        const filtered = parts.filter(p => normalizeText(p).toLowerCase() !== sourceNorm);
+        if (filtered.length) return filtered[filtered.length - 1];
+        if (parts[0] && normalizeText(parts[0]).toLowerCase().includes(sourceNorm)) {
+            return parts[parts.length - 1];
+        }
+    }
+
+    const targetLines = extractLanguageLines(raw, targetLang);
+    if (targetLines && targetLines.length) return targetLines.join("\n");
+
+    return parts[parts.length - 1];
+}
+
+/**
  * Infer fallback language based on primary language
  */
 export function inferFallbackLanguage(primaryLang, targetLang) {

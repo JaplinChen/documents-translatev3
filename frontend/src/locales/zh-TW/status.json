@@ -1,0 +1,17 @@
+{
+  "status": {
+    "extracting": "抽取中...",
+    "error": "發生錯誤: {{message}}",
+    "no_file": "請先選擇檔案",
+    "format_error": "只支援 .pptx 或 .docx 檔案，請重新選擇",
+    "no_blocks": "請先抽取區塊",
+    "api_key_missing": "請先在 LLM 設定中填入 API Key",
+    "interrupted": "連線已中斷 (未收到完成訊號)",
+    "extract_failed": "抽取失敗",
+    "translate_failed": "翻譯發生錯誤",
+    "apply_failed": "套用失敗",
+    "server_error": "伺服器連線異常",
+    "server_timeout": "伺服器響應超時",
+    "backend_generate_failed": "後端生成失敗"
+  }
+}

@@ -46,6 +46,20 @@
 
 - `OLLAMA_MODEL`: 預設為 `translategemma:4b`。
 - `TRANSLATE_LLM_MODE`: `real` (正式翻譯) 或 `mock` (測試用)。
+- `DATABASE_URL`: 本機開發的 PostgreSQL 連線字串（預設 `postgresql+psycopg://app:app@localhost:5432/appdb`）。
+- `DATABASE_URL_DOCKER`: Docker 版 PostgreSQL 連線字串（預設 `postgresql+psycopg://app:app@postgres:5432/appdb`）。
+
+### 🔎 OCR 引擎選項
+
+- 預設使用 Tesseract。
+- 若需要 PaddleOCR（更高準確率的影像字辨識），請另外安裝：
+  ```powershell
+  python -m pip install -r requirements-ocr-paddle.txt
+  ```
+- 啟用 PaddleOCR：
+  - `PDF_OCR_ALLOW_PADDLE=1`
+  - `PDF_OCR_ENGINE=paddle`（固定使用 PaddleOCR）
+  - `PDF_OCR_PADDLE_FALLBACK=1`（Tesseract 信心不足時改用 PaddleOCR）
 
 ### 📦 安全打包與分發 (IP Protection)
 
@@ -62,6 +76,38 @@
 ```powershell
 python scripts/cleanup_project.py --no-dry-run
 ```
+
+### 🐘 PostgreSQL 遷移
+
+1. 啟動資料庫：
+   ```powershell
+   docker compose up -d postgres
+   ```
+2. 設定 `DATABASE_URL`：
+   ```
+   本機開發：postgresql+psycopg://app:app@localhost:5432/appdb
+   Docker：DATABASE_URL_DOCKER=postgresql+psycopg://app:app@postgres:5432/appdb
+   ```
+3. 執行 Alembic：
+   ```powershell
+   alembic upgrade head
+   ```
+4. 搬移 SQLite 資料：
+   ```powershell
+   python scripts/migrate_sqlite_to_postgres.py
+   ```
+5. 重新啟動後端服務
+
+### ✅ 遷移驗證與回滾
+
+- 驗證 SQLite 與 PostgreSQL 一致性：
+  ```powershell
+  python scripts/verify_sqlite_postgres.py
+  ```
+- PostgreSQL 回滾到 SQLite：
+  ```powershell
+  python scripts/rollback_postgres_to_sqlite.py
+  ```
 
 ## 🧰 開發流程
 

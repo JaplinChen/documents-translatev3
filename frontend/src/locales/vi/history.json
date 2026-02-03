@@ -1,0 +1,16 @@
+{
+  "history": {
+    "load_json_blocked": "Tệp lịch sử JSON không thể tải vào trình chỉnh sửa. Vui lòng tải xuống.",
+    "confirm_delete": "Xóa tệp này?",
+    "confirm_reset_all": "Cảnh báo: thao tác này sẽ xóa vĩnh viễn TM, bộ đệm thuật ngữ và lịch sử xuất. Tiếp tục?",
+    "reset_success": "Dọn dẹp xong, đã xóa {{count}} tệp",
+    "reset_warning": "Gợi ý: để dịch lại hoàn toàn hoặc xóa kho, hãy bấm nút bên phải.",
+    "reset_all": "Xóa toàn bộ bộ đệm và tệp",
+    "empty": "Không có lịch sử",
+    "filename": "Tên tệp",
+    "date": "Ngày",
+    "size": "Kích thước",
+    "actions": "Thao tác",
+    "load": "Tải vào trình chỉnh sửa"
+  }
+}

@@ -25,6 +25,7 @@ export function EditorPanel({
     mode,
     sourceLang,
     secondaryLang,
+    targetLang,
     extractLanguageLines,
     editorRefs
 }) {
@@ -181,6 +182,7 @@ export function EditorPanel({
                                         mode={mode}
                                         sourceLang={sourceLang}
                                         secondaryLang={secondaryLang}
+                                        targetLang={targetLang}
                                         extractLanguageLines={extractLanguageLines}
                                         editorRefs={editorRefs}
                                         onBlockSelect={(checked) => onBlockSelect(block._uid, checked)}

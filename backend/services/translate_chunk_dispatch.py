@@ -11,14 +11,14 @@ from backend.services.llm_contract import (
     coerce_contract,
     validate_contract,
 )
-from backend.services.translate_config import (
-    get_language_hint,
-    get_tone_instruction,
-    get_vision_context_instruction,
-)
 from backend.services.translate_prompt import (
     build_ollama_batch_prompt,
     parse_ollama_batch_response,
+)
+from backend.services.translate_chunk_dispatch_helpers import (
+    build_custom_hint,
+    safe_translate,
+    safe_translate_async,
 )
 
 def dispatch_translate(
@@ -118,14 +118,15 @@ def translate_ollama(
 
     if translated_texts_chunk is None:
         custom_hint = build_custom_hint(target_language, tone, vision_context)
-        result = translator.translate(
+        result = safe_translate(
+            translator,
             chunk_blocks,
             target_language,
-            context=context,
-            preferred_terms=preferred_terms,
-            placeholder_tokens=placeholder_tokens,
-            language_hint=custom_hint,
-            mode=mode,
+            context,
+            preferred_terms,
+            placeholder_tokens,
+            custom_hint,
+            mode,
         )
         result = coerce_contract(result, chunk_blocks, target_language)
     else:
@@ -160,14 +161,15 @@ async def translate_ollama_async(
 
     if translated_texts_chunk is None:
         custom_hint = build_custom_hint(target_language, tone, vision_context)
-        result = await translator.translate_async(
+        result = await safe_translate_async(
+            translator,
             chunk_blocks,
             target_language,
-            context=context,
-            preferred_terms=preferred_terms,
-            placeholder_tokens=placeholder_tokens,
-            language_hint=custom_hint,
-            mode=mode,
+            context,
+            preferred_terms,
+            placeholder_tokens,
+            custom_hint,
+            mode,
         )
         result = coerce_contract(result, chunk_blocks, target_language)
     else:
@@ -194,14 +196,15 @@ def translate_standard(
 ):
     """Handle standard translation."""
     custom_hint = build_custom_hint(target_language, tone, vision_context)
-    result = translator.translate(
+    result = safe_translate(
+        translator,
         chunk_blocks,
         target_language,
-        context=context,
-        preferred_terms=preferred_terms,
-        placeholder_tokens=placeholder_tokens,
-        language_hint=custom_hint,
-        mode=mode,
+        context,
+        preferred_terms,
+        placeholder_tokens,
+        custom_hint,
+        mode,
     )
     result = coerce_contract(result, chunk_blocks, target_language)
     validate_contract(result)
@@ -221,27 +224,16 @@ async def translate_standard_async(
 ):
     """Handle standard translation (Async)."""
     custom_hint = build_custom_hint(target_language, tone, vision_context)
-    result = await translator.translate_async(
+    result = await safe_translate_async(
+        translator,
         chunk_blocks,
         target_language,
-        context=context,
-        preferred_terms=preferred_terms,
-        placeholder_tokens=placeholder_tokens,
-        language_hint=custom_hint,
-        mode=mode,
+        context,
+        preferred_terms,
+        placeholder_tokens,
+        custom_hint,
+        mode,
     )
     result = coerce_contract(result, chunk_blocks, target_language)
     validate_contract(result)
     return result
-
-
-def build_custom_hint(
-    target_language: str,
-    tone: str | None,
-    vision_context: bool,
-) -> str:
-    """Build custom hint string for translation."""
-    hint = get_language_hint(target_language)
-    tone_hint = get_tone_instruction(tone)
-    vision_hint = get_vision_context_instruction(vision_context)
-    return f"{hint}\n{tone_hint}\n{vision_hint}".strip()

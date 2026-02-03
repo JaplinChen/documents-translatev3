@@ -1,0 +1,8 @@
+{
+  "utils": {
+    "model_detect_hint": {
+      "ollama": "Please check:\n1. Ollama service is running\n2. Base URL is correct\n3. Model is downloaded",
+      "generic": "Please check:\n1. API Key is correct\n2. Model name exists\n3. Network connection is OK"
+    }
+  }
+}

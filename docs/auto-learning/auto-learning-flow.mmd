@@ -1,33 +1,47 @@
-%% Auto-Learning Pipeline Flow
+%% 自動學習流程圖
 flowchart TD
-  A[Ingestion: bilingual files / corrections / TM] --> B[Cleaning & De-noise]
-  B --> C[Term Mining]
-  C --> D[Auto Classification]
-  D --> E[Auto Promotion]
-  E --> F[Glossary/TM/Staging]
-  F --> G[Translation & Extraction Feedback]
-  G --> H[Monitoring & Auto-Tuning]
-  H --> B
+  A[資料進入：雙語文件/修正/TM] --> B[清洗與去噪]
+  B --> C[術語抽取]
+  C --> D[自動分類]
+  D --> E[候選評分]
+  E --> F[升級/降級決策]
+  F --> G[Glossary/TM/候選池]
+  G --> H[翻譯與抽取回饋]
+  H --> I[監控與自動調參]
+  I --> B
+  G --> J[衰減與淘汰]
+  J --> G
 
-  subgraph Promotion
-    E1[Score candidates]
-    E2[Promote to TM]
-    E3[Promote to Glossary]
+  subgraph 升級邏輯
+    E1[計算候選分數]
+    E2[升級到 TM]
+    E3[升級到 Glossary]
+    E4[降級到 Inactive]
     E1 --> E2
     E1 --> E3
+    E1 --> E4
   end
 
   E --> E1
 
-%% Runtime data flow
+%% 執行期資料流（落地）
 flowchart TD
-  U[User edits translation] --> FB[/api/tm/feedback]
+  U[使用者修正翻譯] --> FB[/api/tm/feedback]
   FB --> TF[(term_feedback)]
-  TF --> AUTO{count >= threshold}
-  AUTO -- yes --> GL[(glossary)]
-  AUTO -- no --> TF
+  TF --> AUTO{次數 >= 門檻}
+  AUTO -- 是 --> GL[(glossary)]
+  AUTO -- 否 --> TF
+  FB --> LE[(learning_events)]
 
-  TR[Translation complete] --> SAVE[save_tm]
+  TR[翻譯完成] --> SAVE[save_tm]
   SAVE --> TM[(tm)]
   TM --> HIT[lookup_tm]
-  HIT --> OUT[Translation output]
+  HIT --> OUT[翻譯輸出]
+  HIT --> LE
+  TM --> DECAY{覆寫率/未命中}
+  DECAY -- 高 --> INACTIVE[(inactive)]
+  DECAY -- 低 --> TM
+
+  LE --> STATS[每日統計 Worker]
+  STATS --> LS[(learning_stats)]
+  LS --> ALERT[告警與調參]

@@ -4,7 +4,7 @@ import { API_BASE, APP_STATUS } from "../constants";
 import { useFileStore } from "../store/useFileStore";
 import { useSettingsStore } from "../store/useSettingsStore";
 import { useUIStore } from "../store/useUIStore";
-import { readErrorDetail, buildBlockUid, resolveOutputMode } from "../utils/appHelpers";
+import { readErrorDetail, buildBlockUid, resolveOutputMode, stripBilingualText } from "../utils/appHelpers";
 
 export function useDocumentProcessor() {
     const { t } = useTranslation();
@@ -89,12 +89,17 @@ export function useDocumentProcessor() {
                 const match = finalBlocks.find(f => f.client_id === b.client_id || f._uid === b._uid);
                 if (!match) return b;
                 const hasT = Object.prototype.hasOwnProperty.call(match, "translated_text");
+                const rawTranslated = hasT ? match.translated_text : b.translated_text;
+                const cleanedTranslated = hasT
+                    ? stripBilingualText(b.source_text, rawTranslated, targetLang)
+                    : b.translated_text;
                 return {
-                    ...b, translated_text: hasT ? match.translated_text : b.translated_text,
+                    ...b,
+                    translated_text: cleanedTranslated,
                     correction_temp: match.correction_temp ?? b.correction_temp,
                     temp_translated_text: match.temp_translated_text ?? b.temp_translated_text,
                     isTranslating: false,
-                    updatedAt: (hasT && match.translated_text) ? new Date().toLocaleTimeString("zh-TW", { hour12: false }) : b.updatedAt
+                    updatedAt: (hasT && cleanedTranslated) ? new Date().toLocaleTimeString("zh-TW", { hour12: false }) : b.updatedAt
                 };
             }));
         };
@@ -216,7 +221,13 @@ export function useDocumentProcessor() {
         try {
             const formData = new FormData();
             formData.append("file", file);
-            const applyBlocks = mode === "correction" ? blocks.map(b => resolveOutputMode(b) === "source" ? { ...b, apply: false } : b) : blocks;
+            const cleanedBlocks = blocks.map(b => ({
+                ...b,
+                translated_text: stripBilingualText(b.source_text, b.translated_text, targetLang)
+            }));
+            const applyBlocks = mode === "correction"
+                ? cleanedBlocks.map(b => resolveOutputMode(b) === "source" ? { ...b, apply: false } : b)
+                : cleanedBlocks;
             formData.append("blocks", JSON.stringify(applyBlocks));
             formData.append("target_language", targetLang);
             formData.append("mode", mode);

@@ -8,6 +8,7 @@ starlette.formparsers.MultiPartParser.max_part_size = 50 * 1024 * 1024
 import asyncio
 import os
 import time
+from contextlib import asynccontextmanager
 from pathlib import Path
 
 from fastapi import FastAPI
@@ -32,7 +33,25 @@ from backend.api import (
 )
 from backend.tools.logging_middleware import StructuredLoggingMiddleware
 
-app = FastAPI()
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    # Ensure exports directory exists
+    Path("data/exports").mkdir(parents=True, exist_ok=True)
+    Path("data/thumbnails").mkdir(parents=True, exist_ok=True)
+
+    cleanup_task = asyncio.create_task(cleanup_exports_task())
+    stats_task = asyncio.create_task(learning_stats_task())
+    tasks = [cleanup_task, stats_task]
+
+    try:
+        yield
+    finally:
+        for task in tasks:
+            task.cancel()
+        await asyncio.gather(*tasks, return_exceptions=True)
+
+
+app = FastAPI(lifespan=lifespan)
 app.add_middleware(StructuredLoggingMiddleware)
 app.add_middleware(
     CORSMiddleware,
@@ -114,13 +133,16 @@ async def cleanup_exports_task():
         await asyncio.sleep(1800)  # Run every 30 mins
 
 
-@app.on_event("startup")
-async def startup_event():
-    # Ensure exports directory exists
-    Path("data/exports").mkdir(parents=True, exist_ok=True)
-    Path("data/thumbnails").mkdir(parents=True, exist_ok=True)
-    # Start cleanup task
-    asyncio.create_task(cleanup_exports_task())
+async def learning_stats_task():
+    """Background task to compute daily learning stats."""
+    from backend.workers.learning_stats import run_daily_stats
+
+    while True:
+        try:
+            run_daily_stats(scope_type="project", scope_id="default", days_back=1)
+        except Exception as e:
+            print(f"Learning stats error: {e}")
+        await asyncio.sleep(24 * 60 * 60)
 
 
 @app.get("/health")

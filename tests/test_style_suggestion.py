@@ -1,10 +1,30 @@
-from fastapi.testclient import TestClient
+import anyio
+import httpx
+import pytest
+from httpx import ASGITransport
 
 from backend.main import app
 
-client = TestClient(app)
+class SyncASGIClient:
+    def request(self, method: str, url: str, **kwargs):
+        async def _run():
+            transport = ASGITransport(app=app, raise_app_exceptions=True)
+            async with httpx.AsyncClient(
+                transport=transport, base_url="http://test"
+            ) as client:
+                return await client.request(method, url, **kwargs)
 
-def test_style_suggestion_endpoint():
+        return anyio.run(_run)
+
+    def post(self, url: str, **kwargs):
+        return self.request("POST", url, **kwargs)
+
+
+@pytest.fixture
+def client():
+    return SyncASGIClient()
+
+def test_style_suggestion_endpoint(client):
     # 1. Prepare sample blocks
     sample_blocks = [
         {"source_text": "Welcome to our high-tech presentation", "block_type": "textbox"},

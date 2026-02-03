@@ -66,7 +66,7 @@ export function Sidebar({
                                     {isFileSelected && <span className="text-sub text-blue-600">{t("sidebar.upload.ready")}</span>}
                                     {isFileSelected && fileExt && <span className="file-type-chip is-selected">{fileExt}</span>}
                                 </div>
-                                <input className="file-input-hidden" type="file" accept=".pptx,.docx,.xlsx,.pdf" onChange={(e) => setFile(e.target.files?.[0] || null)} />
+                                <input className="file-input-hidden" type="file" accept=".pptx,.docx,.xlsx,.pdf" onChange={(e) => setFile(e.target.files?.[0] || null)} data-testid="file-input" />
                             </label>
                         </div></div>
                     </div>
@@ -98,7 +98,7 @@ export function Sidebar({
                             </div>
                             <hr className="border-slate-200" />
                             <div className="flex gap-2 items-stretch h-10">
-                                <button className={`btn primary flex-1 h-full truncate ${isExtracted && !isTranslating ? "pulse-shadow" : ""}`} onClick={() => onTranslate(false)} disabled={busy || !isExtracted}>
+                                <button className={`btn primary flex-1 h-full truncate ${isExtracted && !isTranslating ? "pulse-shadow" : ""}`} onClick={() => onTranslate(false)} disabled={busy || !isExtracted} data-testid="translate-button">
                                     {isTranslating ? (typeof status === 'string' ? status : (status?.key ? t(status.key, status.params) : "")) : <span className="flex items-center justify-center gap-1">{t("sidebar.translate.button")}</span>}
                                 </button>
                                 <button className={`btn secondary px-3 h-full flex items-center justify-center transition-all ${isExtracted && !isTranslating ? "opacity-100" : "opacity-0 pointer-events-none w-0 px-0 ml--2"}`} title={t("sidebar.translate.refresh_button")} onClick={() => onTranslate(true)} disabled={busy || !isExtracted}>🔄</button>
@@ -118,7 +118,7 @@ export function Sidebar({
                     </div>
                     <div className="accordion-content" style={{ maxHeight: openSections.step4 ? "400px" : "0", opacity: openSections.step4 ? 1 : 0 }}>
                         <div className="py-2 flex flex-col gap-3">
-                            <button className="btn success w-full" onClick={onApply} disabled={!canApply}>{t("sidebar.apply.button")}</button>
+                            <button className="btn success w-full" onClick={onApply} disabled={!canApply} data-testid="apply-button">{t("sidebar.apply.button")}</button>
                             {canApply && (
                                 <div className="export-alternatives">
                                     <p className="field-label mb-2">{t("sidebar.export.others")}</p>

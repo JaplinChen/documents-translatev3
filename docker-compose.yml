@@ -42,6 +42,7 @@ services:
       - PDF_OCR_CONF_MIN=${PDF_OCR_CONF_MIN:-10}
       - PDF_OCR_PSM=${PDF_OCR_PSM:-6}
       - PDF_OCR_ENGINE=${PDF_OCR_ENGINE:-tesseract}
+      - DATABASE_URL=${DATABASE_URL_DOCKER:-postgresql+psycopg://app:app@postgres:5432/appdb}
       - FLAGS_use_mkldnn=0
       - CORS_ORIGIN=${CORS_ORIGIN:-*}
     volumes:
@@ -56,6 +57,9 @@ services:
       retries: 3
       start_period: 30s
     command: uvicorn backend.main:app --host 0.0.0.0 --port 5005 --reload --reload-exclude "data/*"
+    depends_on:
+      postgres:
+        condition: service_healthy
     develop:
       watch:
         - action: sync
@@ -84,6 +88,25 @@ services:
           path: ./frontend/src
         - action: rebuild
           path: ./frontend/public
+    restart: unless-stopped
+
+  postgres:
+    image: postgres:16
+    container_name: documents-translatev3-postgres
+    environment:
+      - POSTGRES_DB=appdb
+      - POSTGRES_USER=app
+      - POSTGRES_PASSWORD=app
+    ports:
+      - "5432:5432"
+    volumes:
+      - ./data/postgres:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U app -d appdb"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
     restart: unless-stopped
 
 networks:

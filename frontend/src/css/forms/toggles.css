@@ -1,0 +1,22 @@
+/* === Toggles === */
+@layer components {
+    .toggle-check {
+        @apply flex items-center gap-2 text-sm text-slate-500 cursor-pointer;
+    }
+
+    .toggle-check input[type="checkbox"] {
+        @apply w-4 h-4 accent-blue-600;
+    }
+
+    .toggle-row {
+        @apply flex items-center gap-2 text-sm text-slate-600 cursor-pointer;
+    }
+
+    .toggle-row input[type="checkbox"] {
+        @apply w-4 h-4 accent-blue-600;
+    }
+
+    .select-box {
+        @apply flex items-center gap-2;
+    }
+}

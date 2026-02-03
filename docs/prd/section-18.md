@@ -1,0 +1,20 @@
+# 17.7 錯誤碼對應 HTTP 狀態碼
+- ERR-001：400 Bad Request
+- ERR-002：400 Bad Request
+- ERR-003：403 Forbidden
+- ERR-004：404 Not Found
+- ERR-005：500 Internal Server Error
+- TERM-001：409 Conflict
+- TERM-002：400 Bad Request
+- TERM-003：400 Bad Request
+- CAT-001：404 Not Found
+- CAT-002：409 Conflict
+- ALIAS-001：409 Conflict
+- ALIAS-002：400 Bad Request
+- LANG-001：400 Bad Request
+- LANG-002：400 Bad Request
+- CSV-001：400 Bad Request
+- CSV-002：400 Bad Request
+- CSV-003：409 Conflict
+- CSV-004：400 Bad Request
+- CSV-005：500 Internal Server Error

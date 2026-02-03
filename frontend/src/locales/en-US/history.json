@@ -1,0 +1,16 @@
+{
+  "history": {
+    "load_json_blocked": "JSON history files cannot be loaded into the editor. Please download instead.",
+    "confirm_delete": "Delete this file?",
+    "confirm_reset_all": "Warning: this will permanently delete all TM, glossary cache, and history exports. Continue?",
+    "reset_success": "Cleanup complete, deleted {{count}} files",
+    "reset_warning": "Tip: to fully re-translate or clear inventory, click the button on the right.",
+    "reset_all": "Clear all cache & files",
+    "empty": "No history found",
+    "filename": "File Name",
+    "date": "Date",
+    "size": "Size",
+    "actions": "Actions",
+    "load": "Load into Editor"
+  }
+}

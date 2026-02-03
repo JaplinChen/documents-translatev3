@@ -1,10 +1,13 @@
 import logging
+import os
 from functools import lru_cache
 
 import numpy as np
-from paddleocr import PaddleOCR
+from typing import TYPE_CHECKING
 
 LOGGER = logging.getLogger(__name__)
+if TYPE_CHECKING:
+    from paddleocr import PaddleOCR
 
 
 def map_paddle_lang(tesseract_lang: str) -> str:
@@ -17,7 +20,11 @@ def map_paddle_lang(tesseract_lang: str) -> str:
 
 
 @lru_cache(maxsize=4)
-def get_ocr(lang: str) -> PaddleOCR:
+def get_ocr(lang: str) -> "PaddleOCR":
+    os.environ.setdefault("FLAGS_use_mkldnn", "0")
+    os.environ.setdefault("FLAGS_enable_onednn", "0")
+    from paddleocr import PaddleOCR
+
     return PaddleOCR(use_angle_cls=False, lang=lang)
 
 

@@ -40,7 +40,7 @@ class PPTXThemeAnalyzer:
         colors: dict[str, str] = {}
         root = ET.fromstring(xml_content)
         clr_scheme = root.find(".//a:clrScheme", self.NS)
-        if not clr_scheme:
+        if clr_scheme is None:
             return colors
 
         for child in clr_scheme:

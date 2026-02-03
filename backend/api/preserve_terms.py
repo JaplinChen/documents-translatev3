@@ -15,7 +15,7 @@ from backend.services.preserve_terms_repository import (
     list_preserve_terms as repo_list_preserve_terms,
     update_preserve_term as repo_update_preserve_term,
 )
-from backend.services.translation_memory import upsert_glossary
+from backend.services.translation_memory_adapter import upsert_glossary
 
 router = APIRouter(prefix="/api/preserve-terms")
 

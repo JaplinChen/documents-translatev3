@@ -10,6 +10,7 @@ from backend.services.extract_utils import (
     is_exact_term_match,
     is_garbage_text,
     is_numeric_only,
+    is_symbol_only,
     is_technical_terms_only,
 )
 
@@ -92,6 +93,7 @@ def should_skip_text(text: str) -> bool:
     return (
         not text
         or is_numeric_only(text)
+        or is_symbol_only(text)
         or is_exact_term_match(text)
         or is_technical_terms_only(text)
         or is_garbage_text(text)

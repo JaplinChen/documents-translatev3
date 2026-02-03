@@ -29,6 +29,8 @@ def _apply_translations_to_presentation(
     slides_to_optimize: set[int] = set()
 
     for block in blocks:
+        if block.get("block_type") == "image_text":
+            continue
         slide_index = block.get("slide_index")
         shape_id = block.get("shape_id")
         if slide_index is None or shape_id is None:

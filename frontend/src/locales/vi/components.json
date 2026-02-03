@@ -9,9 +9,10 @@
       "review": "Cần xem lại"
     },
     "editor": {
-      "filter_textbox": "Nội dung / Hộp văn bản",
-      "filter_table": "Ô bảng",
-      "filter_notes": "Ghi chú / Chú thích"
+    "filter_textbox": "Nội dung / Hộp văn bản",
+    "filter_table": "Ô bảng",
+    "filter_notes": "Ghi chú / Chú thích",
+    "filter_image_text": "Chữ trong ảnh (OCR)"
     },
     "token_stats": {
       "title": "Thống kê Token",

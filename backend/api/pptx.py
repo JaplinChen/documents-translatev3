@@ -37,6 +37,7 @@ router = APIRouter(prefix="/api/pptx")
 async def pptx_extract(
     file: UploadFile = File(...),
     refresh: bool = False,
+    source_language: str | None = Form(None),
 ) -> dict:
     pptx_bytes = await file.read()
     file_hash = doc_cache.get_hash(pptx_bytes)
@@ -82,7 +83,7 @@ async def pptx_extract(
         input_path = os.path.join(temp_dir, "input.pptx")
         with open(input_path, "wb") as h:
             h.write(pptx_bytes)
-        data = extract_pptx_blocks(input_path)
+        data = extract_pptx_blocks(input_path, preferred_lang=source_language)
         blocks = data["blocks"]
         sw = data["slide_width"]
         sh = data["slide_height"]

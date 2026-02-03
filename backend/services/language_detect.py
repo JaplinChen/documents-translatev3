@@ -114,6 +114,8 @@ def detect_document_languages(blocks: Iterable[dict]) -> dict:
     char_counts: Counter[str] = Counter()
 
     for block in sampled_blocks:
+        if block.get("block_type") == "image_text":
+            continue
         text = block.get("source_text", "")
         lines = [line for line in text.splitlines() if line.strip()]
         for idx, line in enumerate(lines):

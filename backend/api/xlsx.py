@@ -24,6 +24,7 @@ router = APIRouter(prefix="/api/xlsx")
 async def xlsx_extract(
     file: UploadFile = File(...),
     refresh: bool = False,
+    source_language: str | None = Form(None),
 ) -> dict:
     xlsx_bytes = await file.read()
     file_hash = doc_cache.get_hash(xlsx_bytes)
@@ -44,7 +45,7 @@ async def xlsx_extract(
         input_path = os.path.join(temp_dir, "input.xlsx")
         with open(input_path, "wb") as h:
             h.write(xlsx_bytes)
-        data = extract_xlsx_blocks(input_path)
+        data = extract_xlsx_blocks(input_path, preferred_lang=source_language)
         blocks = data["blocks"]
         sheet_count = data.get("sheet_count", 0)
 

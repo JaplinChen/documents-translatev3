@@ -38,6 +38,9 @@ export function useDocumentProcessor() {
         try {
             const formData = new FormData();
             formData.append("file", file);
+            if (sourceLang) {
+                formData.append("source_language", sourceLang);
+            }
             const response = await fetch(`${API_BASE}/api/${fileType}/extract?refresh=${refresh}`, { method: "POST", body: formData });
             if (!response.ok) throw new Error(await readErrorDetail(response, t("status.extract_failed")));
             const data = await response.json();
@@ -83,9 +86,18 @@ export function useDocumentProcessor() {
 
         let completedIds = [], retryCount = 0, maxRetries = 3;
         const BATCH_SIZE = 20;
+        const computeProgress = () => {
+            const currentBlocks = useFileStore.getState().blocks || [];
+            const translatedCount = currentBlocks.filter(b => (b.translated_text || "").trim()).length;
+            const pendingCompleted = completedIds.filter(id => !currentBlocks.some(b => b.client_id === id && (b.translated_text || "").trim())).length;
+            const totalDone = translatedCount + pendingCompleted;
+            const total = currentBlocks.length || blocks.length;
+            return { totalDone, total };
+        };
 
         const finalizeTranslation = (finalBlocks = []) => {
-            setBlocks(prev => prev.map((b) => {
+            setBlocks(prev => {
+                const next = prev.map((b) => {
                 const match = finalBlocks.find(f => f.client_id === b.client_id || f._uid === b._uid);
                 if (!match) return b;
                 const hasT = Object.prototype.hasOwnProperty.call(match, "translated_text");
@@ -101,7 +113,13 @@ export function useDocumentProcessor() {
                     isTranslating: false,
                     updatedAt: (hasT && cleanedTranslated) ? new Date().toLocaleTimeString("zh-TW", { hour12: false }) : b.updatedAt
                 };
-            }));
+                });
+                const translatedCount = next.filter(b => (b.translated_text || "").trim()).length;
+                const total = next.length || blocks.length;
+                setProgress(Math.round((translatedCount / total) * 100));
+                setStatus(t("sidebar.translate.translating", { current: translatedCount, total }));
+                return next;
+            });
         };
 
         const runTranslationBatch = async (batchBlocks) => {
@@ -171,12 +189,15 @@ export function useDocumentProcessor() {
 
                             // 節流更新：每 5 個區塊更新一次 UI 狀態，減少頻繁渲染
                             if (completedIds.length % 5 === 0 || completedIds.length === batchBlocks.length) {
-                                const totalDone = blocks.filter(b => b.translated_text).length + completedIds.length;
-                                setProgress(Math.round((totalDone / blocks.length) * 100));
-                                setStatus(t("sidebar.translate.translating", { current: totalDone, total: blocks.length }));
+                                const { totalDone, total } = computeProgress();
+                                setProgress(Math.round((totalDone / total) * 100));
+                                setStatus(t("sidebar.translate.translating", { current: totalDone, total }));
                             }
                         } else if (eventType === "complete") {
                             finalizeTranslation(eventData.blocks);
+                            const { totalDone, total } = computeProgress();
+                            setProgress(Math.round((totalDone / total) * 100));
+                            setStatus(t("sidebar.translate.translating", { current: totalDone, total }));
                             return;
                         } else if (eventType === "error") {
                             throw new Error(eventData.detail || t("status.translate_failed"));

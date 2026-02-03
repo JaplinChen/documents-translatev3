@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import logging
-from fastapi import APIRouter, File, HTTPException, UploadFile
+from fastapi import APIRouter, File, Form, HTTPException, UploadFile
 
 from backend.api.error_handler import api_error_handler
 from backend.services.docx.extract import extract_blocks as extract_docx_blocks
@@ -18,6 +18,7 @@ router = APIRouter()
 async def docx_extract(
     file: UploadFile = File(...),
     refresh: bool = False,
+    source_language: str | None = Form(None),
 ) -> dict:
     if not file.filename.lower().endswith(".docx"):
         raise HTTPException(status_code=400, detail="只支援 .docx 檔案")
@@ -38,7 +39,7 @@ async def docx_extract(
                 "cache_hit": True,
             }
 
-    data = extract_docx_blocks(docx_bytes)
+    data = extract_docx_blocks(docx_bytes, preferred_lang=source_language)
     blocks = data["blocks"]
     sw = data["slide_width"]
     sh = data["slide_height"]

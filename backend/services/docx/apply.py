@@ -1,9 +1,11 @@
 from __future__ import annotations
 
 from io import BytesIO
+import os
 
 from docx import Document
 from docx.shared import RGBColor
+from backend.services.image_replace import replace_images_in_package
 
 
 def _copy_run_format(source_run, target_run):
@@ -97,6 +99,17 @@ def apply_translations(  # noqa: C901
                         cell.text = translated
 
     doc.save(docx_out)
+    tmp_out = f"{docx_out}.imgtmp"
+    try:
+        did_replace = replace_images_in_package(docx_out, tmp_out, blocks)
+        if did_replace and os.path.exists(tmp_out):
+            os.replace(tmp_out, docx_out)
+    finally:
+        if os.path.exists(tmp_out):
+            try:
+                os.remove(tmp_out)
+            except Exception:
+                pass
 
 
 def apply_bilingual(docx_in, docx_out, blocks, **kwargs):

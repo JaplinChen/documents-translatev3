@@ -15,6 +15,7 @@ from PIL import Image
 from backend.contracts import make_block
 from backend.services.extract_utils import is_garbage_text, is_numeric_only
 from backend.services.pdf.ocr_paddle import ocr_image as paddle_ocr_image
+from backend.services.ocr_lang import map_source_lang_to_tesseract
 
 LOGGER = logging.getLogger(__name__)
 
@@ -114,9 +115,13 @@ def get_ocr_config() -> dict:
                         break
             if tesseract_cmd:
                 pytesseract.pytesseract.tesseract_cmd = tesseract_cmd
+    env_lang = (os.getenv("PDF_OCR_LANG") or "").strip()
+    if not env_lang or env_lang.lower() == "auto":
+        mapped = map_source_lang_to_tesseract(os.getenv("SOURCE_LANGUAGE", ""))
+        env_lang = mapped or "eng"
     return {
         "dpi": int(os.getenv("PDF_OCR_DPI", "200")),
-        "lang": os.getenv("PDF_OCR_LANG", "eng"),
+        "lang": env_lang,
         "conf_min": int(os.getenv("PDF_OCR_CONF_MIN", "10")),
         "psm": int(os.getenv("PDF_OCR_PSM", "6")),
         "engine": engine,

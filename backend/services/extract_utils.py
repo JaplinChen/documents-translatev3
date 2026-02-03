@@ -78,6 +78,16 @@ def is_numeric_only(text: str) -> bool:
     return True
 
 
+def is_symbol_only(text: str) -> bool:
+    """Check if text is only symbols/punctuation/whitespace (no letters or digits)."""
+    if not text or not text.strip():
+        return True
+    # If it contains any letter or digit, it's not symbol-only.
+    if any(ch.isalnum() for ch in text):
+        return False
+    return True
+
+
 def is_technical_terms_only(text: str) -> bool:  # noqa: C901
     """
     Check if the text consists only of technical terms, product names,

@@ -25,6 +25,7 @@ router = APIRouter(prefix="/api/pdf")
 async def pdf_extract(
     file: UploadFile = File(...),
     refresh: bool = False,
+    source_language: str | None = Form(None),
 ) -> dict:
     pdf_bytes = await file.read()
     file_hash = doc_cache.get_hash(pdf_bytes)
@@ -47,7 +48,7 @@ async def pdf_extract(
         input_path = os.path.join(temp_dir, "input.pdf")
         with open(input_path, "wb") as h:
             h.write(pdf_bytes)
-        data = extract_pdf_blocks(input_path)
+        data = extract_pdf_blocks(input_path, preferred_lang=source_language)
         blocks = data["blocks"]
         page_count = data["page_count"]
         sw = data.get("slide_width")

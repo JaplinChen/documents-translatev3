@@ -1,7 +1,9 @@
 from copy import copy
+import os
 
 import openpyxl
 from openpyxl.styles import Alignment, Font
+from backend.services.image_replace import replace_images_in_package
 
 # Standard colors from xlsx.md
 COLOR_BLUE = "0000FF"
@@ -121,6 +123,17 @@ def apply_translations(input_path: str, output_path: str, blocks: list[dict]):
         _apply_translations_to_sheet(ws, sheet_translations)
 
     wb.save(output_path)
+    tmp_out = f"{output_path}.imgtmp"
+    try:
+        did_replace = replace_images_in_package(output_path, tmp_out, blocks)
+        if did_replace and os.path.exists(tmp_out):
+            os.replace(tmp_out, output_path)
+    finally:
+        if os.path.exists(tmp_out):
+            try:
+                os.remove(tmp_out)
+            except Exception:
+                pass
 
     # NEW: Trigger formula recalculation and error scanning
     from backend.services.xlsx.recalc import recalc_xlsx
@@ -178,6 +191,17 @@ def apply_bilingual(
             }
             _apply_translations_to_sheet(new_ws, sheet_translations)
         wb.save(output_path)
+        tmp_out = f"{output_path}.imgtmp"
+        try:
+            did_replace = replace_images_in_package(output_path, tmp_out, blocks)
+            if did_replace and os.path.exists(tmp_out):
+                os.replace(tmp_out, output_path)
+        finally:
+            if os.path.exists(tmp_out):
+                try:
+                    os.remove(tmp_out)
+                except Exception:
+                    pass
         from backend.services.xlsx.recalc import recalc_xlsx
         try:
             recalc_xlsx(output_path)
@@ -216,6 +240,17 @@ def apply_bilingual(
                 continue
 
     wb.save(output_path)
+    tmp_out = f"{output_path}.imgtmp"
+    try:
+        did_replace = replace_images_in_package(output_path, tmp_out, blocks)
+        if did_replace and os.path.exists(tmp_out):
+            os.replace(tmp_out, output_path)
+    finally:
+        if os.path.exists(tmp_out):
+            try:
+                os.remove(tmp_out)
+            except Exception:
+                pass
 
     # NEW: Trigger formula recalculation and error scanning
     from backend.services.xlsx.recalc import recalc_xlsx

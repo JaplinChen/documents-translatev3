@@ -17,6 +17,8 @@ from .service_bilingual_helpers import (
     handle_table_cell,
     should_process_block,
 )
+from backend.services.image_replace import replace_images_in_package
+import os
 
 
 def apply_bilingual(  # noqa: C901
@@ -38,6 +40,17 @@ def apply_bilingual(  # noqa: C901
             font_mapping=font_mapping,
         )
         presentation.save(pptx_out)
+        tmp_out = f"{pptx_out}.imgtmp"
+        try:
+            did_replace = replace_images_in_package(pptx_out, tmp_out, blocks)
+            if did_replace and os.path.exists(tmp_out):
+                os.replace(tmp_out, pptx_out)
+        finally:
+            if os.path.exists(tmp_out):
+                try:
+                    os.remove(tmp_out)
+                except Exception:
+                    pass
         return
 
     theme_data = get_pptx_theme_summary(pptx_in)
@@ -126,6 +139,17 @@ def apply_bilingual(  # noqa: C901
         )
 
     presentation.save(pptx_out)
+    tmp_out = f"{pptx_out}.imgtmp"
+    try:
+        did_replace = replace_images_in_package(pptx_out, tmp_out, blocks)
+        if did_replace and os.path.exists(tmp_out):
+            os.replace(tmp_out, pptx_out)
+    finally:
+        if os.path.exists(tmp_out):
+            try:
+                os.remove(tmp_out)
+            except Exception:
+                pass
 
 
 def _apply_new_slide_layout(

@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import zipfile
+
 import openpyxl
 
 from backend.contracts import make_block
@@ -9,9 +11,12 @@ from backend.services.extract_utils import (
     is_numeric_only,
     is_technical_terms_only,
 )
+from backend.services.image_ocr import extract_image_text_blocks
+from backend.services.language_detect import detect_document_languages
+from backend.services.ocr_lang import resolve_ocr_lang_from_doc_lang
 
 
-def extract_blocks(xlsx_path: str) -> dict:
+def extract_blocks(xlsx_path: str, preferred_lang: str | None = None) -> dict:
     """
     Extract text blocks from an Excel file.
 
@@ -101,6 +106,31 @@ def extract_blocks(xlsx_path: str) -> dict:
                 # We will handle formula protection in apply.py by loading with data_only=False.
 
                 blocks.append(block)
+
+    doc_lang = preferred_lang or (detect_document_languages(blocks).get("primary") if blocks else None)
+    ocr_lang = resolve_ocr_lang_from_doc_lang(doc_lang)
+
+    # Extract image text from embedded media
+    try:
+        with zipfile.ZipFile(xlsx_path, "r") as zf:
+            media_files = [n for n in zf.namelist() if n.startswith("xl/media/")]
+            for idx, name in enumerate(media_files):
+                try:
+                    image_bytes = zf.read(name)
+                except Exception:
+                    continue
+                blocks.extend(
+                    extract_image_text_blocks(
+                        image_bytes,
+                        slide_index=-1,
+                        shape_id=f"xlsx-image-{idx}",
+                        image_part=name,
+                        source="xlsx",
+                        ocr_lang=ocr_lang,
+                    )
+                )
+    except Exception:
+        pass
 
     return {
         "blocks": blocks,

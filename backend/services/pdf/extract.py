@@ -1,4 +1,5 @@
 import logging
+import os
 import pytesseract
 
 import fitz  # PyMuPDF
@@ -19,6 +20,9 @@ from backend.services.extract_utils import (
 from backend.services.pdf.clustering import cluster_blocks
 from backend.services.pdf.ocr_engine import get_ocr_config, get_poppler_path, perform_paddle_ocr_on_page
 from backend.services.pdf.table_extract import extract_table_blocks
+from backend.services.image_ocr import extract_image_text_blocks_from_pil
+from backend.services.language_detect import detect_document_languages
+from backend.services.ocr_lang import resolve_ocr_lang_from_doc_lang
 
 LOGGER = logging.getLogger(__name__)
 
@@ -92,11 +96,12 @@ def perform_ocr_on_page(pdf_path: str, page_index: int, config: dict | None = No
         return []
 
 
-def extract_blocks(pdf_path: str) -> dict:  # noqa: C901
+def extract_blocks(pdf_path: str, preferred_lang: str | None = None) -> dict:  # noqa: C901
     """Extract text blocks from PDF using PyMuPDF and OCR/table extraction."""
     doc = fitz.open(pdf_path)
     plumber_doc = pdfplumber.open(pdf_path) if pdfplumber else None
     blocks, cfg = [], get_ocr_config()
+    doc_primary_lang = preferred_lang or None
 
     for page_index, page in enumerate(doc):
         text_dict = page.get_text("dict")
@@ -164,23 +169,60 @@ def extract_blocks(pdf_path: str) -> dict:  # noqa: C901
                 if tb["source_text"].strip() not in existing_texts:
                     page_blocks.append(tb)
 
-        # 3. OCR Fallback if still no blocks
+        page_lang = None
+        if page_blocks and not preferred_lang:
+            page_lang = detect_document_languages(page_blocks).get("primary")
+            if not doc_primary_lang and page_lang:
+                doc_primary_lang = page_lang
+
+        ocr_lang = resolve_ocr_lang_from_doc_lang(page_lang or doc_primary_lang)
+
+        # 3. OCR for image text on page render
+        if not page_blocks or os.getenv("IMAGE_OCR_PDF", "1").strip() == "1":
+            try:
+                imgs = convert_from_path(
+                    pdf_path,
+                    first_page=page_index + 1,
+                    last_page=page_index + 1,
+                    dpi=cfg["dpi"],
+                    poppler_path=get_poppler_path(),
+                )
+                page_image = imgs[0] if imgs else None
+                if page_image is not None:
+                    page_width = page.rect.width
+                    page_height = page.rect.height
+                    image_blocks = extract_image_text_blocks_from_pil(
+                        page_image,
+                        page_index=page_index,
+                        page_width=page_width,
+                        page_height=page_height,
+                        source="pdf",
+                        ocr_lang=ocr_lang,
+                    )
+                    page_blocks.extend(image_blocks)
+            except Exception:
+                pass
+
+        # 4. OCR Fallback if still no blocks
         if not page_blocks:
+            ocr_cfg = dict(cfg)
+            if ocr_lang:
+                ocr_cfg["lang"] = ocr_lang
             ocr_func = (
-                perform_paddle_ocr_on_page if cfg.get("engine") == "paddle" else perform_ocr_on_page
+                perform_paddle_ocr_on_page if ocr_cfg.get("engine") == "paddle" else perform_ocr_on_page
             )
-            ocr_result = ocr_func(pdf_path, page_index, cfg)
+            ocr_result = ocr_func(pdf_path, page_index, ocr_cfg)
             if isinstance(ocr_result, tuple):
                 ob, conf = ocr_result
             else:
                 ob, conf = ocr_result, 0
             if (
-                cfg.get("paddle_fallback")
-                and cfg.get("engine") != "paddle"
+                ocr_cfg.get("paddle_fallback")
+                and ocr_cfg.get("engine") != "paddle"
                 and conf < 60
                 and len(ob) < 5
             ):
-                pb, _ = perform_paddle_ocr_on_page(pdf_path, page_index, cfg)
+                pb, _ = perform_paddle_ocr_on_page(pdf_path, page_index, ocr_cfg)
                 if len(pb) > len(ob):
                     ob = pb
             page_blocks.extend(ob)

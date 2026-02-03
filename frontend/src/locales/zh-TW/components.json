@@ -9,9 +9,10 @@
       "review": "需審核"
     },
     "editor": {
-      "filter_textbox": "內文 / 方塊",
-      "filter_table": "表格儲存格",
-      "filter_notes": "補充說明 / 備忘錄"
+    "filter_textbox": "內文 / 方塊",
+    "filter_table": "表格儲存格",
+    "filter_notes": "補充說明 / 備忘錄",
+    "filter_image_text": "圖片文字（OCR）"
     },
     "token_stats": {
       "title": "Token 用量統計",

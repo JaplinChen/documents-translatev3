@@ -52,6 +52,7 @@ def make_block(
         "pdf_text_block",
         "complex_graphic",
         "master",
+        "image_text",
     ],
     source_text: str,
     translated_text: str = "",

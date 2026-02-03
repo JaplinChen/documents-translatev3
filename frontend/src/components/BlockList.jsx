@@ -49,6 +49,7 @@ export default function BlockList({
                         <option value="textbox">{t("components.editor.filter_textbox")}</option>
                         <option value="table_cell">{t("components.editor.filter_table")}</option>
                         <option value="notes">{t("components.editor.filter_notes")}</option>
+                        <option value="image_text">{t("components.editor.filter_image_text")}</option>
                     </select>
                 </div>
                 <div className="filter-item">

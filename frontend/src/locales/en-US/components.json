@@ -9,9 +9,10 @@
       "review": "Needs Review"
     },
     "editor": {
-      "filter_textbox": "Content / Textbox",
-      "filter_table": "Table Cell",
-      "filter_notes": "Notes / Speaker Notes"
+    "filter_textbox": "Content / Textbox",
+    "filter_table": "Table Cell",
+    "filter_notes": "Notes / Speaker Notes",
+    "filter_image_text": "Image Text (OCR)"
     },
     "token_stats": {
       "title": "Token Usage Stats",

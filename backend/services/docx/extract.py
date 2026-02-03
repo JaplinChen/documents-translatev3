@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from io import BytesIO
+import zipfile
 
 from docx import Document
 
@@ -11,9 +12,12 @@ from backend.services.extract_utils import (
     is_numeric_only,
     is_technical_terms_only,
 )
+from backend.services.image_ocr import extract_image_text_blocks
+from backend.services.language_detect import detect_document_languages
+from backend.services.ocr_lang import resolve_ocr_lang_from_doc_lang
 
 
-def extract_blocks(docx_path: str | bytes) -> dict:
+def extract_blocks(docx_path: str | bytes, preferred_lang: str | None = None) -> dict:
     """Extract text blocks from a .docx file."""
     if isinstance(docx_path, bytes):
         doc = Document(BytesIO(docx_path))
@@ -65,6 +69,56 @@ def extract_blocks(docx_path: str | bytes) -> dict:
                         height=50,
                     )
                 )
+
+    doc_lang = preferred_lang or (detect_document_languages(blocks).get("primary") if blocks else None)
+    ocr_lang = resolve_ocr_lang_from_doc_lang(doc_lang)
+
+    # 3. Extract Images (inline shapes)
+    for idx, shape in enumerate(doc.inline_shapes):
+        try:
+            r_id = shape._inline.graphic.graphicData.pic.blipFill.blip.embed  # noqa: SLF001
+            part = doc.part.related_parts.get(r_id)
+            if not part:
+                continue
+            image_part = str(part.partname)
+            image_bytes = part.blob
+            blocks.extend(
+                extract_image_text_blocks(
+                    image_bytes,
+                    slide_index=-1,
+                    shape_id=f"docx-image-{idx}",
+                    image_part=image_part,
+                    source="docx",
+                    ocr_lang=ocr_lang,
+                )
+            )
+        except Exception:
+            continue
+
+    # 4. Fallback: scan media parts directly
+    try:
+        if isinstance(docx_path, (str, bytes)):
+            docx_fs_path = docx_path if isinstance(docx_path, str) else None
+            if docx_fs_path:
+                with zipfile.ZipFile(docx_fs_path, "r") as zf:
+                    media_files = [n for n in zf.namelist() if n.startswith("word/media/")]
+                    for idx, name in enumerate(media_files):
+                        try:
+                            image_bytes = zf.read(name)
+                        except Exception:
+                            continue
+                        blocks.extend(
+                            extract_image_text_blocks(
+                                image_bytes,
+                                slide_index=-1,
+                                shape_id=f"docx-media-{idx}",
+                                image_part=name,
+                                source="docx",
+                                ocr_lang=ocr_lang,
+                            )
+                        )
+    except Exception:
+        pass
 
     return {
         "blocks": blocks,

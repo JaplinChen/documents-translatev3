@@ -121,6 +121,7 @@ export function EditorPanel({
                                 <option value="textbox">{t("components.editor.filter_textbox")}</option>
                                 <option value="table_cell">{t("components.editor.filter_table")}</option>
                                 <option value="notes">{t("components.editor.filter_notes")}</option>
+                                <option value="image_text">{t("components.editor.filter_image_text")}</option>
                             </select>
                         </div>
                         <div className="filter-item">
@@ -163,13 +164,13 @@ export function EditorPanel({
                         ) : null}
 
                         <div className="block-list flex flex-col gap-3">
-                            {filteredBlocks.length > 200 && (
+                            {filteredBlocks.length > 500 && (
                                 <div className="p-3 bg-amber-50 border-b border-amber-100 text-amber-700 text-xs text-center flex items-center justify-center gap-2 mb-2 rounded-lg">
                                     <Layers size={14} />
-                                    <span>{t("editor.rendering_limit_hint", "Large document detected. Showing first 200 blocks for stability. Use search or slide filters to find other blocks.")}</span>
+                                    <span>{t("editor.rendering_limit_hint", "Large document detected. Showing first 500 blocks for stability. Use search or slide filters to find other blocks.")}</span>
                                 </div>
                             )}
-                            {filteredBlocks.slice(0, 200).map((block, index) => (
+                            {filteredBlocks.slice(0, 500).map((block, index) => (
                                 <div
                                     key={block._uid}
                                     onMouseEnter={() => setActiveBlockId(block._uid)}

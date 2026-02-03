@@ -23,9 +23,16 @@ def map_paddle_lang(tesseract_lang: str) -> str:
 def get_ocr(lang: str) -> "PaddleOCR":
     os.environ.setdefault("FLAGS_use_mkldnn", "0")
     os.environ.setdefault("FLAGS_enable_onednn", "0")
-    from paddleocr import PaddleOCR
+    try:
+        import paddle  # noqa: F401
+        from paddleocr import PaddleOCR
+    except Exception as exc:
+        LOGGER.warning("PaddleOCR unavailable: %s", exc)
+        raise
 
-    return PaddleOCR(use_angle_cls=False, lang=lang)
+    use_angle = os.getenv("PADDLE_OCR_USE_ANGLE", "1").strip() == "1"
+
+    return PaddleOCR(use_angle_cls=use_angle, lang=lang)
 
 
 def ocr_image(image, tesseract_lang: str) -> list[dict]:

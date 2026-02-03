@@ -15,10 +15,12 @@ from .utils import _hash_text, _is_low_quality_tm, _normalize_glossary_text, _re
 def save_tm(
     source_lang: str,
     target_lang: str,
-    text_value: str,
-    translated: str,
+    text: str | None = None,
+    translated: str = "",
     context: dict | None = None,
+    text_value: str | None = None,
 ) -> None:
+    text_value = text_value if text_value is not None else text
     if not text_value or not translated:
         return
     if _is_low_quality_tm(text_value, translated):

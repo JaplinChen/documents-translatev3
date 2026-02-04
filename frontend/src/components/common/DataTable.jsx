@@ -24,6 +24,12 @@ export function DataTable({
     onLoadMore,
     canLoadMore = false,
     totalCount,
+    scrollRef,
+    page,
+    pageSize,
+    onPageChange,
+    onPageSizeChange,
+    pageSizeOptions,
 }) {
     const { t } = useTranslation();
     const resizingRef = useRef(null);
@@ -145,7 +151,7 @@ export function DataTable({
             />
 
             <div className={`data-table ${compact ? 'is-compact text-xs' : 'text-sm'} flex flex-col h-full min-h-0`}>
-                <div className="flex-1 overflow-y-auto min-h-0 relative">
+                <div className="flex-1 overflow-y-auto min-h-0 relative" ref={scrollRef}>
                     <TableHeader
                         gridTemplateColumns={gridTemplateColumns}
                         onSelectionChange={onSelectionChange}
@@ -196,6 +202,11 @@ export function DataTable({
                     compact={compact}
                     onCompactChange={onCompactChange}
                     t={t}
+                    page={page}
+                    pageSize={pageSize}
+                    onPageChange={onPageChange}
+                    onPageSizeChange={onPageSizeChange}
+                    pageSizeOptions={pageSizeOptions}
                 />
             </div>
         </div>

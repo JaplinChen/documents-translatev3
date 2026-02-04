@@ -17,6 +17,7 @@ export function useGlossaryMemoryEditing({
     const [editingKey, setEditingKey] = useState(null);
     const [editingOriginal, setEditingOriginal] = useState(null);
     const [draft, setDraft] = useState(null);
+    const [editingField, setEditingField] = useState(null);
     const [saving, setSaving] = useState(false);
     const [newEntry, setNewEntry] = useState({
         source_lang: '',
@@ -29,16 +30,18 @@ export function useGlossaryMemoryEditing({
 
     const makeKey = (item) => `${item.source_lang || ''}|${item.target_lang || ''}|${item.source_text || ''}`;
 
-    const handleEdit = (item) => {
+    const handleEdit = (item, fieldKey = 'source_text') => {
         setEditingKey(makeKey(item));
         setEditingOriginal(item);
         setDraft({ ...item, priority: item.priority ?? 0 });
+        setEditingField(fieldKey);
     };
 
     const handleCancel = () => {
         setEditingKey(null);
         setEditingOriginal(null);
         setDraft(null);
+        setEditingField(null);
     };
 
     const handleDelete = async (item) => {
@@ -149,12 +152,14 @@ export function useGlossaryMemoryEditing({
         editingKey,
         editingOriginal,
         draft,
+        editingField,
         saving,
         newEntry,
         setNewEntry,
         setDraft,
         setEditingKey,
         setEditingOriginal,
+        setEditingField,
         handleEdit,
         handleCancel,
         handleDelete,

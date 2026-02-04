@@ -49,7 +49,7 @@ def list_versions(term_id: int) -> list[dict]:
     return items
 
 
-def list_terms(filters: dict) -> list[dict]:  # noqa: C901
+def _build_terms_query(filters: dict) -> tuple[str, list]:
     _ensure_db()
     where = []
     params: list = []
@@ -119,6 +119,11 @@ def list_terms(filters: dict) -> list[dict]:  # noqa: C901
             where.append("NOT EXISTS (SELECT 1 FROM term_aliases a WHERE a.term_id = t.id)")
 
     clause = " AND ".join(where) if where else "1=1"
+    return clause, params
+
+
+def list_terms(filters: dict) -> list[dict]:  # noqa: C901
+    clause, params = _build_terms_query(filters)
     sql = (
         "SELECT t.*, c.name AS category_name "
         "FROM terms t "
@@ -134,3 +139,31 @@ def list_terms(filters: dict) -> list[dict]:  # noqa: C901
             item["languages"] = _fetch_languages(conn, term_id)
             item["aliases"] = _fetch_aliases(conn, term_id)
     return items
+
+
+def list_terms_page(filters: dict, limit: int = 200, offset: int = 0) -> tuple[list[dict], int]:
+    clause, params = _build_terms_query(filters)
+    count_sql = (
+        "SELECT COUNT(1) "
+        "FROM terms t "
+        "LEFT JOIN categories c ON c.id = t.category_id "
+        f"WHERE {clause}"
+    )
+    sql = (
+        "SELECT t.*, c.name AS category_name "
+        "FROM terms t "
+        "LEFT JOIN categories c ON c.id = t.category_id "
+        f"WHERE {clause} "
+        "ORDER BY t.updated_at DESC, t.id DESC "
+        "LIMIT ? OFFSET ?"
+    )
+    with _connect() as conn:
+        total_row = conn.execute(count_sql, params).fetchone()
+        total = int(total_row[0] or 0) if total_row else 0
+        rows = conn.execute(sql, params + [limit, offset]).fetchall()
+        items = [dict(row) for row in rows]
+        for item in items:
+            term_id = item["id"]
+            item["languages"] = _fetch_languages(conn, term_id)
+            item["aliases"] = _fetch_aliases(conn, term_id)
+    return items, total

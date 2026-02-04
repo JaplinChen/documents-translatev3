@@ -6,6 +6,7 @@ export const buildGlossaryMemoryColumns = ({
     t,
     isGlossary,
     editingKey,
+    editingField,
     makeKey,
     draft,
     setDraft,
@@ -31,7 +32,8 @@ export const buildGlossaryMemoryColumns = ({
                 value={draft?.source_lang || ''}
                 onChange={(e) => setDraft((p) => ({ ...p, source_lang: e.target.value }))}
                 onKeyDown={(e) => handleKeyDown(e, handleSave, handleCancel)}
-                autoFocus
+                autoFocus={editingField === 'source_lang'}
+                onClick={(e) => e.stopPropagation()}
             />
         ) : val
     },
@@ -46,6 +48,8 @@ export const buildGlossaryMemoryColumns = ({
                 value={draft?.target_lang || ''}
                 onChange={(e) => setDraft((p) => ({ ...p, target_lang: e.target.value }))}
                 onKeyDown={(e) => handleKeyDown(e, handleSave, handleCancel)}
+                autoFocus={editingField === 'target_lang'}
+                onClick={(e) => e.stopPropagation()}
             />
         ) : val
     },
@@ -60,6 +64,8 @@ export const buildGlossaryMemoryColumns = ({
                 value={draft?.source_text || ''}
                 onChange={(e) => setDraft((p) => ({ ...p, source_text: e.target.value }))}
                 onKeyDown={(e) => handleKeyDown(e, handleSave, handleCancel)}
+                autoFocus={editingField === 'source_text'}
+                onClick={(e) => e.stopPropagation()}
             />
         ) : val
     },
@@ -74,6 +80,8 @@ export const buildGlossaryMemoryColumns = ({
                 value={draft?.target_text || ''}
                 onChange={(e) => setDraft((p) => ({ ...p, target_text: e.target.value }))}
                 onKeyDown={(e) => handleKeyDown(e, handleSave, handleCancel)}
+                autoFocus={editingField === 'target_text'}
+                onClick={(e) => e.stopPropagation()}
             />
         ) : val
     },
@@ -89,6 +97,8 @@ export const buildGlossaryMemoryColumns = ({
                 value={draft?.priority ?? 0}
                 onChange={(e) => setDraft((p) => ({ ...p, priority: e.target.value }))}
                 onKeyDown={(e) => handleKeyDown(e, handleSave, handleCancel)}
+                autoFocus={editingField === 'priority'}
+                onClick={(e) => e.stopPropagation()}
             />
         ) : (val ?? 0)
     }] : []),
@@ -96,6 +106,8 @@ export const buildGlossaryMemoryColumns = ({
         key: 'category',
         label: t('manage.fields.category', '分類'),
         width: '100px',
+        sortable: true,
+        sortKey: 'category_name',
         render: (val, row) => editingKey === makeKey(row) ? (
             <select
                 className="data-input !bg-white !border-blue-200 font-bold !text-[12px]"
@@ -105,6 +117,8 @@ export const buildGlossaryMemoryColumns = ({
                     category_id: e.target.value ? parseInt(e.target.value) : null,
                 }))}
                 onKeyDown={(e) => handleKeyDown(e, handleSave, handleCancel)}
+                autoFocus={editingField === 'category'}
+                onClick={(e) => e.stopPropagation()}
             >
                 <option value="">{t('manage.fields.no_category', '無分類')}</option>
                 {tmCategories.map((c) => (
@@ -123,30 +137,27 @@ export const buildGlossaryMemoryColumns = ({
             <div className="flex justify-end gap-1.5">
                 {editingKey === makeKey(row) ? (
                     <>
-                        <button className="action-btn-sm success" onClick={handleSave} disabled={saving} title={t('manage.actions.save')}>
+                        <button className="action-btn-sm success" onClick={(e) => { e.stopPropagation(); handleSave(); }} disabled={saving} title={t('manage.actions.save')}>
                             <img src="https://emojicdn.elk.sh/✅?style=apple" className="w-5 h-5 object-contain" alt="Save" />
                         </button>
-                        <button className="action-btn-sm" onClick={handleCancel} disabled={saving} title={t('manage.actions.cancel')}>
+                        <button className="action-btn-sm" onClick={(e) => { e.stopPropagation(); handleCancel(); }} disabled={saving} title={t('manage.actions.cancel')}>
                             <img src="https://emojicdn.elk.sh/❌?style=apple" className="w-5 h-5 object-contain" alt="Cancel" />
                         </button>
                     </>
                 ) : (
                     <>
-                        <button className="action-btn-sm success" onClick={() => handleCreate(row)} title={t('manage.actions.add')}>
+                        <button className="action-btn-sm success" onClick={(e) => { e.stopPropagation(); handleCreate(row); }} title={t('manage.actions.add')}>
                             <Plus size={18} className="text-emerald-600" />
                         </button>
-                        <button className="action-btn-sm" onClick={() => handleEdit(row)} title={t('manage.actions.edit')}>
-                            <img src="https://emojicdn.elk.sh/✏️?style=apple" className="w-5 h-5 object-contain" alt="Edit" />
-                        </button>
-                        <button className="action-btn-sm primary" onClick={() => onConvertToPreserveTerm(row)} title={t('manage.actions.convert_preserve')}>
+                        <button className="action-btn-sm primary" onClick={(e) => { e.stopPropagation(); onConvertToPreserveTerm(row); }} title={t('manage.actions.convert_preserve')}>
                             <img src="https://emojicdn.elk.sh/🔒?style=apple" className="w-5 h-5 object-contain" alt="Preserve" />
                         </button>
                         {!isGlossary && (
-                            <button className="action-btn-sm primary" onClick={() => onConvertToGlossary(row)} title={t('manage.actions.convert_glossary')}>
+                            <button className="action-btn-sm primary" onClick={(e) => { e.stopPropagation(); onConvertToGlossary(row); }} title={t('manage.actions.convert_glossary')}>
                                 <img src="https://emojicdn.elk.sh/📑?style=apple" className="w-5 h-5 object-contain" alt="To Glossary" />
                             </button>
                         )}
-                        <button className="action-btn-sm danger" onClick={() => handleDelete(row)} title={t('manage.actions.delete')}>
+                        <button className="action-btn-sm danger" onClick={(e) => { e.stopPropagation(); handleDelete(row); }} title={t('manage.actions.delete')}>
                             <img src="https://emojicdn.elk.sh/🗑️?style=apple" className="w-5 h-5 object-contain" alt="Delete" />
                         </button>
                     </>

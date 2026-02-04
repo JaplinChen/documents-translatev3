@@ -27,8 +27,14 @@ export default function ManageModal({
     tmItems,
     glossaryTotal,
     tmTotal,
-    onLoadMoreGlossary,
-    onLoadMoreMemory,
+    glossaryPage,
+    tmPage,
+    glossaryPageSize,
+    tmPageSize,
+    onGlossaryPageChange,
+    onMemoryPageChange,
+    onGlossaryPageSizeChange,
+    onMemoryPageSizeChange,
     onRefreshGlossary,
     onRefreshMemory,
     onSeed,
@@ -172,11 +178,17 @@ export default function ManageModal({
                             tmItems={tmItems}
                             glossaryTotal={glossaryTotal}
                             tmTotal={tmTotal}
+                            glossaryPage={glossaryPage}
+                            tmPage={tmPage}
+                            glossaryPageSize={glossaryPageSize}
+                            tmPageSize={tmPageSize}
+                            onGlossaryPageChange={onGlossaryPageChange}
+                            onMemoryPageChange={onMemoryPageChange}
+                            onGlossaryPageSizeChange={onGlossaryPageSizeChange}
+                            onMemoryPageSizeChange={onMemoryPageSizeChange}
                             defaultSourceLang={defaultSourceLang}
                             defaultTargetLang={defaultTargetLang}
                             tmCategories={tmCategories}
-                            onLoadMoreGlossary={onLoadMoreGlossary}
-                            onLoadMoreMemory={onLoadMoreMemory}
                             onRefreshGlossary={onRefreshGlossary}
                             onRefreshMemory={onRefreshMemory}
                             onSeed={onSeed}

@@ -17,10 +17,14 @@ export function useTerminology() {
     const [tmTotal, setTmTotal] = useState(0);
     const [glossaryLimit, setGlossaryLimit] = useState(200);
     const [tmLimit, setTmLimit] = useState(200);
+    const [glossaryOffset, setGlossaryOffset] = useState(0);
+    const [tmOffset, setTmOffset] = useState(0);
+    const [glossaryPage, setGlossaryPage] = useState(1);
+    const [tmPage, setTmPage] = useState(1);
 
     const {
         setManageOpen, setManageTab, manageOpen, manageTab, sourceLang, targetLang,
-        setLastGlossaryAt, setLastMemoryAt, setLastPreserveAt
+        setLastGlossaryAt, setLastMemoryAt, setLastPreserveAt, lastGlossaryAt, lastMemoryAt
     } = useUIStore();
     const { useTm, setUseTm } = useSettingsStore();
     const feedbackTimerRef = useRef(null);
@@ -32,26 +36,42 @@ export function useTerminology() {
         loadMemory();
     }, []);
 
-    const loadGlossary = async (limitOverride) => {
-        const limit = limitOverride ?? glossaryLimit;
+    useEffect(() => {
+        if (!lastGlossaryAt) return;
+        loadGlossary();
+    }, [lastGlossaryAt]);
+
+    useEffect(() => {
+        if (!lastMemoryAt) return;
+        loadMemory();
+    }, [lastMemoryAt]);
+
+    const loadGlossary = async (options = {}) => {
+        const limit = options.limit ?? glossaryLimit;
+        const offset = options.offset ?? glossaryOffset;
         const reqId = ++glossaryReqRef.current;
         await loadGlossaryItems({
             limit,
+            offset,
             setGlossaryItems,
             setGlossaryTotal,
             setGlossaryLimit,
+            setGlossaryOffset,
             isLatest: () => glossaryReqRef.current === reqId,
         });
     };
 
-    const loadMemory = async (limitOverride) => {
-        const limit = limitOverride ?? tmLimit;
+    const loadMemory = async (options = {}) => {
+        const limit = options.limit ?? tmLimit;
+        const offset = options.offset ?? tmOffset;
         const reqId = ++memoryReqRef.current;
         await loadMemoryItems({
             limit,
+            offset,
             setTmItems,
             setTmTotal,
             setTmLimit,
+            setTmOffset,
             isLatest: () => memoryReqRef.current === reqId,
         });
     };
@@ -242,14 +262,28 @@ export function useTerminology() {
         });
     };
 
-    const loadMoreGlossary = async () => {
-        const next = glossaryLimit + 200;
-        await loadGlossary(next);
+    const loadGlossaryPage = async (page, pageSize = glossaryLimit) => {
+        const nextOffset = Math.max(0, (page - 1) * pageSize);
+        setGlossaryPage(page);
+        await loadGlossary({ limit: pageSize, offset: nextOffset });
     };
 
-    const loadMoreMemory = async () => {
-        const next = tmLimit + 200;
-        await loadMemory(next);
+    const loadMemoryPage = async (page, pageSize = tmLimit) => {
+        const nextOffset = Math.max(0, (page - 1) * pageSize);
+        setTmPage(page);
+        await loadMemory({ limit: pageSize, offset: nextOffset });
+    };
+
+    const setGlossaryPageSize = async (size) => {
+        setGlossaryLimit(size);
+        setGlossaryPage(1);
+        await loadGlossary({ limit: size, offset: 0 });
+    };
+
+    const setTmPageSize = async (size) => {
+        setTmLimit(size);
+        setTmPage(1);
+        await loadMemory({ limit: size, offset: 0 });
     };
 
     const recordFeedback = async ({ source, target, sourceLang: fbSource, targetLang: fbTarget }) => {
@@ -266,11 +300,14 @@ export function useTerminology() {
         glossaryItems, tmItems,
         glossaryTotal, tmTotal,
         glossaryLimit, tmLimit,
+        glossaryOffset, tmOffset,
+        glossaryPage, tmPage,
         useTm, setUseTm,
         manageOpen, setManageOpen,
         manageTab, setManageTab,
         loadGlossary, loadMemory,
-        loadMoreGlossary, loadMoreMemory,
+        loadGlossaryPage, loadMemoryPage,
+        setGlossaryPageSize, setTmPageSize,
         upsertGlossary, deleteGlossary,
         upsertMemory, deleteMemory,
         clearMemory,

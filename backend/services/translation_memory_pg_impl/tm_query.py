@@ -7,7 +7,7 @@ from backend.db.engine import get_engine
 from .db import _ensure_db
 
 
-def get_tm(limit: int = 200) -> list[dict]:
+def get_tm(limit: int = 200, offset: int = 0) -> list[dict]:
     _ensure_db()
     engine = get_engine()
     with engine.begin() as conn:
@@ -24,9 +24,9 @@ def get_tm(limit: int = 200) -> list[dict]:
                 "  AND g.source_lang = t.source_lang "
                 "  AND g.target_lang = t.target_lang"
                 ") "
-                "ORDER BY t.id DESC LIMIT :limit"
+                "ORDER BY t.id DESC LIMIT :limit OFFSET :offset"
             ),
-            {"limit": limit},
+            {"limit": limit, "offset": offset},
         ).fetchall()
     return [
         {

@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { API_BASE } from '../../constants';
 import { useTerms } from '../../hooks/useTerms';
@@ -34,6 +34,8 @@ export default function TermsTab() {
         exportCsv,
         previewImport,
         importCsv,
+        totalCount,
+        setPagination,
     } = useTerms();
 
     const [importFile, setImportFile] = useState(null);
@@ -53,6 +55,7 @@ export default function TermsTab() {
     ]);
     const [errorMsg, setErrorMsg] = useState('');
     const [showImport, setShowImport] = useState(false);
+    const [editingField, setEditingField] = useState(null);
     const [compactTable, setCompactTable] = useState(() => {
         try {
             const saved = localStorage.getItem('manage_table_compact_terms');
@@ -62,10 +65,66 @@ export default function TermsTab() {
         }
     });
     const [importStep, setImportStep] = useState(1);
-    const [visibleCount, setVisibleCount] = useState(200);
+    const [page, setPage] = useState(1);
+    const [pageSize, setPageSize] = useState(200);
+    const tableScrollRef = useRef(null);
+    const sourceLangRef = useRef('');
+    const targetLangRef = useRef('');
 
     const [sortKey, setSortKey] = useState(null);
     const [sortDir, setSortDir] = useState('asc');
+    const langListId = 'terms-lang-options';
+    const recentLangsKey = 'manage_terms_recent_langs';
+    const commonLangs = useMemo(() => ([
+        'zh-TW',
+        'zh-CN',
+        'en',
+        'vi',
+        'ja',
+        'ko',
+        'th',
+        'id',
+        'ms',
+        'de',
+        'fr',
+        'es',
+    ]), []);
+    const [recentLangs, setRecentLangs] = useState(() => {
+        try {
+            const raw = localStorage.getItem(recentLangsKey);
+            const parsed = raw ? JSON.parse(raw) : [];
+            return Array.isArray(parsed) ? parsed : [];
+        } catch {
+            return [];
+        }
+    });
+
+    const rememberLang = (lang) => {
+        if (!lang) return;
+        setRecentLangs((prev) => {
+            const next = [lang, ...prev.filter((item) => item !== lang)].slice(0, 6);
+            try {
+                localStorage.setItem(recentLangsKey, JSON.stringify(next));
+            } catch { }
+            return next;
+        });
+    };
+
+    const langOptions = useMemo(() => {
+        const set = new Set();
+        commonLangs.forEach((lang) => set.add(lang));
+        (terms || []).forEach((item) => {
+            if (item?.source_lang) set.add(item.source_lang);
+            if (item?.target_lang) set.add(item.target_lang);
+            (item?.languages || []).forEach((lang) => {
+                if (lang?.lang_code) set.add(lang.lang_code);
+            });
+        });
+        (form?.languages || []).forEach((lang) => {
+            if (lang?.lang_code) set.add(lang.lang_code);
+        });
+        return Array.from(set).sort((a, b) => String(a).localeCompare(String(b), 'zh-Hant'));
+    }, [terms, form?.languages, commonLangs]);
 
     const toggleSort = (key) => {
         if (sortKey === key) {
@@ -94,16 +153,32 @@ export default function TermsTab() {
         return list;
     }, [terms, sortKey, sortDir]);
 
-    const visibleTerms = useMemo(() => sortedTerms.slice(0, visibleCount), [sortedTerms, visibleCount]);
+    useEffect(() => {
+        setPage(1);
+    }, [filters]);
 
-    const startEdit = (item) => {
+    useEffect(() => {
+        const offset = Math.max(0, (page - 1) * pageSize);
+        setPagination({ limit: pageSize, offset });
+    }, [page, pageSize, setPagination]);
+
+    const startEdit = (item, fieldKey = 'term') => {
+        sourceLangRef.current = item.source_lang || '';
+        targetLangRef.current = item.target_lang || '';
+        const normalizedLanguages = (item.languages || []).map((lang) => ({
+            ...lang,
+            lang_code: item.target_lang || lang.lang_code || '',
+        }));
         setEditingId(item.id);
         setErrorMsg('');
+        setEditingField(fieldKey);
         setForm({
             term: item.term || '',
             category_id: item.category_id || null,
             category_name: item.category_name || '',
-            languages: item.languages || [{ lang_code: 'zh-TW', value: '' }],
+            languages: normalizedLanguages.length
+                ? normalizedLanguages
+                : [{ lang_code: item.target_lang || 'zh-TW', value: '' }],
             created_by: item.created_by || '',
             source: item.source || '',
             source_lang: item.source_lang || '',
@@ -113,6 +188,20 @@ export default function TermsTab() {
             filename: item.filename || '',
         });
     };
+
+    const handleRowClick = (item, colKey) => {
+        if (!item) return;
+        const nextField = colKey || 'term';
+        if (editingId !== item.id) {
+            startEdit(item, nextField);
+            return;
+        }
+        setEditingField(nextField);
+    };
+
+    useEffect(() => {
+        if (!editingId) setEditingField(null);
+    }, [editingId]);
 
     const handlePreview = async () => {
         if (!importFile) return;
@@ -144,8 +233,19 @@ export default function TermsTab() {
             setErrorMsg(conflict);
             return;
         }
+        setForm((prev) => ({
+            ...prev,
+            source_lang: prev.source_lang || sourceLangRef.current || '',
+            target_lang: prev.target_lang || targetLangRef.current || '',
+        }));
+        const prevScrollTop = tableScrollRef.current?.scrollTop ?? 0;
         setErrorMsg('');
         await upsert();
+        requestAnimationFrame(() => {
+            if (tableScrollRef.current) {
+                tableScrollRef.current.scrollTop = prevScrollTop;
+            }
+        });
     };
 
     const handleFullSync = async () => {
@@ -194,6 +294,7 @@ export default function TermsTab() {
         t,
         categories,
         editingId,
+        editingField,
         form,
         setForm,
         handleKeyDown,
@@ -202,6 +303,29 @@ export default function TermsTab() {
         startEdit,
         loadVersions,
         remove,
+        langListId,
+        commonLangs,
+        recentLangs,
+        langOptions,
+        rememberLang,
+        onSourceLangChange: (next) => {
+            sourceLangRef.current = next;
+            setForm((p) => ({ ...p, source_lang: next }));
+        },
+        onTargetLangChange: (next) => {
+            targetLangRef.current = next;
+            setForm((p) => {
+                const nextLangs = (p.languages || []).map((lang) => ({
+                    ...lang,
+                    lang_code: next,
+                }));
+                return {
+                    ...p,
+                    target_lang: next,
+                    languages: nextLangs.length ? nextLangs : [{ lang_code: next, value: '' }],
+                };
+            });
+        },
     });
 
     return (
@@ -253,11 +377,16 @@ export default function TermsTab() {
                 batchUpdate={batchUpdate}
                 batchDelete={batchDelete}
             />
+            <datalist id={langListId}>
+                {langOptions.map((lang) => (
+                    <option key={`lang-opt-${lang}`} value={lang} />
+                ))}
+            </datalist>
 
             <div className="manage-scroll-area flex-1 pr-1 flex flex-col min-h-0">
                 <DataTable
                     columns={columns}
-                    data={visibleTerms}
+                    data={sortedTerms}
                     rowKey="id"
                     selectedIds={selectedIds}
                     onSelectionChange={(ids) => setSelectedIds(ids)}
@@ -273,11 +402,18 @@ export default function TermsTab() {
                     sortKey={sortKey}
                     sortDir={sortDir}
                     onSort={toggleSort}
-                    canLoadMore={visibleCount < sortedTerms.length}
-                    totalCount={sortedTerms.length}
-                    onLoadMore={() => setVisibleCount((prev) => prev + 200)}
+                    totalCount={totalCount}
+                    page={page}
+                    pageSize={pageSize}
+                    onPageChange={(nextPage) => setPage(nextPage)}
+                    onPageSizeChange={(nextSize) => {
+                        setPageSize(nextSize);
+                        setPage(1);
+                    }}
                     emptyState={t('manage.terms_tab.loading')}
                     className="is-glossary"
+                    onRowClick={handleRowClick}
+                    scrollRef={tableScrollRef}
                 />
 
                 <TermsVersionsPanel

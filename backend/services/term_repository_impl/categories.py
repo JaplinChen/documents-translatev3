@@ -3,7 +3,48 @@ from __future__ import annotations
 from .db import _connect, _ensure_db, _normalize_text
 
 
+def _sync_tm_categories() -> None:
+    try:
+        from backend.services.translation_memory_pg_impl.categories import list_tm_categories
+    except Exception:
+        return
+
+    try:
+        tm_categories = list_tm_categories()
+    except Exception:
+        return
+
+    if not tm_categories:
+        return
+
+    _ensure_db()
+    with _connect() as conn:
+        for cat in tm_categories:
+            name = _normalize_text(cat.get("name"))
+            if not name:
+                continue
+            sort_order = int(cat.get("sort_order") or 0)
+            row = conn.execute(
+                "SELECT id, sort_order FROM categories WHERE name = ?",
+                (name,),
+            ).fetchone()
+            if row:
+                existing_sort = int(row["sort_order"] or 0)
+                if existing_sort != sort_order:
+                    conn.execute(
+                        "UPDATE categories SET sort_order = ? WHERE id = ?",
+                        (sort_order, row["id"]),
+                    )
+                continue
+            conn.execute(
+                "INSERT INTO categories (name, sort_order) VALUES (?, ?)",
+                (name, sort_order),
+            )
+        conn.commit()
+
+
 def list_categories() -> list[dict]:
+    _sync_tm_categories()
     _ensure_db()
     with _connect() as conn:
         rows = conn.execute(

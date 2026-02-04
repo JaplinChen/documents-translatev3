@@ -37,7 +37,7 @@ def get_glossary_terms_any(target_lang: str) -> list[tuple[str, str]]:
     return [(row[0], row[1]) for row in rows]
 
 
-def get_glossary(limit: int = 200) -> list[dict]:
+def get_glossary(limit: int = 200, offset: int = 0) -> list[dict]:
     _ensure_db()
     preserve_terms = _get_preserve_terms()
     with sqlite3.connect(DB_PATH) as conn:
@@ -48,9 +48,9 @@ def get_glossary(limit: int = 200) -> list[dict]:
                 "g.domain, g.category, g.scope_type, g.scope_id, g.status, "
                 "g.hit_count, g.overwrite_count, g.last_hit_at, g.created_at "
                 "FROM glossary g LEFT JOIN tm_categories c ON g.category_id = c.id "
-                "ORDER BY g.priority DESC, g.id ASC LIMIT ?"
+                "ORDER BY g.priority DESC, g.id ASC LIMIT ? OFFSET ?"
             ),
-            (limit,),
+            (limit, offset),
         )
         rows = cur.fetchall()
         delete_ids: list[int] = []

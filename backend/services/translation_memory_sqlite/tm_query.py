@@ -38,7 +38,7 @@ def get_tm_terms_any(
     return [(row[0], row[1]) for row in rows]
 
 
-def get_tm(limit: int = 200) -> list[dict]:
+def get_tm(limit: int = 200, offset: int = 0) -> list[dict]:
     _ensure_db()
     with sqlite3.connect(DB_PATH) as conn:
         cur = conn.execute(
@@ -54,9 +54,9 @@ def get_tm(limit: int = 200) -> list[dict]:
                 "  AND g.source_lang = t.source_lang "
                 "  AND g.target_lang = t.target_lang"
                 ") "
-                "ORDER BY t.id DESC LIMIT ?"
+                "ORDER BY t.id DESC LIMIT ? OFFSET ?"
             ),
-            (limit,),
+            (limit, offset),
         )
         rows = cur.fetchall()
     return [

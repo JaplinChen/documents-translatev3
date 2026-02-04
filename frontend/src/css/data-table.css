@@ -18,6 +18,14 @@
         transition: background-color 0.15s ease;
     }
 
+    .unified-data-row.is-editable-row {
+        cursor: pointer;
+    }
+
+    .unified-data-row.is-editable-row .data-cell {
+        cursor: pointer;
+    }
+
     .data-header {
         background-color: var(--bg-sidebar);
         /* Header keeps its bottom border as it is sticky and separates content strongly */

@@ -50,6 +50,7 @@ def sync_from_external(
                 "languages": merged_languages,
                 "status": "active",
                 "created_by": created_by,
+                "_from_external": True,
             }
             return update_term(term_id, payload)
     payload = {
@@ -65,6 +66,7 @@ def sync_from_external(
         "status": "active",
         "created_by": created_by,
         "allow_create_category": True,
+        "_from_external": True,
     }
     return create_term(payload)
 

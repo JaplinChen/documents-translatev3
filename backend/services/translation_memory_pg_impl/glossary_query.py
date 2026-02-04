@@ -9,7 +9,7 @@ from .db import _ensure_db
 from .preserve_terms import _get_preserve_terms, _is_preserve_term
 
 
-def get_glossary(limit: int = 200) -> list[dict]:
+def get_glossary(limit: int = 200, offset: int = 0) -> list[dict]:
     _ensure_db()
     preserve_terms = _get_preserve_terms()
     engine = get_engine()
@@ -21,9 +21,9 @@ def get_glossary(limit: int = 200) -> list[dict]:
                 "g.domain, g.category, g.scope_type, g.scope_id, g.status, "
                 "g.hit_count, g.overwrite_count, g.last_hit_at, g.created_at "
                 "FROM glossary g LEFT JOIN tm_categories c ON g.category_id = c.id "
-                "ORDER BY g.priority DESC, g.id ASC LIMIT :limit"
+                "ORDER BY g.priority DESC, g.id ASC LIMIT :limit OFFSET :offset"
             ),
-            {"limit": limit},
+            {"limit": limit, "offset": offset},
         ).fetchall()
         delete_ids: list[int] = []
         source_updates: list[tuple[str, int]] = []

@@ -16,11 +16,12 @@ router = APIRouter()
 
 
 @router.get("/glossary")
-async def tm_glossary(limit: int = 200) -> dict:
+async def tm_glossary(limit: int = 200, offset: int = 0) -> dict:
     return {
-        "items": get_glossary(limit=limit),
+        "items": get_glossary(limit=limit, offset=offset),
         "total": get_glossary_count(),
         "limit": limit,
+        "offset": offset,
     }
 
 

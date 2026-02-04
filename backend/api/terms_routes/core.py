@@ -9,6 +9,7 @@ from backend.services.term_repository import (
     create_term,
     delete_term,
     list_terms,
+    list_terms_page,
     list_versions,
     update_term,
     upsert_term_by_norm,
@@ -28,21 +29,22 @@ async def term_list(
     filename: str | None = None,
     date_from: str | None = None,
     date_to: str | None = None,
+    limit: int = 200,
+    offset: int = 0,
 ) -> dict:
-    items = list_terms(
-        {
-            "q": q,
-            "category_id": category_id,
-            "status": status,
-            "missing_lang": missing_lang,
-            "has_alias": has_alias,
-            "created_by": created_by,
-            "filename": filename,
-            "date_from": date_from,
-            "date_to": date_to,
-        }
-    )
-    return {"items": items}
+    filters = {
+        "q": q,
+        "category_id": category_id,
+        "status": status,
+        "missing_lang": missing_lang,
+        "has_alias": has_alias,
+        "created_by": created_by,
+        "filename": filename,
+        "date_from": date_from,
+        "date_to": date_to,
+    }
+    items, total = list_terms_page(filters, limit=limit, offset=offset)
+    return {"items": items, "total": total, "limit": limit, "offset": offset}
 
 
 def _ensure_created_by(payload: TermPayload, request: Request) -> None:

@@ -1,5 +1,6 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { API_BASE } from "../constants";
+import { useUIStore } from "../store/useUIStore";
 
 const DEFAULT_FORM = {
     term: "",
@@ -16,6 +17,9 @@ const DEFAULT_FORM = {
 };
 
 export function useTerms() {
+    const { lastGlossaryAt, setLastGlossaryAt } = useUIStore();
+    const skipNextSyncRef = useRef(false);
+    const formRef = useRef(DEFAULT_FORM);
     const [terms, setTerms] = useState([]);
     const [categories, setCategories] = useState([]);
     const [filters, setFilters] = useState({
@@ -28,9 +32,18 @@ export function useTerms() {
     });
     const [selectedIds, setSelectedIds] = useState([]);
     const [loading, setLoading] = useState(false);
-    const [form, setForm] = useState(DEFAULT_FORM);
+    const [form, setFormState] = useState(DEFAULT_FORM);
     const [editingId, setEditingId] = useState(null);
     const [preview, setPreview] = useState(null);
+    const [pagination, setPagination] = useState({ limit: 200, offset: 0 });
+    const [totalCount, setTotalCount] = useState(0);
+    const setForm = (updater) => {
+        setFormState((prev) => {
+            const next = typeof updater === "function" ? updater(prev) : updater;
+            formRef.current = next;
+            return next;
+        });
+    };
 
     const loadCategories = async () => {
         const res = await fetch(`${API_BASE}/api/terms/categories`);
@@ -47,16 +60,22 @@ export function useTerms() {
         setCategories(next);
     };
 
-    const loadTerms = async () => {
-        setLoading(true);
+    const loadTerms = async (options = {}) => {
+        const { silent = false } = options;
+        const limit = options.limit ?? pagination.limit;
+        const offset = options.offset ?? pagination.offset;
+        if (!silent) setLoading(true);
         const params = new URLSearchParams();
         Object.entries(filters).forEach(([k, v]) => {
             if (v !== "" && v != null) params.append(k, v);
         });
+        params.append("limit", String(limit));
+        params.append("offset", String(offset));
         const res = await fetch(`${API_BASE}/api/terms?${params.toString()}`);
         const data = await res.json();
         setTerms(data.items || []);
-        setLoading(false);
+        setTotalCount(data.total ?? (data.items || []).length);
+        if (!silent) setLoading(false);
     };
 
     useEffect(() => {
@@ -65,7 +84,17 @@ export function useTerms() {
 
     useEffect(() => {
         loadTerms();
-    }, [filters]);
+    }, [filters, pagination.limit, pagination.offset]);
+
+    useEffect(() => {
+        if (!lastGlossaryAt) return;
+        if (skipNextSyncRef.current) {
+            skipNextSyncRef.current = false;
+            return;
+        }
+        loadCategories();
+        loadTerms({ silent: true });
+    }, [lastGlossaryAt]);
 
     const resetForm = () => {
         setForm(DEFAULT_FORM);
@@ -73,11 +102,14 @@ export function useTerms() {
     };
 
     const upsert = async () => {
+        const currentForm = formRef.current || form;
         const payload = {
-            ...form,
+            ...currentForm,
             // Fix: Convert empty string to null for category_id
-            category_id: form.category_id === "" || form.category_id === null ? null : Number(form.category_id),
-            aliases: (form.aliases || "")
+            category_id: currentForm.category_id === "" || currentForm.category_id === null ? null : Number(currentForm.category_id),
+            source_lang: currentForm.source_lang ? String(currentForm.source_lang).trim() : null,
+            target_lang: currentForm.target_lang ? String(currentForm.target_lang).trim() : null,
+            aliases: (currentForm.aliases || "")
                 .split("|")
                 .map((a) => a.trim())
                 .filter(Boolean),
@@ -97,12 +129,16 @@ export function useTerms() {
             return;
         }
         resetForm();
-        await loadTerms();
+        await loadTerms({ silent: true });
+        skipNextSyncRef.current = true;
+        setLastGlossaryAt(Date.now());
     };
 
     const remove = async (id) => {
         await fetch(`${API_BASE}/api/terms/${id}`, { method: "DELETE" });
-        await loadTerms();
+        await loadTerms({ silent: true });
+        skipNextSyncRef.current = true;
+        setLastGlossaryAt(Date.now());
     };
 
     const batchUpdate = async (payload) => {
@@ -112,7 +148,9 @@ export function useTerms() {
             body: JSON.stringify({ ids: selectedIds, ...payload }),
         });
         setSelectedIds([]);
-        await loadTerms();
+        await loadTerms({ silent: true });
+        skipNextSyncRef.current = true;
+        setLastGlossaryAt(Date.now());
     };
 
     const batchDelete = async () => {
@@ -122,7 +160,9 @@ export function useTerms() {
             body: JSON.stringify({ ids: selectedIds }),
         });
         setSelectedIds([]);
-        await loadTerms();
+        await loadTerms({ silent: true });
+        skipNextSyncRef.current = true;
+        setLastGlossaryAt(Date.now());
     };
 
     const exportCsv = () => {
@@ -159,6 +199,7 @@ export function useTerms() {
 
     return {
         terms,
+        totalCount,
         categories,
         filters,
         setFilters,
@@ -172,6 +213,8 @@ export function useTerms() {
         preview,
         setPreview,
         loadTerms,
+        pagination,
+        setPagination,
         resetForm,
         upsert,
         remove,

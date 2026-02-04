@@ -7,6 +7,10 @@ import { useGlossaryMemoryState } from './useGlossaryMemoryState';
 export function GlossaryMemoryPanel(props) {
     const { t } = useTranslation();
     const state = useGlossaryMemoryState({ ...props, t });
+    const currentPage = state.isGlossary ? props.glossaryPage : props.tmPage;
+    const currentPageSize = state.isGlossary ? props.glossaryPageSize : props.tmPageSize;
+    const handlePageChange = state.isGlossary ? props.onGlossaryPageChange : props.onMemoryPageChange;
+    const handlePageSizeChange = state.isGlossary ? props.onGlossaryPageSizeChange : props.onMemoryPageSizeChange;
 
     return (
         <div className="flex flex-col h-full min-h-0">
@@ -85,9 +89,12 @@ export function GlossaryMemoryPanel(props) {
                     }}
                     className={state.isGlossary ? 'is-glossary' : 'is-tm'}
                     highlightColor={props.highlightColor}
-                    canLoadMore={state.isGlossary ? state.items.length < state.glossaryTotal : state.items.length < state.tmTotal}
                     totalCount={state.isGlossary ? state.glossaryTotal : state.tmTotal}
-                    onLoadMore={state.isGlossary ? state.onLoadMoreGlossary : state.onLoadMoreMemory}
+                    page={currentPage}
+                    pageSize={currentPageSize}
+                    onPageChange={handlePageChange}
+                    onPageSizeChange={handlePageSizeChange}
+                    onRowClick={state.handleRowClick}
                 />
             </div>
         </div>

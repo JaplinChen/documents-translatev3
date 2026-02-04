@@ -10,13 +10,15 @@ const parseCreatedAt = (value) => {
 
 export const loadGlossaryItems = async ({
     limit,
+    offset,
     setGlossaryItems,
     setGlossaryTotal,
     setGlossaryLimit,
+    setGlossaryOffset,
     isLatest,
 }) => {
     try {
-        const response = await fetch(`${API_BASE}/api/tm/glossary?limit=${limit}`);
+        const response = await fetch(`${API_BASE}/api/tm/glossary?limit=${limit}&offset=${offset || 0}`);
         if (!response.ok) {
             throw new Error(`glossary_load_failed:${response.status}`);
         }
@@ -31,6 +33,7 @@ export const loadGlossaryItems = async ({
         setGlossaryItems(parsed);
         setGlossaryTotal(data.total ?? parsed.length);
         setGlossaryLimit(limit);
+        if (setGlossaryOffset) setGlossaryOffset(data.offset ?? (offset || 0));
     } catch (error) {
         console.error('Failed to load glossary:', error);
     }
@@ -38,13 +41,15 @@ export const loadGlossaryItems = async ({
 
 export const loadMemoryItems = async ({
     limit,
+    offset,
     setTmItems,
     setTmTotal,
     setTmLimit,
+    setTmOffset,
     isLatest,
 }) => {
     try {
-        const response = await fetch(`${API_BASE}/api/tm/memory?limit=${limit}`);
+        const response = await fetch(`${API_BASE}/api/tm/memory?limit=${limit}&offset=${offset || 0}`);
         if (!response.ok) {
             throw new Error(`memory_load_failed:${response.status}`);
         }
@@ -60,6 +65,7 @@ export const loadMemoryItems = async ({
         setTmItems(parsed);
         setTmTotal(data.total ?? parsed.length);
         setTmLimit(limit);
+        if (setTmOffset) setTmOffset(data.offset ?? (offset || 0));
     } catch (error) {
         console.error('Failed to load memory:', error);
     }

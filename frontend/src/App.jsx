@@ -269,8 +269,14 @@ function App() {
         tmItems={tm.tmItems}
         glossaryTotal={tm.glossaryTotal}
         tmTotal={tm.tmTotal}
-        onLoadMoreGlossary={tm.loadMoreGlossary}
-        onLoadMoreMemory={tm.loadMoreMemory}
+        glossaryPage={tm.glossaryPage}
+        tmPage={tm.tmPage}
+        glossaryPageSize={tm.glossaryLimit}
+        tmPageSize={tm.tmLimit}
+        onGlossaryPageChange={(page) => tm.loadGlossaryPage(page, tm.glossaryLimit)}
+        onMemoryPageChange={(page) => tm.loadMemoryPage(page, tm.tmLimit)}
+        onGlossaryPageSizeChange={(size) => tm.setGlossaryPageSize(size)}
+        onMemoryPageSizeChange={(size) => tm.setTmPageSize(size)}
         onRefreshGlossary={tm.loadGlossary}
         onRefreshMemory={tm.loadMemory}
         onSeed={tm.handleSeedTm}

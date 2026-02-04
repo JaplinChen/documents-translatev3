@@ -6,6 +6,7 @@ import { getCategoryLabel } from './preserveTabHelpers';
 export const buildPreserveColumns = ({
     t,
     editingId,
+    editingField,
     editForm,
     setEditForm,
     setEditingId,
@@ -28,7 +29,7 @@ export const buildPreserveColumns = ({
                 value={editForm.term}
                 onChange={(e) => setEditForm({ ...editForm, term: e.target.value })}
                 onKeyDown={(e) => handleKeyDown(e, handleUpdate, () => setEditingId(null))}
-                autoFocus
+                autoFocus={editingField === 'term'}
                 onClick={(e) => e.stopPropagation()}
             />
         ) : value
@@ -45,6 +46,7 @@ export const buildPreserveColumns = ({
                 value={editForm.category}
                 onChange={(e) => setEditForm({ ...editForm, category: e.target.value })}
                 onKeyDown={(e) => handleKeyDown(e, handleUpdate, () => setEditingId(null))}
+                autoFocus={editingField === 'category'}
                 onClick={(e) => e.stopPropagation()}
             >
                 {categories.map((cat) => (
@@ -68,6 +70,7 @@ export const buildPreserveColumns = ({
                 checked={editForm.case_sensitive}
                 onChange={(e) => setEditForm({ ...editForm, case_sensitive: e.target.checked })}
                 onKeyDown={(e) => handleKeyDown(e, handleUpdate, () => setEditingId(null))}
+                autoFocus={editingField === 'case_sensitive'}
                 onClick={(e) => e.stopPropagation()}
             />
         ) : (
@@ -103,17 +106,6 @@ export const buildPreserveColumns = ({
                     <>
                         <button className="action-btn-sm success" onClick={(e) => { e.stopPropagation(); handleAdd(item); }} title={t('manage.actions.add')}>
                             <Plus size={18} className="text-emerald-600" />
-                        </button>
-                        <button
-                            className="action-btn-sm"
-                            onClick={(e) => {
-                                e.stopPropagation();
-                                setEditingId(item.id);
-                                setEditForm({ term: item.term, category: item.category, case_sensitive: item.case_sensitive });
-                            }}
-                            title={t('manage.actions.edit')}
-                        >
-                            <img src="https://emojicdn.elk.sh/✏️?style=apple" className="w-5 h-5 object-contain" alt="Edit" />
                         </button>
                         <button className="action-btn-sm primary" onClick={(e) => { e.stopPropagation(); handleConvertToGlossary(item); }} title={t('manage.actions.convert_glossary')}>
                             <img src="https://emojicdn.elk.sh/📑?style=apple" className="w-5 h-5 object-contain" alt="To Glossary" />

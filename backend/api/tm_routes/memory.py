@@ -17,11 +17,12 @@ router = APIRouter()
 
 
 @router.get("/memory")
-async def tm_memory(limit: int = 200) -> dict:
+async def tm_memory(limit: int = 200, offset: int = 0) -> dict:
     return {
-        "items": get_tm(limit=limit),
+        "items": get_tm(limit=limit, offset=offset),
         "total": get_tm_count(),
         "limit": limit,
+        "offset": offset,
     }
 
 

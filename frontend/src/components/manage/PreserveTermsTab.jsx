@@ -39,7 +39,9 @@ export default function PreserveTermsTab({ onClose }) {
     } = usePreserveTerms();
 
     const [selectedIds, setSelectedIds] = useState([]);
-    const [visibleCount, setVisibleCount] = useState(200);
+    const [page, setPage] = useState(1);
+    const [pageSize, setPageSize] = useState(200);
+    const [editingField, setEditingField] = useState(null);
     const [compactTable, setCompactTable] = useState(() => {
         try {
             const saved = localStorage.getItem('manage_table_compact_preserve');
@@ -53,7 +55,7 @@ export default function PreserveTermsTab({ onClose }) {
     const [sortDir, setSortDir] = useState('asc');
 
     React.useEffect(() => {
-        setVisibleCount(200);
+        setPage(1);
     }, [filterText, filterCategory]);
 
     const toggleSort = (key) => {
@@ -66,9 +68,11 @@ export default function PreserveTermsTab({ onClose }) {
     };
 
     const sortedTerms = useMemo(() => sortPreserveTerms({ terms: filteredTerms, sortKey, sortDir }), [filteredTerms, sortKey, sortDir]);
-    const visibleTerms = useMemo(() => sortedTerms.slice(0, visibleCount), [sortedTerms, visibleCount]);
+    const visibleTerms = useMemo(() => {
+        const start = Math.max(0, (page - 1) * pageSize);
+        return sortedTerms.slice(start, start + pageSize);
+    }, [sortedTerms, page, pageSize]);
     const totalCount = filteredTerms ? filteredTerms.length : 0;
-    const shownCount = visibleTerms.length;
 
     const handleBatchDelete = async () => {
         if (!selectedIds.length) return;
@@ -126,9 +130,34 @@ export default function PreserveTermsTab({ onClose }) {
         }
     };
 
+    const startEdit = (item, fieldKey = 'term') => {
+        if (!item) return;
+        setEditingId(item.id);
+        setEditingField(fieldKey);
+        setEditForm({
+            term: item.term,
+            category: item.category,
+            case_sensitive: item.case_sensitive,
+        });
+    };
+
+    const handleRowClick = (item, colKey) => {
+        const nextField = colKey || 'term';
+        if (editingId !== item.id) {
+            startEdit(item, nextField);
+            return;
+        }
+        setEditingField(nextField);
+    };
+
+    React.useEffect(() => {
+        if (!editingId) setEditingField(null);
+    }, [editingId]);
+
     const columns = buildPreserveColumns({
         t,
         editingId,
+        editingField,
         editForm,
         setEditForm,
         setEditingId,
@@ -192,9 +221,15 @@ export default function PreserveTermsTab({ onClose }) {
                         </div>
                     }
                     className="is-tm"
-                    canLoadMore={shownCount < totalCount}
                     totalCount={totalCount}
-                    onLoadMore={() => setVisibleCount((prev) => prev + 200)}
+                    page={page}
+                    pageSize={pageSize}
+                    onPageChange={(nextPage) => setPage(nextPage)}
+                    onPageSizeChange={(nextSize) => {
+                        setPageSize(nextSize);
+                        setPage(1);
+                    }}
+                    onRowClick={handleRowClick}
                 />
             </div>
         </div>

@@ -10,6 +10,7 @@ export default function TMCategoriesTab({ categories, onRefresh }) {
     const { t } = useTranslation();
     const [editingId, setEditingId] = useState(null);
     const [draft, setDraft] = useState(null);
+    const [editingField, setEditingField] = useState(null);
     const [saving, setSaving] = useState(false);
     const [selectedIds, setSelectedIds] = useState([]);
 
@@ -36,6 +37,26 @@ export default function TMCategoriesTab({ categories, onRefresh }) {
             cancelFn();
         }
     };
+
+    const startEdit = (item, fieldKey = "name") => {
+        if (!item) return;
+        setEditingId(item.id);
+        setDraft({ ...item });
+        setEditingField(fieldKey);
+    };
+
+    const handleRowClick = (item, colKey) => {
+        const nextField = colKey || "name";
+        if (editingId !== item.id) {
+            startEdit(item, nextField);
+            return;
+        }
+        setEditingField(nextField);
+    };
+
+    React.useEffect(() => {
+        if (!editingId) setEditingField(null);
+    }, [editingId]);
 
     const handleCreate = async () => {
         setSaving(true);
@@ -128,7 +149,7 @@ export default function TMCategoriesTab({ categories, onRefresh }) {
                     value={draft.name}
                     onChange={(e) => setDraft(prev => ({ ...prev, name: e.target.value }))}
                     onKeyDown={(e) => handleKeyDown(e, handleSave, () => { setEditingId(null); setDraft(null); })}
-                    autoFocus
+                    autoFocus={editingField === "name"}
                     onClick={(e) => e.stopPropagation()}
                 />
             ) : value
@@ -166,6 +187,7 @@ export default function TMCategoriesTab({ categories, onRefresh }) {
                     value={draft.sort_order}
                     onChange={(e) => setDraft(prev => ({ ...prev, sort_order: parseInt(e.target.value) || 0 }))}
                     onKeyDown={(e) => handleKeyDown(e, handleSave, () => { setEditingId(null); setDraft(null); })}
+                    autoFocus={editingField === "sort_order"}
                     onClick={(e) => e.stopPropagation()}
                 />
             ) : value
@@ -187,15 +209,12 @@ export default function TMCategoriesTab({ categories, onRefresh }) {
                         </>
                     ) : (
                         <>
-                            <button className="action-btn-sm success" onClick={(e) => { e.stopPropagation(); handleCreate(); }} disabled={saving} title={t("manage.categories.add_category")}>
-                                <Plus size={18} className="text-emerald-600" />
-                            </button>
-                            <button className="action-btn-sm" onClick={(e) => { e.stopPropagation(); setEditingId(item.id); setDraft({ ...item }); }} title={t("manage.actions.edit")}>
-                                <img src="https://emojicdn.elk.sh/✏️?style=apple" className="w-5 h-5 object-contain" alt="Edit" />
-                            </button>
-                            <button className="action-btn-sm danger" onClick={(e) => { e.stopPropagation(); handleDelete(item.id); }} title={t("manage.actions.delete")}>
-                                <img src="https://emojicdn.elk.sh/🗑️?style=apple" className="w-5 h-5 object-contain" alt="Delete" />
-                            </button>
+                        <button className="action-btn-sm success" onClick={(e) => { e.stopPropagation(); handleCreate(); }} disabled={saving} title={t("manage.categories.add_category")}>
+                            <Plus size={18} className="text-emerald-600" />
+                        </button>
+                        <button className="action-btn-sm danger" onClick={(e) => { e.stopPropagation(); handleDelete(item.id); }} title={t("manage.actions.delete")}>
+                            <img src="https://emojicdn.elk.sh/🗑️?style=apple" className="w-5 h-5 object-contain" alt="Delete" />
+                        </button>
                         </>
                     )}
                 </div>
@@ -223,6 +242,7 @@ export default function TMCategoriesTab({ categories, onRefresh }) {
             }}
             emptyState={t("manage.categories.empty")}
             className="is-tm"
+            onRowClick={handleRowClick}
         />
     );
 }

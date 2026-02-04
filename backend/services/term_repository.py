@@ -17,6 +17,7 @@ from backend.services.term_repository_impl.sync import (
 from backend.services.term_repository_impl.terms_read import (
     get_term,
     list_terms,
+    list_terms_page,
     list_versions,
 )
 from backend.services.term_repository_impl.terms_write import (
@@ -41,6 +42,7 @@ __all__ = [
     "get_term",
     "list_categories",
     "list_terms",
+    "list_terms_page",
     "list_versions",
     "sync_from_external",
     "update_category",

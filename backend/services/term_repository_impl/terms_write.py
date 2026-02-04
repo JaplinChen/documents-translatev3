@@ -7,6 +7,66 @@ from .terms_read import get_term
 from .validation import _check_alias_conflict, _check_term_duplicate
 
 
+def _get_category_name_by_id(category_id: int | None) -> str | None:
+    if not category_id:
+        return None
+    _ensure_db()
+    with _connect() as conn:
+        row = conn.execute(
+            "SELECT name FROM categories WHERE id = ?",
+            (category_id,),
+        ).fetchone()
+    return row["name"] if row else None
+
+
+def _resolve_tm_category_id(category_name: str | None) -> int | None:
+    if not category_name:
+        return None
+    try:
+        from backend.services.translation_memory_adapter import list_tm_categories
+    except Exception:
+        return None
+    try:
+        items = list_tm_categories()
+    except Exception:
+        return None
+    for item in items or []:
+        if (item.get("name") or "").strip() == category_name:
+            return item.get("id")
+    return None
+
+
+def _pick_target_text(payload: dict) -> str:
+    languages = payload.get("languages") or []
+    target_lang = payload.get("target_lang")
+    if target_lang:
+        for lang in languages:
+            if lang.get("lang_code") == target_lang and lang.get("value"):
+                return lang.get("value")
+    for lang in languages:
+        if lang.get("value"):
+            return lang.get("value")
+    return ""
+
+
+def _sync_reference_to_glossary(payload: dict, term_text: str) -> None:
+    try:
+        from backend.services.translation_memory_adapter import upsert_glossary
+    except Exception:
+        return
+    category_name = payload.get("category_name") or _get_category_name_by_id(payload.get("category_id"))
+    category_id = _resolve_tm_category_id(category_name)
+    entry = {
+        "source_lang": payload.get("source_lang") or "vi",
+        "target_lang": payload.get("target_lang") or "zh-TW",
+        "source_text": term_text,
+        "target_text": _pick_target_text(payload),
+        "priority": payload.get("priority") or 0,
+        "category_id": category_id,
+    }
+    upsert_glossary(entry)
+
+
 def create_term(payload: dict) -> dict:
     _ensure_db()
     term = _normalize_text(payload.get("term"))
@@ -56,6 +116,8 @@ def create_term(payload: dict) -> dict:
         _replace_aliases(conn, term_id, aliases)
         after = _fetch_term_full(conn, term_id)
         _record_version(conn, term_id, before=None, after=after, created_by=created_by)
+    if payload.get("source") == "reference" and not payload.get("_from_external"):
+        _sync_reference_to_glossary(payload, term)
     return get_term(term_id)
 
 
@@ -115,6 +177,8 @@ def update_term(term_id: int, payload: dict) -> dict:
             after=after,
             created_by=payload.get("created_by"),
         )
+    if payload.get("source") == "reference" and not payload.get("_from_external"):
+        _sync_reference_to_glossary(payload, term)
     return get_term(term_id)
 
 

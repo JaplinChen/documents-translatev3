@@ -10,6 +10,18 @@ from .preserve_terms import _get_preserve_terms, _is_preserve_term
 from .utils import _normalize_glossary_text
 
 
+def _get_tm_category_name(category_id: int | None) -> str | None:
+    if not category_id:
+        return None
+    engine = get_engine()
+    with engine.begin() as conn:
+        row = conn.execute(
+            text("SELECT name FROM tm_categories WHERE id = :id"),
+            {"id": category_id},
+        ).fetchone()
+    return row[0] if row else None
+
+
 def upsert_glossary(entry: dict) -> None:
     _ensure_db()
     preserve_terms = _get_preserve_terms()
@@ -71,10 +83,13 @@ def upsert_glossary(entry: dict) -> None:
             )
     try:
         lang_code = entry.get("target_lang", "zh-TW")
+        category_name = _get_tm_category_name(entry.get("category_id"))
         term_repo.sync_from_external(
             entry_source,
-            category_name=entry.get("category_name"),
+            category_name=category_name,
             source="reference",
+            source_lang=entry.get("source_lang"),
+            target_lang=entry.get("target_lang"),
             languages=[{"lang_code": lang_code, "value": entry_target}],
         )
     except Exception:
@@ -124,10 +139,13 @@ def batch_upsert_glossary(entries: list[dict]) -> None:
             entry_source = _normalize_glossary_text(entry.get("source_text", ""))
             entry_target = _normalize_glossary_text(entry.get("target_text", ""))
             lang_code = entry.get("target_lang", "zh-TW")
+            category_name = _get_tm_category_name(entry.get("category_id"))
             term_repo.sync_from_external(
                 entry_source,
-                category_name=entry.get("category_name"),
+                category_name=category_name,
                 source="reference",
+                source_lang=entry.get("source_lang"),
+                target_lang=entry.get("target_lang"),
                 languages=[{"lang_code": lang_code, "value": entry_target}],
             )
         except Exception:

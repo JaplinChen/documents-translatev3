@@ -31,16 +31,18 @@ export function TableHeader({
                 </div>
             )}
 
-            {effectiveColumns.map((col, idx) => (
+            {effectiveColumns.map((col, idx) => {
+                const colSortKey = col.sortKey ?? col.key;
+                return (
                 <div
                     key={col.key}
                     className={`data-cell relative flex items-center ${col.headerClass || ''} ${col.sortable ? 'cursor-pointer hover:bg-slate-50' : ''}`}
-                    onClick={() => col.sortable && onSort && onSort(col.key)}
+                    onClick={() => col.sortable && onSort && onSort(colSortKey)}
                 >
                     <span className="truncate font-bold text-slate-700">{col.label}</span>
                     {col.sortable && (
                         <div className="ml-1.5 shrink-0 transition-opacity">
-                            {sortKey === col.key ? (
+                            {sortKey === colSortKey ? (
                                 <span className="text-[10px] text-blue-500 font-bold leading-none">
                                     {sortDir === 'asc' ? '▲' : '▼'}
                                 </span>
@@ -84,7 +86,7 @@ export function TableHeader({
                         />
                     )}
                 </div>
-            ))}
+            )})}
         </div>
     );
 }

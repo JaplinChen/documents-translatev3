@@ -13,8 +13,11 @@ from pdf2image import convert_from_path
 from PIL import Image
 
 from backend.contracts import make_block
-from backend.services.extract_utils import is_garbage_text, is_numeric_only
-from backend.services.pdf.ocr_paddle import ocr_image as paddle_ocr_image
+from backend.services.extract_utils import is_garbage_text, is_numeric_only, sanitize_extracted_text
+from backend.services.pdf.ocr_paddle import (
+    is_paddle_gpu_available,
+    ocr_image as paddle_ocr_image,
+)
 from backend.services.ocr_lang import map_source_lang_to_tesseract
 
 LOGGER = logging.getLogger(__name__)
@@ -75,9 +78,20 @@ def is_noisy_text(text: str) -> bool:
 
 
 def get_ocr_config() -> dict:
+    disable_paddle = os.getenv("PDF_OCR_DISABLE_PADDLE", "0").strip() == "1"
+    paddle_gpu_available = is_paddle_gpu_available()
     engine = os.getenv("PDF_OCR_ENGINE", "").strip().lower()
     allow_paddle = os.getenv("PDF_OCR_ALLOW_PADDLE", "0").strip() == "1"
     paddle_fallback = os.getenv("PDF_OCR_PADDLE_FALLBACK", "0").strip() == "1"
+    if disable_paddle:
+        allow_paddle = False
+        paddle_fallback = False
+        engine = "tesseract"
+    if not paddle_gpu_available:
+        allow_paddle = False
+        paddle_fallback = False
+        if engine == "paddle":
+            engine = "tesseract"
     if not engine:
         tesseract_cmd = shutil.which("tesseract")
         if not tesseract_cmd:
@@ -92,7 +106,7 @@ def get_ocr_config() -> dict:
         if tesseract_cmd:
             pytesseract.pytesseract.tesseract_cmd = tesseract_cmd
             engine = "tesseract"
-        elif allow_paddle:
+        elif allow_paddle and paddle_gpu_available:
             try:
                 import paddleocr  # noqa: F401
 
@@ -115,15 +129,24 @@ def get_ocr_config() -> dict:
                         break
             if tesseract_cmd:
                 pytesseract.pytesseract.tesseract_cmd = tesseract_cmd
+        elif disable_paddle:
+            engine = "tesseract"
     env_lang = (os.getenv("PDF_OCR_LANG") or "").strip()
     if not env_lang or env_lang.lower() == "auto":
         mapped = map_source_lang_to_tesseract(os.getenv("SOURCE_LANGUAGE", ""))
         env_lang = mapped or "eng"
+    dpi_env = os.getenv("PDF_OCR_DPI", "").strip()
+    if dpi_env:
+        dpi_value = int(dpi_env)
+    else:
+        dpi_value = 300 if "vie" in env_lang else 200
     return {
-        "dpi": int(os.getenv("PDF_OCR_DPI", "200")),
+        "dpi": dpi_value,
         "lang": env_lang,
         "conf_min": int(os.getenv("PDF_OCR_CONF_MIN", "10")),
         "psm": int(os.getenv("PDF_OCR_PSM", "6")),
+        "oem": int(os.getenv("PDF_OCR_OEM", "1")),
+        "preserve_interword_spaces": int(os.getenv("PDF_OCR_PRESERVE_SPACES", "1")),
         "engine": engine,
         "allow_paddle": allow_paddle,
         "paddle_fallback": paddle_fallback,
@@ -160,12 +183,12 @@ def perform_ocr_on_page(
             image,
             output_type=pytesseract.Output.DICT,
             lang=cfg["lang"],
-            config=f"--psm {cfg['psm']}",
+            config=f"--oem {cfg['oem']} --psm {cfg['psm']} -c preserve_interword_spaces={cfg['preserve_interword_spaces']}",
         )
 
         line_map = {}
         for i in range(len(ocr_data["text"])):
-            text = ocr_data["text"][i].strip()
+            text = sanitize_extracted_text(ocr_data["text"][i])
             conf = (
                 int(ocr_data["conf"][i])
                 if ocr_data["conf"][i] != "-1"
@@ -201,7 +224,7 @@ def perform_ocr_on_page(
         scale = 72.0 / float(cfg["dpi"])
         blocks = []
         for key, val in line_map.items():
-            full_text = " ".join(val["text"]).strip()
+            full_text = sanitize_extracted_text(" ".join(val["text"]))
             if not full_text:
                 continue
             if "OCR" not in full_text.upper():

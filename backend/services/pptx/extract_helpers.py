@@ -12,6 +12,7 @@ from backend.services.extract_utils import (
     is_numeric_only,
     is_symbol_only,
     is_technical_terms_only,
+    sanitize_extracted_text,
 )
 
 
@@ -49,7 +50,7 @@ def extract_complex_text(shape) -> list[str]:
         xml_str = shape.element.xml
         tags = _A_T_RE.findall(xml_str)
         for t in tags:
-            clean_t = _XML_TAG_RE.sub("", t).strip()
+            clean_t = sanitize_extracted_text(_XML_TAG_RE.sub("", t))
             if (
                 clean_t
                 and not is_numeric_only(clean_t)
@@ -64,7 +65,7 @@ def extract_complex_text(shape) -> list[str]:
 
 def text_frame_to_text(text_frame: TextFrame) -> str:
     paragraphs = [paragraph.text for paragraph in text_frame.paragraphs]
-    return "\n".join(paragraphs).strip()
+    return sanitize_extracted_text("\n".join(paragraphs))
 
 
 def iter_shapes(shapes) -> Iterable:

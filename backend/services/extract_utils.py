@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import re
 from pathlib import Path
+import unicodedata
 
 from langdetect import DetectorFactory, detect
 from backend.services.preserve_terms_repository import list_preserve_terms
@@ -13,6 +14,18 @@ DetectorFactory.seed = 0
 
 _PRESERVE_TERMS_CACHE: list[dict] = []
 _PRESERVE_TERMS_MTIME: float | None = None
+
+
+_EXCEL_ESCAPED_CTRL_RE = re.compile(r"_x[0-9A-Fa-f]{4}_")
+
+
+def sanitize_extracted_text(text: str | None) -> str:
+    """Normalize extracted text (remove Excel escaped control codes and control chars)."""
+    if not text:
+        return ""
+    cleaned = _EXCEL_ESCAPED_CTRL_RE.sub("", text)
+    cleaned = "".join(ch for ch in cleaned if ch >= " " or ch in "\n\t")
+    return unicodedata.normalize("NFC", cleaned).strip()
 
 
 def _load_preserve_terms() -> tuple[list[dict], float | None]:
@@ -204,5 +217,44 @@ def is_garbage_text(text: str) -> bool:
                 return True
     except Exception:
         pass
+
+    return False
+
+
+def is_decorative_block(
+    block: dict,
+    page_width: float,
+    page_height: float,
+) -> bool:
+    """Heuristic: filter logo/signature/stamp/watermark blocks."""
+    text = (block.get("source_text") or "").strip()
+    if not text:
+        return True
+    if not page_width or not page_height:
+        return False
+
+    area = float(block.get("width", 0.0) or 0.0) * float(
+        block.get("height", 0.0) or 0.0
+    )
+    page_area = float(page_width) * float(page_height)
+    if page_area <= 0:
+        return False
+
+    area_ratio = area / page_area
+    text_len = len(text)
+    font_size = block.get("font_size") or 0.0
+    is_ocr = bool(block.get("is_ocr"))
+
+    # Watermark-like: very large area but very short text
+    if area_ratio > 0.2 and text_len <= 30:
+        return True
+
+    # Logo/stamp/signature: OCR text, short, but occupies notable area
+    if is_ocr and text_len <= 12 and area_ratio > 0.02:
+        return True
+
+    # Very large font short text (likely title/logo stamp)
+    if is_ocr and text_len <= 6 and font_size >= 28:
+        return True
 
     return False

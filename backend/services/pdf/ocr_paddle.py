@@ -19,6 +19,22 @@ def map_paddle_lang(tesseract_lang: str) -> str:
     return "en"
 
 
+def is_paddle_gpu_available() -> bool:
+    if os.getenv("PADDLE_OCR_FORCE_CPU", "0").strip() == "1":
+        return False
+    try:
+        import paddle
+        if not paddle.is_compiled_with_cuda():
+            return False
+        try:
+            return paddle.device.cuda.device_count() > 0
+        except Exception:
+            return False
+    except Exception as exc:
+        LOGGER.warning("Paddle GPU unavailable: %s", exc)
+        return False
+
+
 @lru_cache(maxsize=4)
 def get_ocr(lang: str) -> "PaddleOCR":
     os.environ.setdefault("FLAGS_use_mkldnn", "0")
@@ -31,8 +47,9 @@ def get_ocr(lang: str) -> "PaddleOCR":
         raise
 
     use_angle = os.getenv("PADDLE_OCR_USE_ANGLE", "1").strip() == "1"
+    use_gpu = is_paddle_gpu_available()
 
-    return PaddleOCR(use_angle_cls=use_angle, lang=lang)
+    return PaddleOCR(use_angle_cls=use_angle, lang=lang, use_gpu=use_gpu)
 
 
 def ocr_image(image, tesseract_lang: str) -> list[dict]:

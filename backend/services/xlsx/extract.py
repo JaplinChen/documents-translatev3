@@ -10,6 +10,7 @@ from backend.services.extract_utils import (
     is_garbage_text,
     is_numeric_only,
     is_technical_terms_only,
+    sanitize_extracted_text,
 )
 from backend.services.image_ocr import extract_image_text_blocks
 from backend.services.language_detect import detect_document_languages
@@ -58,7 +59,7 @@ def extract_blocks(xlsx_path: str, preferred_lang: str | None = None) -> dict:
                 )
 
                 # Skip common Excel error values (#REF!, #DIV/0!, etc.)
-                cell_val_str = str(cell.value).strip()
+                cell_val_str = sanitize_extracted_text(str(cell.value))
                 if cell_val_str.startswith("#") and any(
                     err in cell_val_str for err in ["REF!", "DIV/0!", "VALUE!", "N/A", "NAME?"]
                 ):

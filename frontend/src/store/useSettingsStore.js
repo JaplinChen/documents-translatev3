@@ -127,7 +127,7 @@ export const useSettingsStore = create(
                 lang: "chi_tra+vie+eng",
                 confMin: 15,
                 psm: 6,
-                engine: "paddle",
+                engine: "tesseract",
                 popplerPath: ""
             },
             ocrStatus: "",
@@ -146,7 +146,7 @@ export const useSettingsStore = create(
                             lang: data.lang ?? "chi_tra+vie+eng",
                             confMin: data.conf_min ?? 15,
                             psm: data.psm ?? 6,
-                            engine: data.engine ?? "paddle",
+                            engine: data.engine ?? "tesseract",
                             popplerPath: data.poppler_path ?? ""
                         },
                         ocrStatus: ""

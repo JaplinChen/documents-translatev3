@@ -13,12 +13,18 @@ except ImportError:
 from backend.contracts import make_block
 from backend.services.extract_utils import (
     is_exact_term_match,
+    is_decorative_block,
     is_garbage_text,
     is_numeric_only,
     is_technical_terms_only,
 )
 from backend.services.pdf.clustering import cluster_blocks
-from backend.services.pdf.ocr_engine import get_ocr_config, get_poppler_path, perform_paddle_ocr_on_page
+from backend.services.pdf.ocr_engine import (
+    enhance_image_for_ocr,
+    get_ocr_config,
+    get_poppler_path,
+    perform_paddle_ocr_on_page,
+)
 from backend.services.pdf.table_extract import extract_table_blocks
 from backend.services.image_ocr import extract_image_text_blocks_from_pil
 from backend.services.language_detect import detect_document_languages
@@ -41,10 +47,10 @@ def perform_ocr_on_page(pdf_path: str, page_index: int, config: dict | None = No
             return []
         image = images[0]
         ocr_data = pytesseract.image_to_data(
-            image,
+            enhance_image_for_ocr(image),
             output_type=pytesseract.Output.DICT,
             lang=cfg["lang"],
-            config=f"--psm {cfg['psm']}",
+            config=f"--oem {cfg['oem']} --psm {cfg['psm']} -c preserve_interword_spaces={cfg['preserve_interword_spaces']}",
         )
 
         line_map = {}
@@ -101,6 +107,7 @@ def extract_blocks(pdf_path: str, preferred_lang: str | None = None) -> dict:  #
     doc = fitz.open(pdf_path)
     plumber_doc = pdfplumber.open(pdf_path) if pdfplumber else None
     blocks, cfg = [], get_ocr_config()
+    sw, sh = 0, 0
     doc_primary_lang = preferred_lang or None
 
     for page_index, page in enumerate(doc):
@@ -144,7 +151,8 @@ def extract_blocks(pdf_path: str, preferred_lang: str | None = None) -> dict:  #
         if plumber_doc and page_index < len(plumber_doc.pages):
             force_ocr = len(page_blocks) == 0
             page_image = None
-            if force_ocr:
+            need_table_image = os.getenv("PDF_TABLE_LINE_DETECT", "1").strip() == "1"
+            if force_ocr or need_table_image:
                 try:
                     imgs = convert_from_path(
                         pdf_path,
@@ -234,10 +242,14 @@ def extract_blocks(pdf_path: str, preferred_lang: str | None = None) -> dict:  #
     for block in blocks:
         block.setdefault("x", 0.0)
         block.setdefault("y", 0.0)
+    # Filter decorative blocks (logo/signature/stamp/watermark)
+    if sw and sh:
+        blocks = [
+            b for b in blocks if not is_decorative_block(b, sw, sh)
+        ]
     clustered = cluster_blocks(blocks)
 
     # Get dimensions for the first page for Slide Preview
-    sw, sh = 0, 0
     if len(doc) > 0 and hasattr(doc[0], "rect"):
         rect = doc[0].rect
         sw, sh = rect.width, rect.height

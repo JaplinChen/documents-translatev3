@@ -76,7 +76,18 @@ function SettingsModal({
                     <IconButton
                       icon={Check}
                       variant="action"
-                      onClick={tab === "llm" ? onSave : (tab === "ocr" ? onSaveOcr : onSaveCorrection)}
+                      onClick={async () => {
+                        if (tab === "llm") {
+                          onSave();
+                          return;
+                        }
+                        if (tab === "ocr") {
+                          await onSaveOcr?.();
+                          onClose();
+                          return;
+                        }
+                        onSaveCorrection();
+                      }}
                       size="sm"
                     />
                   </>

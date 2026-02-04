@@ -8,13 +8,17 @@ from PIL import Image
 import pytesseract
 
 from backend.services.pdf.ocr_engine import enhance_image_for_ocr, get_ocr_config
-from backend.services.pdf.ocr_paddle import ocr_image as paddle_ocr_image
+from backend.services.pdf.ocr_paddle import (
+    is_paddle_gpu_available,
+    ocr_image as paddle_ocr_image,
+)
 from backend.services.extract_utils import (
     is_exact_term_match,
     is_garbage_text,
     is_numeric_only,
     is_symbol_only,
     is_technical_terms_only,
+    sanitize_extracted_text,
 )
 from backend.services.ocr_lang import map_source_lang_to_tesseract
 
@@ -48,6 +52,8 @@ def _prefer_paddle() -> bool:
 
 
 def _image_ocr_engine_override() -> str | None:
+    if os.getenv("PDF_OCR_DISABLE_PADDLE", "0").strip() == "1":
+        return "tesseract"
     val = os.getenv("IMAGE_OCR_ENGINE", "").strip().lower()
     if val in {"paddle", "tesseract"}:
         return val
@@ -57,9 +63,13 @@ def _image_ocr_engine_override() -> str | None:
 def _resolve_engine(cfg: dict) -> str:
     override = _image_ocr_engine_override()
     if override:
+        if override == "paddle" and not is_paddle_gpu_available():
+            return "tesseract"
         return override
     if _prefer_paddle():
         try:
+            if not is_paddle_gpu_available():
+                return "tesseract"
             import paddleocr  # noqa: F401
             import paddle  # noqa: F401
 
@@ -142,10 +152,11 @@ def _ocr_pil_image(image: Image.Image, lang: str, cfg: dict) -> list[dict]:
         enhanced,
         lang=lang,
         output_type=pytesseract.Output.DICT,
+        config=f"--oem {cfg.get('oem', 1)} --psm {cfg.get('psm', 6)} -c preserve_interword_spaces={cfg.get('preserve_interword_spaces', 1)}",
     )
     lines = []
     for line in _group_tesseract_lines(ocr_data):
-        text = line.get("text", "").strip()
+        text = sanitize_extracted_text(line.get("text", ""))
         if not text:
             continue
         lines.append(
@@ -188,7 +199,7 @@ def extract_image_text_blocks(
     cfg = get_ocr_config()
     blocks: list[dict] = []
     for line in _ocr_pil_image(image, lang, cfg):
-        text = (line.get("text") or "").strip()
+        text = sanitize_extracted_text(line.get("text"))
         if (
             not text
             or is_numeric_only(text)
@@ -250,7 +261,7 @@ def extract_image_text_blocks_from_pil(
     scale_y = page_height / float(height) if height else 1.0
 
     for idx, line in enumerate(_ocr_pil_image(image, lang, cfg)):
-        text = (line.get("text") or "").strip()
+        text = sanitize_extracted_text(line.get("text"))
         if (
             not text
             or is_numeric_only(text)

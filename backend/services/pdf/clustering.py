@@ -64,12 +64,44 @@ def cluster_blocks(
             x_overlap = min(curr_x1, next_x1) - max(curr_x0, next_x0)
             is_aligned = (abs(curr_x0 - next_x0) < 10) or (x_overlap > 0)
 
+            # Font/style separation: different font or size should not merge
+            curr_font = current.get("font_name")
+            next_font = next_block.get("font_name")
+            curr_size = current.get("font_size")
+            next_size = next_block.get("font_size")
+            font_conflict = False
+            if curr_font and next_font and curr_font != next_font:
+                font_conflict = True
+            if curr_size and next_size and abs(float(curr_size) - float(next_size)) > 1.5:
+                font_conflict = True
+
+            # Avoid over-merging table or OCR blocks
+            current_is_table = bool(current.get("is_table"))
+            next_is_table = bool(next_block.get("is_table"))
+            current_is_ocr = bool(current.get("is_ocr"))
+            next_is_ocr = bool(next_block.get("is_ocr"))
+
+            if current_is_table or next_is_table:
+                can_merge = False
+            elif current_is_ocr or next_is_ocr:
+                # OCR 行只在高度/位置非常接近時合併，避免把表格或段落合成一塊
+                can_merge = (
+                    current_is_ocr
+                    and next_is_ocr
+                    and abs(curr_x0 - next_x0) < 5
+                    and abs(curr_w - next_w) < 20
+                    and v_dist < (font_size * 0.4)
+                    and v_dist > -2
+                )
+            else:
+                can_merge = (
+                    v_dist < (font_size * line_spacing_threshold)
+                    and v_dist > -5
+                    and is_aligned
+                )
+
             # Merge if close and aligned
-            if (
-                v_dist < (font_size * line_spacing_threshold)
-                and v_dist > -5
-                and is_aligned
-            ):
+            if can_merge and not font_conflict:
                 # Merge text
                 current["source_text"] += " " + next_block["source_text"]
                 # Update bounding box

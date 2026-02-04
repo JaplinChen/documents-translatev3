@@ -10,6 +10,13 @@ export default function OcrTab() {
     loadOcrSettings();
   }, [loadOcrSettings]);
 
+  const resolveStatus = (status) => {
+    if (!status) return "";
+    if (typeof status === "string") return t(status);
+    if (status.key) return t(status.key, status.params);
+    return "";
+  };
+
   return (
     <div className="settings-form">
       <div className="settings-card">
@@ -106,7 +113,11 @@ export default function OcrTab() {
           <div className="text-xs text-slate-400 mt-2">{t("settings.ocr.poppler_hint")}</div>
         </div>
 
-        {ocrStatus && <div className="text-xs text-emerald-600 mt-4">{ocrStatus}</div>}
+        {ocrStatus && (
+          <div className="text-xs text-emerald-600 mt-4">
+            {resolveStatus(ocrStatus)}
+          </div>
+        )}
       </div>
     </div>
   );

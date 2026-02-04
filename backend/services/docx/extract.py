@@ -11,6 +11,7 @@ from backend.services.extract_utils import (
     is_garbage_text,
     is_numeric_only,
     is_technical_terms_only,
+    sanitize_extracted_text,
 )
 from backend.services.image_ocr import extract_image_text_blocks
 from backend.services.language_detect import detect_document_languages
@@ -28,7 +29,7 @@ def extract_blocks(docx_path: str | bytes, preferred_lang: str | None = None) ->
 
     # 1. Extract Paragraphs
     for i, para in enumerate(doc.paragraphs):
-        text = para.text.strip()
+        text = sanitize_extracted_text(para.text)
         if (
             not text
             or is_numeric_only(text)
@@ -45,7 +46,7 @@ def extract_blocks(docx_path: str | bytes, preferred_lang: str | None = None) ->
     for t_idx, table in enumerate(doc.tables):
         for r_idx, row in enumerate(table.rows):
             for c_idx, cell in enumerate(row.cells):
-                text = cell.text.strip()
+                text = sanitize_extracted_text(cell.text)
                 if (
                     not text
                     or is_numeric_only(text)

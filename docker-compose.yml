@@ -7,9 +7,12 @@ services:
     container_name: documents-translatev3-backend
     ports:
       - "5005:5005"
+    gpus: all
     extra_hosts:
       - "host.docker.internal:host-gateway"
     environment:
+      - NVIDIA_VISIBLE_DEVICES=all
+      - NVIDIA_DRIVER_CAPABILITIES=compute,utility
       - LLM_PROVIDER=${LLM_PROVIDER:-ollama}
       - TRANSLATE_LLM_MODE=${TRANSLATE_LLM_MODE:-real}
       - OLLAMA_BASE_URL=${OLLAMA_BASE_URL:-http://host.docker.internal:11434}
@@ -44,6 +47,7 @@ services:
       - PDF_OCR_ENGINE=${PDF_OCR_ENGINE:-paddle}
       - PDF_OCR_ALLOW_PADDLE=${PDF_OCR_ALLOW_PADDLE:-1}
       - PDF_OCR_PADDLE_FALLBACK=${PDF_OCR_PADDLE_FALLBACK:-1}
+      - PDF_OCR_DISABLE_PADDLE=${PDF_OCR_DISABLE_PADDLE:-0}
       - IMAGE_OCR_PREFER_PADDLE=${IMAGE_OCR_PREFER_PADDLE:-1}
       - IMAGE_OCR_ENGINE=${IMAGE_OCR_ENGINE:-paddle}
       - PADDLE_OCR_USE_ANGLE=${PADDLE_OCR_USE_ANGLE:-1}
@@ -62,7 +66,7 @@ services:
       timeout: 5s
       retries: 3
       start_period: 30s
-    command: uvicorn backend.main:app --host 0.0.0.0 --port 5005 --reload --reload-exclude "data/*"
+    command: uvicorn backend.main:app --host 0.0.0.0 --port 5005
     depends_on:
       postgres:
         condition: service_healthy

@@ -6,6 +6,7 @@ from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 
 from backend.services.pdf.extract import get_ocr_config, get_poppler_path
+from backend.services.pdf.ocr_paddle import is_paddle_gpu_available
 
 router = APIRouter(prefix="/api/ocr")
 
@@ -55,6 +56,8 @@ async def get_settings() -> dict:
 
 @router.post("/settings")
 async def update_settings(payload: OcrSettings) -> dict:
+    disable_paddle = os.getenv("PDF_OCR_DISABLE_PADDLE", "0").strip() == "1"
+    paddle_gpu_available = is_paddle_gpu_available()
     _validate_range("dpi", payload.dpi, 50, 600)
     _validate_range("conf_min", payload.conf_min, 0, 100)
     _validate_range("psm", payload.psm, 3, 13)
@@ -75,6 +78,30 @@ async def update_settings(payload: OcrSettings) -> dict:
         os.environ["PDF_OCR_CONF_MIN"] = str(payload.conf_min)
     if payload.psm is not None:
         os.environ["PDF_OCR_PSM"] = str(payload.psm)
+    if disable_paddle and payload.engine == "paddle":
+        raise HTTPException(
+            status_code=400,
+            detail="此環境已停用 PaddleOCR",
+        )
+
+    if payload.engine == "paddle" and not paddle_gpu_available:
+        raise HTTPException(
+            status_code=400,
+            detail="PaddleOCR 需要可用的 GPU",
+        )
+
+    if payload.allow_paddle is True and not paddle_gpu_available:
+        raise HTTPException(
+            status_code=400,
+            detail="PaddleOCR 需要可用的 GPU",
+        )
+
+    if disable_paddle and payload.allow_paddle is True:
+        raise HTTPException(
+            status_code=400,
+            detail="此環境已停用 PaddleOCR",
+        )
+
     if payload.engine is not None:
         os.environ["PDF_OCR_ENGINE"] = payload.engine
     if payload.allow_paddle is not None:

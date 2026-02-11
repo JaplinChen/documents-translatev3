@@ -50,6 +50,15 @@ export function CustomSelect({ options = [], value, onChange, className = "", pl
         };
     }, [isOpen]);
 
+    useLayoutEffect(() => {
+        if (!isOpen || !dropdownRef.current) return;
+        const el = dropdownRef.current;
+        el.style.top = `${coords.top}px`;
+        el.style.left = `${coords.left}px`;
+        el.style.minWidth = `${Math.max(160, coords.width)}px`;
+        el.style.zIndex = '9999';
+    }, [isOpen, coords.top, coords.left, coords.width]);
+
     const selectedOption = options.find(opt => opt.value === value) || options.find(opt => opt.code === value);
 
     const dropdownList = (
@@ -57,13 +66,6 @@ export function CustomSelect({ options = [], value, onChange, className = "", pl
             className="custom-select-options portal-dropdown"
             ref={dropdownRef}
             data-testid={testId ? `${testId}-options` : undefined}
-            style={{
-                position: 'absolute',
-                top: `${coords.top}px`,
-                left: `${coords.left}px`,
-                minWidth: Math.max(160, coords.width) + 'px',
-                zIndex: 9999
-            }}
         >
             {options.map((opt, index) => {
                 const optValue = opt.value || opt.code;

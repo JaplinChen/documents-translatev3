@@ -48,7 +48,11 @@ def _normalize_translated_text(block: dict, translated_text: str) -> str:
     return parts[-1]
 
 
-def _apply_translations_to_sheet(ws, translations: dict):
+def _apply_translations_to_sheet(
+    ws,
+    translations: dict,
+    colorize_translations: bool = True,
+):
     for addr, text in translations.items():
         try:
             cell = ws[addr]
@@ -59,13 +63,14 @@ def _apply_translations_to_sheet(ws, translations: dict):
 
             cell.value = text
 
-            # Apply Blue color for hardcoded translations (per xlsx.md)
-            if cell.font:
-                new_font = copy(cell.font)
-                new_font.color = COLOR_BLUE
-                cell.font = new_font
-            else:
-                cell.font = Font(color=COLOR_BLUE)
+            if colorize_translations:
+                # Apply Blue color for hardcoded translations (per xlsx.md)
+                if cell.font:
+                    new_font = copy(cell.font)
+                    new_font.color = COLOR_BLUE
+                    cell.font = new_font
+                else:
+                    cell.font = Font(color=COLOR_BLUE)
         except Exception:
             continue
 
@@ -104,14 +109,24 @@ def apply_translations(input_path: str, output_path: str, blocks: list[dict]):
     # Map (sheet_name, cell_address) -> translated_text.
     translations = {}
     for block in blocks:
-        sheet_name = block.get("sheet_name")
-        cell_address = block.get("cell_address")
         translated_text = _normalize_translated_text(
             block,
             block.get("translated_text", ""),
         )
-        if sheet_name and cell_address:
-            translations[(sheet_name, cell_address)] = translated_text
+        
+        # Support multiple locations from deduplicated extraction
+        locations = block.get("locations")
+        if locations and isinstance(locations, list):
+            for loc in locations:
+                s_name = loc.get("sheet_name")
+                addr = loc.get("cell_address")
+                if s_name and addr:
+                    translations[(s_name, addr)] = translated_text
+        else:
+            sheet_name = block.get("sheet_name")
+            cell_address = block.get("cell_address")
+            if sheet_name and cell_address:
+                translations[(sheet_name, cell_address)] = translated_text
 
     for sheet_name in wb.sheetnames:
         ws = wb[sheet_name]
@@ -140,8 +155,6 @@ def apply_translations(input_path: str, output_path: str, blocks: list[dict]):
 
     try:
         recalc_result = recalc_xlsx(output_path)
-        # We could log this or return it to the caller if needed
-        # For now, it ensures the file is updated by LibreOffice engine
     except Exception:
         pass
 
@@ -151,34 +164,58 @@ def apply_bilingual(
     output_path: str,
     blocks: list[dict],
     layout: str = "inline",
+    layout_params: dict | None = None,
 ):
     """
     Apply bilingual translations back to the Excel file.
     Preserves original styles and optimizes alignment for multi-line content.
     """
     wb = openpyxl.load_workbook(input_path, data_only=False)
+    options = layout_params or {}
+    colorize_translations = bool(options.get("colorize_translations", True))
+    wrap_text = bool(options.get("wrap_text", True))
 
     translations = {}
     for block in blocks:
-        sheet_name = block.get("sheet_name")
-        cell_address = block.get("cell_address")
         source_text = block.get("source_text", "")
         translated_text = block.get("translated_text", "")
-        if sheet_name and cell_address:
-            # Simple bilingual: Source \n Translated
-            translations[(sheet_name, cell_address)] = f"{source_text}\n{translated_text}"
+        combined = f"{source_text}\n{translated_text}"
+        
+        # Support multiple locations from deduplicated extraction
+        locations = block.get("locations")
+        if locations and isinstance(locations, list):
+            for loc in locations:
+                s_name = loc.get("sheet_name")
+                addr = loc.get("cell_address")
+                if s_name and addr:
+                    translations[(s_name, addr)] = combined
+        else:
+            sheet_name = block.get("sheet_name")
+            cell_address = block.get("cell_address")
+            if sheet_name and cell_address:
+                translations[(sheet_name, cell_address)] = combined
 
     if layout in {"new_slide", "new_page", "new_sheet"}:
         translated_only = {}
         for block in blocks:
-            sheet_name = block.get("sheet_name")
-            cell_address = block.get("cell_address")
             translated_text = _normalize_translated_text(
                 block,
                 block.get("translated_text", ""),
             )
-            if sheet_name and cell_address:
-                translated_only[(sheet_name, cell_address)] = translated_text
+            
+            # Support multiple locations
+            locations = block.get("locations")
+            if locations and isinstance(locations, list):
+                for loc in locations:
+                    s_name = loc.get("sheet_name")
+                    addr = loc.get("cell_address")
+                    if s_name and addr:
+                        translated_only[(s_name, addr)] = translated_text
+            else:
+                sheet_name = block.get("sheet_name")
+                cell_address = block.get("cell_address")
+                if sheet_name and cell_address:
+                    translated_only[(sheet_name, cell_address)] = translated_text
 
         for sheet_name in wb.sheetnames:
             ws = wb[sheet_name]
@@ -189,7 +226,11 @@ def apply_bilingual(
                 for (s_name, addr), text in translated_only.items()
                 if s_name == sheet_name
             }
-            _apply_translations_to_sheet(new_ws, sheet_translations)
+            _apply_translations_to_sheet(
+                new_ws,
+                sheet_translations,
+                colorize_translations=colorize_translations,
+            )
         wb.save(output_path)
         tmp_out = f"{output_path}.imgtmp"
         try:
@@ -226,16 +267,18 @@ def apply_bilingual(
 
                 cell.value = text
 
-                # Apply Blue color to the whole cell for bilingual
-                if cell.font:
-                    new_font = copy(cell.font)
-                    new_font.color = COLOR_BLUE
-                    cell.font = new_font
-                else:
-                    cell.font = Font(color=COLOR_BLUE)
+                if colorize_translations:
+                    # Apply Blue color to the whole cell for bilingual
+                    if cell.font:
+                        new_font = copy(cell.font)
+                        new_font.color = COLOR_BLUE
+                        cell.font = new_font
+                    else:
+                        cell.font = Font(color=COLOR_BLUE)
 
                 # Ensure wrapText is True for multi-line bilingual content
-                _ensure_wrap_text(cell)
+                if wrap_text:
+                    _ensure_wrap_text(cell)
             except Exception:
                 continue
 

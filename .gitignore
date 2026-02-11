@@ -69,3 +69,17 @@ data/
 .antigravity/
 .pytest_cache/
 .worktrees/
+
+# Reports & Backups
+reports/
+*.bak
+*.tmp
+*.swp
+*.old
+*~
+
+# Release Artifacts
+release_package/
+backend_image.tar
+frontend_image.tar
+install_log.txt

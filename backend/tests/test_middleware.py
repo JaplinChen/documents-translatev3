@@ -14,7 +14,7 @@ app.add_middleware(StructuredLoggingMiddleware)
 
 
 @app.get("/test-log")
-async def test_endpoint():
+async def log_endpoint():
     return {"status": "ok"}
 
 

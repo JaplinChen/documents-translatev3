@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
-import { API_BASE } from '../../constants';
+import { tmApi } from '../../services/api/tm';
 
 const sortCategories = (items) => {
     const next = Array.isArray(items) ? items : [];
@@ -19,8 +19,7 @@ export function useTmCategories(open) {
 
     const fetchTmCategories = useCallback(async () => {
         try {
-            const res = await fetch(`${API_BASE}/api/tm/categories`);
-            const data = await res.json();
+            const data = await tmApi.getCategories();
             setTmCategories(sortCategories(data.items));
         } catch (err) {
             console.error(err);

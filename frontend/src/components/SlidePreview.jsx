@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useLayoutEffect, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 
 /**
@@ -8,6 +8,8 @@ import { useTranslation } from 'react-i18next';
 export function SlidePreview({ dimensions, blocks, activeBlockId, thumbnailUrl, totalPages, currentPage, onPageChange }) {
     const { t } = useTranslation();
     const { width, height } = dimensions;
+    const canvasRef = useRef(null);
+    const blockRefs = useRef(new Map());
 
     const hasNavigation = totalPages > 1;
 
@@ -17,8 +19,34 @@ export function SlidePreview({ dimensions, blocks, activeBlockId, thumbnailUrl, 
         </div>
     );
 
-    // Use full width of the container for maximum visibility
-    const PREVIEW_WIDTH = "100%";
+    useLayoutEffect(() => {
+        if (!canvasRef.current) return;
+        const el = canvasRef.current;
+        el.style.aspectRatio = `${width}/${height}`;
+        el.style.backgroundColor = '#fff';
+        el.style.backgroundSize = '100% 100%';
+        el.style.backgroundRepeat = 'no-repeat';
+        el.style.backgroundPosition = 'center';
+        el.style.backgroundImage = thumbnailUrl
+            ? `url("${thumbnailUrl}")`
+            : 'linear-gradient(to right, #f8fafc 1px, transparent 1px), linear-gradient(to bottom, #f8fafc 1px, transparent 1px)';
+    }, [width, height, thumbnailUrl]);
+
+    useLayoutEffect(() => {
+        blockRefs.current.forEach((el, key) => {
+            if (!el) return;
+            const block = blocks.find((b) => b._uid === key);
+            if (!block) return;
+            const left = (block.x / width) * 100;
+            const top = (block.y / height) * 100;
+            const w = (block.width / width) * 100;
+            const h = (block.height / height) * 100;
+            el.style.left = `${left}%`;
+            el.style.top = `${top}%`;
+            el.style.width = `${w}%`;
+            el.style.height = `${h}%`;
+        });
+    }, [blocks, width, height]);
 
     return (
         <div className="slide-preview-container mb-2">
@@ -52,16 +80,8 @@ export function SlidePreview({ dimensions, blocks, activeBlockId, thumbnailUrl, 
             </div>
 
             <div
+                ref={canvasRef}
                 className="slide-canvas relative bg-white border border-slate-200 shadow-xl mx-auto overflow-hidden"
-                style={{
-                    width: PREVIEW_WIDTH,
-                    aspectRatio: `${width}/${height}`,
-                    backgroundColor: '#fff',
-                    backgroundImage: thumbnailUrl ? `url("${thumbnailUrl}")` : 'linear-gradient(to right, #f8fafc 1px, transparent 1px), linear-gradient(to bottom, #f8fafc 1px, transparent 1px)',
-                    backgroundSize: '100% 100%',
-                    backgroundRepeat: 'no-repeat',
-                    backgroundPosition: 'center',
-                }}
             >
                 {blocks.length === 0 && (
                     <div className="absolute inset-0 flex items-center justify-center">
@@ -71,26 +91,18 @@ export function SlidePreview({ dimensions, blocks, activeBlockId, thumbnailUrl, 
                 {blocks.map((block) => {
                     const isActive = block._uid === activeBlockId;
 
-                    // Convert absolute Points to Percentages
-                    const left = (block.x / width) * 100;
-                    const top = (block.y / height) * 100;
-                    const w = (block.width / width) * 100;
-                    const h = (block.height / height) * 100;
-
                     return (
                         <div
                             key={block._uid}
+                            ref={(el) => {
+                                if (el) blockRefs.current.set(block._uid, el);
+                                else blockRefs.current.delete(block._uid);
+                            }}
                             className={`absolute transition-all duration-200 cursor-pointer 
                             ${isActive
                                     ? 'border-2 border-blue-500 bg-blue-500/20 z-10 shadow-sm'
                                     : 'border border-transparent hover:border-blue-300 hover:bg-blue-500/5'
                                 }`}
-                            style={{
-                                left: `${left}%`,
-                                top: `${top}%`,
-                                width: `${w}%`,
-                                height: `${h}%`,
-                            }}
                             title={block.source_text?.substring(0, 50)}
                             onClick={() => document.getElementById(`block-${block._uid}`)?.scrollIntoView({ behavior: 'smooth', block: 'center' })}
                         />

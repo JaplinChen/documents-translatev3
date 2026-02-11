@@ -1,6 +1,8 @@
 import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
-import { API_BASE, DEFAULT_FONT_MAPPING } from '../constants';
+import { DEFAULT_FONT_MAPPING } from '../constants';
+import { llmApi } from '../services/api/llm';
+import { ocrApi } from '../services/api/ocr';
 
 const DEFAULT_PROVIDERS = {
     chatgpt: { apiKey: "", baseUrl: "https://api.openai.com/v1", model: "", fastMode: false },
@@ -47,10 +49,6 @@ export const useSettingsStore = create(
                 set({ llmStatus: { key: "settings.status.models_detecting" } });
 
                 try {
-                    const formData = new FormData();
-                    formData.append("provider", llmProvider);
-                    if (settings.apiKey) formData.append("api_key", settings.apiKey);
-
                     // Use default URL logic if empty
                     let baseUrl = settings.baseUrl;
                     if (!baseUrl) {
@@ -58,16 +56,11 @@ export const useSettingsStore = create(
                         else if (llmProvider === 'ollama') baseUrl = DEFAULT_PROVIDERS.ollama.baseUrl;
                         else baseUrl = DEFAULT_PROVIDERS.chatgpt.baseUrl;
                     }
-                    formData.append("base_url", baseUrl);
-
-                    const response = await fetch(`${API_BASE}/api/llm/models`, {
-                        method: "POST",
-                        body: formData
+                    const data = await llmApi.models({
+                        provider: llmProvider,
+                        api_key: settings.apiKey || undefined,
+                        base_url: baseUrl,
                     });
-
-                    if (!response.ok) throw new Error(await response.text() || "common.unknown_error");
-
-                    const data = await response.json();
                     const models = data.models || [];
 
                     set({ llmModels: models });
@@ -137,9 +130,7 @@ export const useSettingsStore = create(
             setOcrStatus: (status) => set({ ocrStatus: status }),
             loadOcrSettings: async () => {
                 try {
-                    const response = await fetch(`${API_BASE}/api/ocr/settings`);
-                    if (!response.ok) throw new Error("settings.status.ocr_load_failed");
-                    const data = await response.json();
+                    const data = await ocrApi.getSettings();
                     set({
                         ocr: {
                             dpi: data.dpi ?? 300,
@@ -158,20 +149,14 @@ export const useSettingsStore = create(
             saveOcrSettings: async () => {
                 const { ocr } = get();
                 try {
-                    const response = await fetch(`${API_BASE}/api/ocr/settings`, {
-                        method: "POST",
-                        headers: { "Content-Type": "application/json" },
-                        body: JSON.stringify({
-                            dpi: Number(ocr.dpi),
-                            lang: ocr.lang,
-                            conf_min: Number(ocr.confMin),
-                            psm: Number(ocr.psm),
-                            engine: ocr.engine,
-                            poppler_path: ocr.popplerPath
-                        })
+                    const data = await ocrApi.updateSettings({
+                        dpi: Number(ocr.dpi),
+                        lang: ocr.lang,
+                        conf_min: Number(ocr.confMin),
+                        psm: Number(ocr.psm),
+                        engine: ocr.engine,
+                        poppler_path: ocr.popplerPath
                     });
-                    if (!response.ok) throw new Error("settings.status.ocr_save_failed");
-                    const data = await response.json();
                     set({
                         ocr: {
                             dpi: data.dpi ?? ocr.dpi,
@@ -194,12 +179,12 @@ export const useSettingsStore = create(
             partialize: (state) => ({
                 llmProvider: state.llmProvider,
                 providers: state.providers,
+                llmModels: state.llmModels, // Persist detected models list
                 fontMapping: state.fontMapping,
                 correction: state.correction,
                 ai: state.ai,
                 useTm: state.useTm
-            }), // Only persist these fields, skip models/status
-
+            }),
         }
     )
 );

@@ -5,7 +5,7 @@ export const useFileStore = create((set) => ({
     blocks: [],
 
     // --- Actions ---
-    setFile: (file) => set({ file }),
+    setFile: (file) => set({ file, blocks: [] }),
     setBlocks: (blocks) => set(state => ({
         blocks: typeof blocks === 'function' ? blocks(state.blocks) : blocks
     })),

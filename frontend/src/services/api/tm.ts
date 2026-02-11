@@ -1,4 +1,4 @@
-import { API_BASE_URL, ApiClientError, handleResponse } from './core';
+import { deleteJson, getJson, getText, postFile, postJson, putJson } from './core';
 import type {
     GlossaryEntry,
     GlossaryResponse,
@@ -10,158 +10,104 @@ import type {
 
 export const tmApi = {
     async seed(): Promise<{ status: string }> {
-        const response = await fetch(`${API_BASE_URL}/api/tm/seed`, {
-            method: 'POST',
-        });
-        return handleResponse<{ status: string }>(response);
+        return postJson<{ status: string }>('/api/tm/seed/');
     },
 
-    async getGlossary(limit: number = 200): Promise<GlossaryResponse> {
-        const response = await fetch(
-            `${API_BASE_URL}/api/tm/glossary?limit=${limit}`
-        );
-        return handleResponse<GlossaryResponse>(response);
+    async getGlossary(limit: number = 200, offset: number = 0): Promise<GlossaryResponse> {
+        const params = new URLSearchParams({ limit: String(limit) });
+        if (offset) params.append('offset', String(offset));
+        return getJson<GlossaryResponse>(`/api/tm/glossary?${params.toString()}`);
     },
 
     async upsertGlossary(entry: GlossaryEntry): Promise<{ status: string }> {
-        const response = await fetch(`${API_BASE_URL}/api/tm/glossary`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(entry),
-        });
-        return handleResponse<{ status: string }>(response);
+        return postJson<{ status: string }>('/api/tm/glossary/', entry);
     },
 
     async batchUpsertGlossary(
         entries: GlossaryEntry[]
     ): Promise<{ status: string; count: number }> {
-        const response = await fetch(`${API_BASE_URL}/api/tm/glossary/batch`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(entries),
-        });
-        return handleResponse<{ status: string; count: number }>(response);
+        return postJson<{ status: string; count: number }>(
+            '/api/tm/glossary/batch/',
+            entries
+        );
     },
 
     async deleteGlossary(id: number): Promise<{ deleted: number }> {
-        const response = await fetch(`${API_BASE_URL}/api/tm/glossary`, {
-            method: 'DELETE',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ id }),
-        });
-        return handleResponse<{ deleted: number }>(response);
+        return deleteJson<{ deleted: number }>('/api/tm/glossary/', { id });
     },
 
     async batchDeleteGlossary(ids: number[]): Promise<{ deleted: number }> {
-        const response = await fetch(`${API_BASE_URL}/api/tm/glossary/batch`, {
-            method: 'DELETE',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ ids }),
-        });
-        return handleResponse<{ deleted: number }>(response);
+        return deleteJson<{ deleted: number }>(
+            '/api/tm/glossary/batch/',
+            { ids }
+        );
     },
 
     async clearGlossary(): Promise<{ deleted: number }> {
-        const response = await fetch(`${API_BASE_URL}/api/tm/glossary/clear`, {
-            method: 'DELETE',
-        });
-        return handleResponse<{ deleted: number }>(response);
+        return deleteJson<{ deleted: number }>('/api/tm/glossary/clear/');
     },
 
     async importGlossary(
         file: File
     ): Promise<{ status: string; count: number }> {
-        const formData = new FormData();
-        formData.append('file', file);
-        const response = await fetch(`${API_BASE_URL}/api/tm/glossary/import`, {
-            method: 'POST',
-            body: formData,
-        });
-        return handleResponse<{ status: string; count: number }>(response);
+        return postFile<{ status: string; count: number }>(
+            '/api/tm/glossary/import/',
+            file
+        );
     },
 
     async exportGlossary(): Promise<string> {
-        const response = await fetch(`${API_BASE_URL}/api/tm/glossary/export`);
-        if (!response.ok) {
-            throw new ApiClientError('Export failed', response.status);
-        }
-        return response.text();
+        return getText('/api/tm/glossary/export/');
     },
 
-    async getMemory(limit: number = 200): Promise<MemoryResponse> {
-        const response = await fetch(
-            `${API_BASE_URL}/api/tm/memory?limit=${limit}`
-        );
-        return handleResponse<MemoryResponse>(response);
+    async getMemory(limit: number = 200, offset: number = 0): Promise<MemoryResponse> {
+        const params = new URLSearchParams({ limit: String(limit) });
+        if (offset) params.append('offset', String(offset));
+        return getJson<MemoryResponse>(`/api/tm/memory?${params.toString()}`);
     },
 
     async upsertMemory(entry: MemoryEntry): Promise<{ status: string }> {
-        const response = await fetch(`${API_BASE_URL}/api/tm/memory`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(entry),
-        });
-        return handleResponse<{ status: string }>(response);
+        return postJson<{ status: string }>('/api/tm/memory/', entry);
     },
 
     async deleteMemory(id: number): Promise<{ deleted: number }> {
-        const response = await fetch(`${API_BASE_URL}/api/tm/memory`, {
-            method: 'DELETE',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ id }),
-        });
-        return handleResponse<{ deleted: number }>(response);
+        return deleteJson<{ deleted: number }>('/api/tm/memory/', { id });
     },
 
     async batchDeleteMemory(ids: number[]): Promise<{ deleted: number }> {
-        const response = await fetch(`${API_BASE_URL}/api/tm/memory/batch`, {
-            method: 'DELETE',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ ids }),
-        });
-        return handleResponse<{ deleted: number }>(response);
+        return deleteJson<{ deleted: number }>(
+            '/api/tm/memory/batch/',
+            { ids }
+        );
     },
 
     async clearMemory(): Promise<{ deleted: number }> {
-        const response = await fetch(`${API_BASE_URL}/api/tm/memory/clear`, {
-            method: 'DELETE',
-        });
-        return handleResponse<{ deleted: number }>(response);
+        return deleteJson<{ deleted: number }>('/api/tm/memory/clear/');
     },
 
     async importMemory(file: File): Promise<{ status: string; count: number }> {
-        const formData = new FormData();
-        formData.append('file', file);
-        const response = await fetch(`${API_BASE_URL}/api/tm/memory/import`, {
-            method: 'POST',
-            body: formData,
-        });
-        return handleResponse<{ status: string; count: number }>(response);
+        return postFile<{ status: string; count: number }>(
+            '/api/tm/memory/import/',
+            file
+        );
     },
 
     async exportMemory(): Promise<string> {
-        const response = await fetch(`${API_BASE_URL}/api/tm/memory/export`);
-        if (!response.ok) {
-            throw new ApiClientError('Export failed', response.status);
-        }
-        return response.text();
+        return getText('/api/tm/memory/export/');
     },
 
     async getCategories(): Promise<TmCategoryResponse> {
-        const response = await fetch(`${API_BASE_URL}/api/tm/categories`);
-        return handleResponse<TmCategoryResponse>(response);
+        return getJson<TmCategoryResponse>('/api/tm/categories/');
     },
 
     async createCategory(
         name: string,
         sortOrder?: number
     ): Promise<{ item: TmCategory }> {
-        const response = await fetch(`${API_BASE_URL}/api/tm/categories`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ name, sort_order: sortOrder ?? 0 }),
-        });
-        return handleResponse<{ item: TmCategory }>(response);
+        return postJson<{ item: TmCategory }>(
+            '/api/tm/categories/',
+            { name, sort_order: sortOrder ?? 0 }
+        );
     },
 
     async updateCategory(
@@ -169,18 +115,71 @@ export const tmApi = {
         name: string,
         sortOrder?: number
     ): Promise<{ item: TmCategory }> {
-        const response = await fetch(`${API_BASE_URL}/api/tm/categories/${id}`, {
-            method: 'PUT',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ name, sort_order: sortOrder ?? 0 }),
-        });
-        return handleResponse<{ item: TmCategory }>(response);
+        return putJson<{ item: TmCategory }>(
+            `/api/tm/categories/${id}`,
+            { name, sort_order: sortOrder ?? 0 }
+        );
     },
 
     async deleteCategory(id: number): Promise<{ status: string }> {
-        const response = await fetch(`${API_BASE_URL}/api/tm/categories/${id}`, {
-            method: 'DELETE',
+        return deleteJson<{ status: string }>(`/api/tm/categories/${id}`);
+    },
+
+    async feedback(payload: {
+        source: string;
+        target: string;
+        source_lang: string;
+        target_lang: string;
+    }): Promise<{ status: string }> {
+        return postJson<{ status: string }>('/api/tm/feedback/', payload);
+    },
+
+    async getLearningStats(params: {
+        limit?: number;
+        offset?: number;
+        scope_type?: string;
+        scope_id?: string;
+        date_from?: string;
+        date_to?: string;
+        sort_by?: string;
+        sort_dir?: string;
+    }): Promise<{ items: unknown[]; total?: number; offset?: number }> {
+        const search = new URLSearchParams();
+        Object.entries(params || {}).forEach(([key, value]) => {
+            if (value !== undefined && value !== null && value !== '') {
+                search.set(key, String(value));
+            }
         });
-        return handleResponse<{ status: string }>(response);
+        const query = search.toString();
+        return getJson<{ items: unknown[]; total?: number; offset?: number }>(
+            `/api/tm/learning-stats${query ? `?${query}` : ''}`
+        );
+    },
+
+    async getLearningEvents(params: {
+        limit?: number;
+        offset?: number;
+        event_type?: string;
+        entity_type?: string;
+        scope_type?: string;
+        scope_id?: string;
+        source_lang?: string;
+        target_lang?: string;
+        q?: string;
+        date_from?: string;
+        date_to?: string;
+        sort_by?: string;
+        sort_dir?: string;
+    }): Promise<{ items: unknown[]; total?: number; offset?: number }> {
+        const search = new URLSearchParams();
+        Object.entries(params || {}).forEach(([key, value]) => {
+            if (value !== undefined && value !== null && value !== '') {
+                search.set(key, String(value));
+            }
+        });
+        const query = search.toString();
+        return getJson<{ items: unknown[]; total?: number; offset?: number }>(
+            `/api/tm/learning-events${query ? `?${query}` : ''}`
+        );
     },
 };

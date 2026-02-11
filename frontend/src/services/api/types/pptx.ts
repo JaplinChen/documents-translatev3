@@ -16,7 +16,9 @@ export interface PptxApplyParams {
   file: File;
   blocks: string;
   mode?: 'bilingual' | 'correction' | 'translated';
-  bilingual_layout?: 'inline' | 'side-by-side';
+  bilingual_layout?: 'inline' | 'auto' | 'new_slide';
+  layout_id?: string;
+  layout_params?: string;
   fill_color?: string;
   text_color?: string;
   line_color?: string;

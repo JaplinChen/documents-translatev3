@@ -92,12 +92,16 @@
     }
 
     .data-cell {
-        @apply px-4 py-2.5 flex items-center text-sm text-slate-700 overflow-hidden min-h-[48px] leading-snug;
+        @apply px-4 py-2.5 flex items-center text-sm text-slate-700 min-h-[48px] leading-snug;
         box-sizing: border-box;
         word-break: break-word;
         border-right: 1px solid var(--border-soft);
         /* Critical Fix for Continuous Vertical Lines: Move bottom border to cell */
         border-bottom: 1px solid var(--border-soft);
+    }
+
+    .unified-data-row.is-editable-row .data-cell {
+        border-right: none !important;
     }
 
     .data-cell:last-child {
@@ -175,6 +179,11 @@
 
     .data-table.is-compact .data-header .data-cell {
         @apply py-2;
+    }
+
+    .data-table.is-compact .data-input,
+    .data-table.is-compact select.data-input {
+        @apply h-7 py-0 px-2 text-[11px] leading-none;
     }
 
     .data-input {

@@ -189,7 +189,8 @@ async def translate_blocks_async(
                     LOGGER.error("LLM Task timed out after %ss", settings.llm_request_timeout)
                     return None
                 except Exception as exc:
-                    LOGGER.error("LLM Task failed: %s", exc)
+                    import traceback
+                    LOGGER.error("LLM Task failed: %s\n%s", exc, traceback.format_exc())
                     return None
 
         final_tasks = [sem_wrapped_task(t) for t in tasks]

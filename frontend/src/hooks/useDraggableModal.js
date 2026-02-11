@@ -2,6 +2,7 @@ import { useLayoutEffect, useRef, useState } from "react";
 
 /**
  * Custom hook for draggable modal positioning
+ * 支援從 localStorage 還原位置/尺寸
  */
 export function useDraggableModal(open, storageKey) {
     const modalRef = useRef(null);
@@ -26,6 +27,24 @@ export function useDraggableModal(open, storageKey) {
         if (!open) return;
         const modal = modalRef.current;
         if (!modal) return;
+
+        // 先嘗試從 localStorage 還原已存的位置，避免覆蓋 ManageModal 的儲存狀態
+        if (storageKey) {
+            try {
+                const saved = localStorage.getItem(storageKey);
+                if (saved) {
+                    const parsed = JSON.parse(saved);
+                    if (typeof parsed?.top === 'number' && typeof parsed?.left === 'number') {
+                        setPosition({ top: parsed.top, left: parsed.left });
+                        return; // 已有儲存位置，不需要計算居中
+                    }
+                }
+            } catch {
+                // 讀取失敗，繼續使用居中計算
+            }
+        }
+
+        // 沒有儲存位置時，計算居中位置
         const rect = modal.getBoundingClientRect();
         let nextTop = Math.max(24, (window.innerHeight - rect.height) / 2);
         let nextLeft = Math.max(24, (window.innerWidth - rect.width) / 2);

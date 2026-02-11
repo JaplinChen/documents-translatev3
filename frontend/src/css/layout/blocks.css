@@ -52,4 +52,8 @@
     .accordion-section.is-done {
         /* Optional: distinct border or background for completed sections */
     }
+
+    .empty-state-editor {
+        height: calc(100% - var(--spacing-xl) * 2.5);
+    }
 }

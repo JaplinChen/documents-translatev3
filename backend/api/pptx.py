@@ -13,13 +13,14 @@ import urllib.parse
 from pathlib import Path
 
 from fastapi import APIRouter, File, Form, HTTPException, UploadFile
-from fastapi.responses import FileResponse
 
 from backend.api.error_handler import api_error_handler, validate_json_blocks
+from backend.api.download_utils import build_download_response
 from backend.api.pptx_history import delete_history_file, get_history_items
 from backend.api.pptx_naming import generate_semantic_filename
 from backend.api.pptx_utils import validate_file_type
 from backend.services.language_detect import detect_document_languages
+from backend.services.layout_registry import resolve_layout_apply_value
 from backend.services.pptx.apply import (
     apply_bilingual,
     apply_chinese_corrections,
@@ -129,6 +130,8 @@ async def pptx_apply(
     blocks: str = Form(...),
     mode: str = Form("bilingual"),
     bilingual_layout: str = Form("inline"),
+    layout_id: str | None = Form(None),
+    layout_params: str | None = Form(None),
     fill_color: str | None = Form(None),
     text_color: str | None = Form(None),
     line_color: str | None = Form(None),
@@ -146,9 +149,23 @@ async def pptx_apply(
     # Parse and validate JSON data
     blocks_data = validate_json_blocks(blocks)
     parsed_font_mapping = json.loads(font_mapping) if font_mapping else None
+    parsed_layout_params: dict = {}
+    if layout_params:
+        try:
+            maybe_obj = json.loads(layout_params)
+            if isinstance(maybe_obj, dict):
+                parsed_layout_params = maybe_obj
+        except Exception:
+            parsed_layout_params = {}
 
     if mode not in {"bilingual", "correction", "translated"}:
         raise HTTPException(status_code=400, detail="不支援的 mode")
+    apply_layout = resolve_layout_apply_value(
+        layout_id=layout_id,
+        file_type="pptx",
+        mode=mode,
+        fallback_value=bilingual_layout,
+    )
 
     with tempfile.TemporaryDirectory() as temp_dir:
         in_p = os.path.join(temp_dir, "in.pptx")
@@ -161,9 +178,10 @@ async def pptx_apply(
                 in_p,
                 out_p,
                 blocks_data,
-                layout=bilingual_layout,
+                layout=apply_layout,
                 target_language=target_language,
                 font_mapping=parsed_font_mapping,
+                layout_params=parsed_layout_params,
             )
         elif mode == "translated":
             apply_translations(
@@ -191,7 +209,7 @@ async def pptx_apply(
     final_filename = generate_semantic_filename(
         file.filename,
         mode,
-        bilingual_layout,
+        apply_layout,
     )
     save_path = Path("data/exports") / final_filename
     save_path.parent.mkdir(parents=True, exist_ok=True)
@@ -209,37 +227,12 @@ async def pptx_apply(
 
 @router.get("/download/{filename:path}")
 async def pptx_download(filename: str):
-    # Resolve the path relative to exports
-    file_path = Path("data/exports") / filename
-    if not file_path.exists():
-        # Fallback to unquoted name if necessary (sometimes URL routing decodes automatically)
-        alt_path = Path("data/exports") / urllib.parse.unquote(filename)
-        if alt_path.exists():
-            file_path = alt_path
-        else:
-            raise HTTPException(status_code=404, detail="檔案不存在")
+    def _media_type(path: Path) -> str:
+        if path.suffix.lower() == ".json":
+            return "application/json"
+        return "application/vnd.openxmlformats-officedocument.presentationml.presentation"
 
-    actual_filename = file_path.name
-    ascii_name = "".join(c if ord(c) < 128 else "_" for c in actual_filename)
-    safe_name = urllib.parse.quote(actual_filename, safe="")
-
-    # Modern RFC 5987 compliant header
-    content_disposition = f"attachment; filename=\"{ascii_name}\"; filename*=UTF-8''{safe_name}"
-
-    media_type = (
-        "application/json"
-        if file_path.suffix.lower() == ".json"
-        else "application/vnd.openxmlformats-officedocument.presentationml.presentation"
-    )
-    return FileResponse(
-        path=file_path,
-        media_type=media_type,
-        headers={
-            "Content-Disposition": content_disposition,
-            "Access-Control-Expose-Headers": "Content-Disposition",
-            "Cache-Control": "no-cache",
-        },
-    )
+    return build_download_response(filename, _media_type)
 
 
 @router.get("/debug-version")

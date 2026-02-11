@@ -92,50 +92,29 @@ export function useGlossaryMemoryEditing({
         if (isGlossary) setLastGlossaryAt(Date.now());
         else setLastMemoryAt(Date.now());
 
-        if (proto) {
-            const clonedEntry = {
-                source_lang: proto.source_lang,
-                target_lang: proto.target_lang,
-                source_text: proto.source_text,
-                target_text: proto.target_text,
-                priority: proto.priority ?? 10,
-                category_id: proto.category_id || '',
-            };
-            const cloneKey = `__clone__${Date.now()}`;
-            setEditingKey(cloneKey);
-            setEditingOriginal(null);
-            setDraft(clonedEntry);
-            return;
-        }
-
-        const payload = {
-            source_lang: newEntry.source_lang || defaultSourceLang || 'vi',
-            target_lang: newEntry.target_lang || defaultTargetLang || 'zh-TW',
-            source_text: newEntry.source_text || '',
-            target_text: newEntry.target_text || '',
-            priority: newEntry.priority ?? 10,
-            category_id: newEntry.category_id || '',
-        };
-
-        if (!payload.source_text.trim()) {
-            alert(t('manage.alerts.source_text_required') || 'Please enter source text');
-            return;
-        }
-
-        if (isGlossary) {
-            await onUpsertGlossary(payload);
-        } else {
-            await onUpsertMemory(payload);
-        }
-
-        setNewEntry({
+        // 如果點選 + 按鈕 (proto 為 null) 或者是從現有項隆隆 (proto 有值)
+        // 則進入行內編輯模式
+        const entryToEdit = proto ? {
+            source_lang: proto.source_lang,
+            target_lang: proto.target_lang,
+            source_text: proto.source_text,
+            target_text: proto.target_text,
+            priority: proto.priority ?? 10,
+            category_id: proto.category_id || '',
+        } : {
             source_lang: defaultSourceLang || 'vi',
             target_lang: defaultTargetLang || 'zh-TW',
             source_text: '',
             target_text: '',
             priority: 10,
             category_id: '',
-        });
+        };
+
+        const cloneKey = `__clone__${Date.now()}`;
+        setEditingKey(cloneKey);
+        setEditingOriginal(null);
+        setDraft(entryToEdit);
+        setEditingField('source_text'); // 預設聚焦原文欄位
     };
 
     const handleKeyDown = (e, saveFn, cancelFn) => {

@@ -39,19 +39,33 @@ def _validate_range(
 
 @router.get("/settings")
 async def get_settings() -> dict:
-    cfg = get_ocr_config()
-    return {
-        "dpi": cfg["dpi"],
-        "lang": cfg["lang"],
-        "conf_min": cfg["conf_min"],
-        "psm": cfg.get("psm", 6),
-        "engine": cfg.get("engine", "tesseract"),
-        "allow_paddle": cfg.get("allow_paddle", False),
-        "paddle_fallback": cfg.get("paddle_fallback", False),
-        "poppler_path": (
-            os.getenv("PDF_POPPLER_PATH", "") or get_poppler_path() or ""
-        ),
-    }
+    try:
+        cfg = get_ocr_config()
+        return {
+            "dpi": cfg["dpi"],
+            "lang": cfg["lang"],
+            "conf_min": cfg["conf_min"],
+            "psm": cfg.get("psm", 6),
+            "engine": cfg.get("engine", "tesseract"),
+            "allow_paddle": cfg.get("allow_paddle", False),
+            "paddle_fallback": cfg.get("paddle_fallback", False),
+            "poppler_path": (
+                os.getenv("PDF_POPPLER_PATH", "") or get_poppler_path() or ""
+            ),
+        }
+    except Exception as e:
+        # Fallback to defaults to prevent API crash (400/500)
+        return {
+            "dpi": 300,
+            "lang": "chi_tra+vie+eng",
+            "conf_min": 10,
+            "psm": 6,
+            "engine": "tesseract",
+            "allow_paddle": False,
+            "paddle_fallback": False,
+            "poppler_path": "",
+            "error_hint": str(e)
+        }
 
 
 @router.post("/settings")

@@ -40,8 +40,43 @@ const BlockCard = memo(({
                 </label>
                 {block.block_type === "spreadsheet_cell" ? (
                     <>
-                        <span>{block.sheet_name || `${t("components.block_card.slide")} ${block.slide_index}`}</span>
-                        <span className="pill font-mono">{block.cell_address}</span>
+                        {block.locations?.length > 1 && !block.locations.every(l => l.sheet_name === block.sheet_name) ? (
+                            <span>{t("components.block_card.multi_sheets", "Multi-sheets")}</span>
+                        ) : null}
+
+                        <div className="flex flex-wrap gap-1 max-w-[280px]">
+                            {(() => {
+                                const colors = [
+                                    "bg-blue-50 text-blue-700 border-blue-200",
+                                    "bg-emerald-50 text-emerald-700 border-emerald-200",
+                                    "bg-amber-50 text-amber-700 border-amber-200",
+                                    "bg-purple-50 text-purple-700 border-purple-200",
+                                    "bg-rose-50 text-rose-700 border-rose-200",
+                                    "bg-cyan-50 text-cyan-700 border-cyan-200",
+                                ];
+                                const getSheetColor = (name) => {
+                                    if (!name) return "";
+                                    let hash = 0;
+                                    for (let i = 0; i < name.length; i++) hash = name.charCodeAt(i) + ((hash << 5) - hash);
+                                    return colors[Math.abs(hash) % colors.length];
+                                };
+
+                                const locs = (block.locations && block.locations.length > 0)
+                                    ? block.locations
+                                    : [{ sheet_name: block.sheet_name, cell_address: block.cell_address }];
+
+                                return locs.slice(0, 3).map((loc, i) => (
+                                    <span key={i} className={`pill font-mono text-[10px] py-0.5 border ${getSheetColor(loc.sheet_name)}`}>
+                                        {loc.sheet_name ? `${loc.sheet_name}!${loc.cell_address}` : loc.cell_address}
+                                    </span>
+                                ));
+                            })()}
+                            {block.locations?.length > 3 && (
+                                <span className="pill font-mono text-[10px] py-0.5" title={block.locations.slice(3).map(l => `${l.sheet_name}!${l.cell_address}`).join(", ")}>
+                                    +{block.locations.length - 3}
+                                </span>
+                            )}
+                        </div>
                     </>
                 ) : (
                     <>

@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useLayoutEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { X } from 'lucide-react';
 
@@ -11,20 +11,25 @@ export function ColumnPanel({
     anchorRef,
     t,
 }) {
+    const panelRef = useRef(null);
+
+    useLayoutEffect(() => {
+        if (!show || !panelRef.current || !anchorRef.current) return;
+        const rect = anchorRef.current.getBoundingClientRect();
+        const top = rect.bottom + 8;
+        const left = Math.min(rect.left, window.innerWidth - 340);
+        panelRef.current.style.top = `${top}px`;
+        panelRef.current.style.left = `${left}px`;
+    }, [show, anchorRef]);
+
     if (!show) return null;
 
     return createPortal(
         <>
             <div className="fixed inset-0 z-[9998]" onClick={onClose}></div>
             <div
+                ref={panelRef}
                 className="fixed bg-white rounded-2xl border border-slate-200 shadow-2xl z-[9999] transition-all p-4 w-[320px]"
-                style={{
-                    top: (anchorRef.current?.getBoundingClientRect().bottom || 0) + 8,
-                    left: Math.min(
-                        anchorRef.current?.getBoundingClientRect().left || 0,
-                        window.innerWidth - 340
-                    )
-                }}
             >
                 <div className="flex items-center justify-between border-b border-slate-100 mb-3 pb-2">
                     <div className="text-sm font-bold text-slate-700">

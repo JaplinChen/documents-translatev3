@@ -11,7 +11,7 @@ export function Navbar({ currentStep, status, appStatus, onOpenSettings, onOpenM
         <nav className="navbar">
             {progress > 0 && progress < 100 && (
                 <div className="navbar-progress-bar">
-                    <div className="navbar-progress-inner" style={{ width: `${progress}%` }}></div>
+                    <progress className="navbar-progress-track" max="100" value={progress} />
                 </div>
             )}
             <div className="navbar-brand">

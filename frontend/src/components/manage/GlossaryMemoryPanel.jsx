@@ -1,6 +1,5 @@
 import { useTranslation } from 'react-i18next';
 import { Plus } from 'lucide-react';
-import { API_BASE } from '../../constants';
 import { DataTable } from '../common/DataTable';
 import { useGlossaryMemoryState } from './useGlossaryMemoryState';
 
@@ -20,7 +19,7 @@ export function GlossaryMemoryPanel(props) {
                     <button
                         className="btn ghost compact"
                         type="button"
-                        onClick={() => state.handleExport(`${API_BASE}/api/tm/${state.isGlossary ? 'glossary' : 'memory'}/export`)}
+                        onClick={() => state.handleExport(`/api/tm/${state.isGlossary ? 'glossary' : 'memory'}/export`)}
                     >
                         {t('manage.actions.export_csv')}
                     </button>
@@ -32,7 +31,7 @@ export function GlossaryMemoryPanel(props) {
                             className="hidden-input"
                             onChange={(event) => state.handleImport(
                                 event,
-                                `${API_BASE}/api/tm/${state.isGlossary ? 'glossary' : 'memory'}/import`,
+                                `/api/tm/${state.isGlossary ? 'glossary' : 'memory'}/import`,
                                 state.onSeed
                             )}
                         />

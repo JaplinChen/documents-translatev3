@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { API_BASE } from "../../constants";
+import { buildApiUrl } from "../../services/api/core";
+import { tmApi } from "../../services/api/tm";
 import { DataTable } from "../common/DataTable";
 
 export default function LearningEventsTab() {
@@ -49,9 +50,21 @@ export default function LearningEventsTab() {
             if (dateTo) params.set("date_to", dateTo);
             if (sortBy) params.set("sort_by", sortBy);
             if (sortDir) params.set("sort_dir", sortDir);
-            const res = await fetch(`${API_BASE}/api/tm/learning-events?${params.toString()}`);
-            const data = await res.json();
-            if (!res.ok) throw new Error(data?.detail || "load_failed");
+            const data = await tmApi.getLearningEvents({
+                limit,
+                offset,
+                event_type: eventType,
+                entity_type: entityType,
+                scope_type: scopeType,
+                scope_id: scopeId,
+                source_lang: sourceLang,
+                target_lang: targetLang,
+                q: query,
+                date_from: dateFrom,
+                date_to: dateTo,
+                sort_by: sortBy,
+                sort_dir: sortDir,
+            });
             setItems(Array.isArray(data.items) ? data.items : []);
             setTotal(Number(data.total || 0));
             setOffset(Number(data.offset || offset));
@@ -97,7 +110,7 @@ export default function LearningEventsTab() {
         if (dateTo) params.set("date_to", dateTo);
         if (sortBy) params.set("sort_by", sortBy);
         if (sortDir) params.set("sort_dir", sortDir);
-        window.open(`${API_BASE}/api/tm/learning-events/export?${params.toString()}`, "_blank");
+        window.open(buildApiUrl(`/api/tm/learning-events/export?${params.toString()}`), "_blank");
     };
 
     const columns = useMemo(() => ([

@@ -12,7 +12,8 @@
       "ocr": "OCR",
       "correction": "Correction",
       "prompt": "Prompt",
-      "fonts": "Fonts"
+      "fonts": "Fonts",
+      "layouts": "Layouts"
     },
     "ocr": {
       "title": "OCR Settings",

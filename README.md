@@ -1,4 +1,4 @@
-# 企業常用文件翻譯與校正控制台 (documents-translatev3)
+﻿# 企業常用文件翻譯與校正控制台 (documents-translatev3)
 
 [![Python](https://img.shields.io/badge/python-3.10+-blue.svg)](https://www.python.org/)
 [![Docker](https://img.shields.io/badge/docker-ready-blue.svg)](https://www.docker.com/)
@@ -22,7 +22,7 @@
 
 ### 1. 執行安裝
 
-雙擊執行根目錄下的 **`install.bat`** (將自動請求管理員限)。
+雙擊執行根目錄下的 **`scripts/ops/install.bat`** (將自動請求管理員限)。
 
 ### 2. 腳本動作
 
@@ -65,16 +65,16 @@
 
 如果您需要將此系統交給其他單位且**不希望暴露原始碼**：
 
-1. 執行 `powershell -File scripts/export_images.ps1`。
+1. 執行 `powershell -File scripts/ops/export_images.ps1`。
 2. 將產出的 `release_package` 資料夾壓縮分發。
-3. 接收者僅需執行其中的 `install.bat` 即可運作。
+3. 接收者僅需執行其中的 `scripts/ops/install.bat` 即可運作。
 
 ### 🧹 專案清理
 
 使用清理腳本移除快取與暫存檔：
 
 ```powershell
-python scripts/cleanup_project.py --no-dry-run
+python scripts/cleanup/cleanup_project.py --apply
 ```
 
 ### 🐘 PostgreSQL 遷移
@@ -94,7 +94,7 @@ python scripts/cleanup_project.py --no-dry-run
    ```
 4. 搬移 SQLite 資料：
    ```powershell
-   python scripts/migrate_sqlite_to_postgres.py
+   python scripts/migration/migrate_sqlite_to_postgres.py
    ```
 5. 重新啟動後端服務
 
@@ -102,11 +102,11 @@ python scripts/cleanup_project.py --no-dry-run
 
 - 驗證 SQLite 與 PostgreSQL 一致性：
   ```powershell
-  python scripts/verify_sqlite_postgres.py
+  python scripts/dev/verify_sqlite_postgres.py
   ```
 - PostgreSQL 回滾到 SQLite：
   ```powershell
-  python scripts/rollback_postgres_to_sqlite.py
+  python scripts/migration/rollback_postgres_to_sqlite.py
   ```
 
 ## 🧰 開發流程
@@ -121,6 +121,14 @@ python scripts/cleanup_project.py --no-dry-run
   ```bash
   pre-commit run backend-only flake8 --all-files
   ```
+- Layouts API contract 一鍵檢查：
+  ```powershell
+  python scripts/dev/run_layouts_contract_check.py
+  ```
+- Layouts API contract + 全測試 + 前端 build：
+  ```powershell
+  python scripts/dev/run_layouts_contract_check.py --full-tests --frontend-build
+  ```
 
 ---
 
@@ -128,8 +136,13 @@ python scripts/cleanup_project.py --no-dry-run
 
 ```
 documents-translatev3/ (舊稱 PPTX-Translate)
-├── install.bat          # [New] Windows 一鍵安裝進入點
+├── scripts/ops/install.bat          # [New] Windows 一鍵安裝進入點
 ├── scripts/             # 自動化腳本 (安裝、打包、清理)
+│   ├── cleanup/         # 清理與維護
+│   ├── dev/             # 開發驗證與測試輔助
+│   ├── migration/       # 資料庫遷移
+│   ├── ops/             # 啟動、部署、維運
+│   └── tools/           # 其他工具
 ├── backend/             # FastAPI 後端引擎
 │   ├── api/             # 路由定義 (Naming, Translation, TM)
 │   └── services/        # 核心翻譯與檔案處理邏輯
@@ -145,6 +158,12 @@ documents-translatev3/ (舊稱 PPTX-Translate)
 ## ℹ️ 技術規格
 
 詳細技術細節與 API 合約請參閱 [TECH_SPEC.md](TECH_SPEC.md)。
+
+---
+
+## 🤝 參與開發
+
+請參考 [docs/CONTRIBUTING.md](docs/CONTRIBUTING.md) 取得開發流程、腳本分類與提交規範。
 
 ---
 

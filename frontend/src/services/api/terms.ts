@@ -1,4 +1,4 @@
-import { API_BASE_URL, handleResponse } from './core';
+import { deleteJson, getJson, getText, postForm, postJson, putJson } from './core';
 import type { BatchDeleteRequest, TermBatchPayload, TermCategory, TermCategoryResponse, TermImportPreviewResponse, TermImportResponse, TermItem, TermListParams, TermListResponse, TermPayload } from '../api.types';
 
 export const termsApi = {
@@ -12,82 +12,49 @@ export const termsApi = {
             });
         }
         const query = searchParams.toString();
-        const response = await fetch(
-            `${API_BASE_URL}/api/terms${query ? `?${query}` : ''}`
-        );
-        return handleResponse<TermListResponse>(response);
+        return getJson<TermListResponse>(`/api/terms/${query ? `?${query}` : ''}`);
     },
 
     async create(payload: TermPayload): Promise<{ item: TermItem }> {
-        const response = await fetch(`${API_BASE_URL}/api/terms`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(payload),
-        });
-        return handleResponse<{ item: TermItem }>(response);
+        return postJson<{ item: TermItem }>('/api/terms/', payload);
     },
 
     async update(id: number, payload: TermPayload): Promise<{ item: TermItem }> {
-        const response = await fetch(`${API_BASE_URL}/api/terms/${id}`, {
-            method: 'PUT',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(payload),
-        });
-        return handleResponse<{ item: TermItem }>(response);
+        return putJson<{ item: TermItem }>(`/api/terms/${id}`, payload);
     },
 
     async delete(id: number): Promise<{ status: string }> {
-        const response = await fetch(`${API_BASE_URL}/api/terms/${id}`, {
-            method: 'DELETE',
-        });
-        return handleResponse<{ status: string }>(response);
+        return deleteJson<{ status: string }>(`/api/terms/${id}`);
     },
 
     async versions(id: number): Promise<{ versions: unknown[] }> {
-        const response = await fetch(`${API_BASE_URL}/api/terms/${id}/versions`);
-        return handleResponse<{ versions: unknown[] }>(response);
+        return getJson<{ versions: unknown[] }>(`/api/terms/${id}/versions`);
     },
 
     async batchUpdate(payload: TermBatchPayload): Promise<{ updated: number }> {
-        const response = await fetch(`${API_BASE_URL}/api/terms/batch`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(payload),
-        });
-        return handleResponse<{ updated: number }>(response);
+        return postJson<{ updated: number }>('/api/terms/batch/', payload);
     },
 
     async batchDelete(payload: BatchDeleteRequest): Promise<{ deleted: number }> {
-        const response = await fetch(`${API_BASE_URL}/api/terms/batch`, {
-            method: 'DELETE',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(payload),
-        });
-        return handleResponse<{ deleted: number }>(response);
+        return deleteJson<{ deleted: number }>('/api/terms/batch/', payload);
     },
 
     async syncAll(): Promise<{ synced: number }> {
-        const response = await fetch(`${API_BASE_URL}/api/terms/sync-all`, {
-            method: 'POST',
-        });
-        return handleResponse<{ synced: number }>(response);
+        return postJson<{ synced: number }>('/api/terms/sync-all/');
     },
 
     async getCategories(): Promise<TermCategoryResponse> {
-        const response = await fetch(`${API_BASE_URL}/api/terms/categories`);
-        return handleResponse<TermCategoryResponse>(response);
+        return getJson<TermCategoryResponse>('/api/terms/categories/');
     },
 
     async createCategory(
         name: string,
         sortOrder?: number
     ): Promise<{ item: TermCategory }> {
-        const response = await fetch(`${API_BASE_URL}/api/terms/categories`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ name, sort_order: sortOrder }),
-        });
-        return handleResponse<{ item: TermCategory }>(response);
+        return postJson<{ item: TermCategory }>(
+            '/api/terms/categories/',
+            { name, sort_order: sortOrder }
+        );
     },
 
     async updateCategory(
@@ -95,63 +62,53 @@ export const termsApi = {
         name: string,
         sortOrder?: number
     ): Promise<{ item: TermCategory }> {
-        const response = await fetch(`${API_BASE_URL}/api/terms/categories/${id}`, {
-            method: 'PUT',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ name, sort_order: sortOrder }),
-        });
-        return handleResponse<{ item: TermCategory }>(response);
+        return putJson<{ item: TermCategory }>(
+            `/api/terms/categories/${id}`,
+            { name, sort_order: sortOrder }
+        );
     },
 
     async deleteCategory(id: number): Promise<{ status: string }> {
-        const response = await fetch(`${API_BASE_URL}/api/terms/categories/${id}`, {
-            method: 'DELETE',
-        });
-        return handleResponse<{ status: string }>(response);
+        return deleteJson<{ status: string }>(`/api/terms/categories/${id}`);
     },
 
     async importPreview(
         file: File,
         mapping?: Record<string, string>
     ): Promise<TermImportPreviewResponse> {
-        const formData = new FormData();
-        formData.append('file', file);
+        const payload: Record<string, unknown> = { file };
         if (mapping) {
-            formData.append('mapping', JSON.stringify(mapping));
+            payload.mapping = mapping;
         }
-        const response = await fetch(`${API_BASE_URL}/api/terms/import/preview`, {
-            method: 'POST',
-            body: formData,
-        });
-        return handleResponse<TermImportPreviewResponse>(response);
+        return postForm<TermImportPreviewResponse>(
+            '/api/terms/import/preview/',
+            payload
+        );
     },
 
     async import(
         file: File,
         mapping?: Record<string, string>
     ): Promise<TermImportResponse> {
-        const formData = new FormData();
-        formData.append('file', file);
+        const payload: Record<string, unknown> = { file };
         if (mapping) {
-            formData.append('mapping', JSON.stringify(mapping));
+            payload.mapping = mapping;
         }
-        const response = await fetch(`${API_BASE_URL}/api/terms/import`, {
-            method: 'POST',
-            body: formData,
-        });
-        return handleResponse<TermImportResponse>(response);
+        return postForm<TermImportResponse>(
+            '/api/terms/import/',
+            payload
+        );
     },
 
     async importErrors(): Promise<{ errors: unknown[] }> {
-        const response = await fetch(`${API_BASE_URL}/api/terms/import/errors`);
-        return handleResponse<{ errors: unknown[] }>(response);
+        return getJson<{ errors: unknown[] }>('/api/terms/import/errors/');
     },
 
     async export(): Promise<string> {
-        const response = await fetch(`${API_BASE_URL}/api/terms/export`);
-        if (!response.ok) {
-            throw new Error('Export failed');
-        }
-        return response.text();
+        return getText('/api/terms/export');
+    },
+
+    async upsert(payload: TermPayload & { category_name?: string }): Promise<{ item: TermItem }> {
+        return postJson<{ item: TermItem }>('/api/terms/upsert/', payload);
     },
 };

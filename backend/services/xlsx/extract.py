@@ -17,7 +17,11 @@ from backend.services.language_detect import detect_document_languages
 from backend.services.ocr_lang import resolve_ocr_lang_from_doc_lang
 
 
-def extract_blocks(xlsx_path: str, preferred_lang: str | None = None) -> dict:
+def extract_blocks(
+    xlsx_path: str,
+    preferred_lang: str | None = None,
+    layout_params: dict[str, Any] | None = None,
+) -> dict:
     """
     Extract text blocks from an Excel file.
 
@@ -31,13 +35,19 @@ def extract_blocks(xlsx_path: str, preferred_lang: str | None = None) -> dict:
     wb = openpyxl.load_workbook(xlsx_path, data_only=True)
     blocks: list[dict] = []
 
+    params = layout_params or {}
+    skip_numbers = params.get("skip_numbers", False)
+    skip_dates = params.get("skip_dates", False) # Not implemented yet for Excel
+    skip_code = params.get("skip_code", False)
+    skip_translated = params.get("skip_translated", False) # Not implemented yet for Excel
+
+    # Deduplication map: {text: first_block}
+    dedup_map: dict[str, dict] = {}
+
     # Track metadata for the whole document
     for sheet_index, sheet_name in enumerate(wb.sheetnames):
         ws = wb[sheet_name]
         is_sheet_hidden = ws.sheet_state != "visible"
-
-        # Unique ID counter for blocks in this sheet
-        block_id_counter = 0
 
         # Iterate through all cells that have values
         for row_idx, row in enumerate(ws.iter_rows(), start=1):
@@ -58,55 +68,62 @@ def extract_blocks(xlsx_path: str, preferred_lang: str | None = None) -> dict:
                     else False
                 )
 
-                # Skip common Excel error values (#REF!, #DIV/0!, etc.)
+                # Skip common Excel error values
                 cell_val_str = sanitize_extracted_text(str(cell.value))
                 if cell_val_str.startswith("#") and any(
                     err in cell_val_str for err in ["REF!", "DIV/0!", "VALUE!", "N/A", "NAME?"]
                 ):
                     continue
 
-                # Detect if cell contains a formula
-                # Note: with data_only=True, cell.value is the RESULT.
-                # To see the formula, we'd need another pass or different load_workbook params.
-                # However, the requirement is to PROTECT formulas during APPLY.
-                # In EXTRACT with data_only=True, we get what the user sees.
-
-                # Convert to string and clean
                 text = cell_val_str
 
-                # Use heuristics to filter non-translatable content
-                if (
-                    not text
-                    or is_numeric_only(text)
-                    or is_exact_term_match(text)
-                    or is_technical_terms_only(text)
-                    or is_garbage_text(text)
-                ):
+                # Use heuristics and layout_params to filter content
+                if not text or is_garbage_text(text) or is_exact_term_match(text):
                     continue
 
-                block_id_counter += 1
-                shape_id = block_id_counter
+                if is_numeric_only(text):
+                    if skip_numbers:
+                        continue
+                    elif not params.get("force_extract_numbers"):
+                        continue
 
-                # Standard block with extra Excel-specific fields
-                block = make_block(
-                    slide_index=sheet_index,
-                    shape_id=shape_id,
-                    block_type="spreadsheet_cell",
-                    source_text=text,
-                )
+                if skip_code and is_technical_terms_only(text):
+                    continue
 
-                # Assign a unique client_id for correction mode tracking
-                block["client_id"] = f"xlsx-{sheet_index}-{shape_id}"
+                # Location info for this occurrence
+                location = {
+                    "sheet_index": sheet_index,
+                    "sheet_name": sheet_name,
+                    "cell_address": cell.coordinate,
+                    "is_hidden": is_sheet_hidden or is_row_hidden or is_col_hidden
+                }
 
-                # Add Excel-specific metadata for reconstruction
-                block["sheet_name"] = sheet_name
-                block["cell_address"] = cell.coordinate
-                block["is_hidden"] = is_sheet_hidden or is_row_hidden or is_col_hidden
+                if text in dedup_map:
+                    # Already seen this text, check if this location is new to avoid duplicates
+                    if not any(loc["sheet_index"] == sheet_index and loc["cell_address"] == cell.coordinate 
+                               for loc in dedup_map[text]["locations"]):
+                        dedup_map[text]["locations"].append(location)
+                else:
+                    # New unique text block
+                    block = make_block(
+                        slide_index=sheet_index,
+                        shape_id=len(dedup_map) + 1,
+                        block_type="spreadsheet_cell",
+                        source_text=text,
+                    )
+                    # Custom properties for Excel
+                    block["sheet_name"] = sheet_name
+                    block["cell_address"] = cell.coordinate
+                    block["locations"] = [location]
+                    
+                    # client_id is now based on content hash for stable tracking of deduplicated blocks
+                    import hashlib
+                    content_hash = hashlib.md5(text.encode("utf-8")).hexdigest()[:12]
+                    block["client_id"] = f"xlsx-merged-{content_hash}"
+                    
+                    dedup_map[text] = block
 
-                # Check for formula in a separate pass if needed, but for now mark as potential translatable
-                # We will handle formula protection in apply.py by loading with data_only=False.
-
-                blocks.append(block)
+    blocks = list(dedup_map.values())
 
     doc_lang = preferred_lang or (detect_document_languages(blocks).get("primary") if blocks else None)
     ocr_lang = resolve_ocr_lang_from_doc_lang(doc_lang)

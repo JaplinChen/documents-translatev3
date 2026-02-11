@@ -1,27 +1,47 @@
 import React, { useState, useEffect } from "react";
 import { useTranslation } from "react-i18next";
 import { APP_STATUS } from "../constants";
+import { layoutsApi } from "../services/api/layouts";
 import { ExportButton } from "./sidebar/ExportButton";
 import { SidebarStep2 } from "./sidebar/SidebarStep2";
 import { Stepper } from "./Stepper";
+import { useUIStore } from "../store/useUIStore";
 
 export function Sidebar({
     file, setFile, mode, setMode, bilingualLayout, setBilingualLayout,
-    sourceLang, setSourceLang, setSourceLocked, secondaryLang, setSecondaryLang, setSecondaryLocked,
+    layoutParams, setLayoutParams,
+    sourceLang, setSourceLang, setSourceLocked,
     targetLang, setTargetLang, setTargetLocked, useTm, setUseTm, languageOptions,
     busy, onExtract, onExtractGlossary, onTranslate, onApply, canApply, blockCount,
-    selectedCount, status, appStatus, sidebarRef, modeDescription, llmTone, setLlmTone,
-    useVisionContext, setUseVisionContext, useSmartLayout, setUseSmartLayout, blocks
+    selectedCount, status, appStatus, sidebarRef, blocks,
 }) {
     const { t } = useTranslation();
+    const { layoutDefs, setLayoutDefs } = useUIStore();
     const isFileSelected = !!file;
     const isExtracted = blockCount > 0;
     const hasTranslation = blocks && blocks.some(b => b.translated_text);
     const isTranslating = appStatus === APP_STATUS.TRANSLATING;
     const isFinished = appStatus === APP_STATUS.EXPORT_COMPLETED;
     const fileExt = file?.name?.split(".")?.pop()?.toUpperCase();
+    const fileType = file?.name?.split(".")?.pop()?.toLowerCase();
 
     const [openSections, setOpenSections] = useState({ step1: true, step2: false, step3: false, step4: false });
+    const [layoutOptions, setLayoutOptions] = useState([]);
+
+    const getDefaultLayoutParams = (schema) => {
+        const props = schema?.properties || {};
+        const out = {};
+        Object.entries(props).forEach(([key, cfg]) => {
+            if (Object.prototype.hasOwnProperty.call(cfg || {}, "default")) {
+                out[key] = cfg.default;
+                return;
+            }
+            if (cfg?.type === "boolean") out[key] = false;
+            else if (cfg?.type === "number" || cfg?.type === "integer") out[key] = 0;
+            else out[key] = "";
+        });
+        return out;
+    };
 
     useEffect(() => {
         if (isFinished || hasTranslation) setOpenSections({ step1: false, step2: false, step3: false, step4: true });
@@ -29,6 +49,68 @@ export function Sidebar({
         else if (isFileSelected) setOpenSections({ step1: false, step2: true, step3: false, step4: false });
         else setOpenSections({ step1: true, step2: false, step3: false, step4: false });
     }, [isFileSelected, isExtracted, hasTranslation, isFinished]);
+
+    useEffect(() => {
+        if (mode !== "bilingual") return;
+        const supported = ["pptx", "docx", "xlsx", "pdf"];
+        if (!supported.includes(fileType || "")) {
+            setLayoutOptions([]);
+            setLayoutDefs([]);
+            return;
+        }
+
+        let cancelled = false;
+        layoutsApi.list(fileType, mode, true)
+            .then((res) => {
+                if (cancelled) return;
+                const defs = res.layouts || [];
+                setLayoutDefs(defs);
+                const options = (res.layouts || [])
+                    .filter((layout) => layout.enabled || layout.id === bilingualLayout)
+                    .map((layout) => ({
+                        value: layout.id,
+                        label: layout.name,
+                    }));
+                setLayoutOptions(options);
+                if (options.length > 0 && !options.some((opt) => opt.value === bilingualLayout)) {
+                    setBilingualLayout(options[0].value);
+                }
+            })
+            .catch(() => {
+                if (!cancelled) setLayoutOptions([]);
+            });
+
+        return () => {
+            cancelled = true;
+        };
+    }, [fileType, mode, bilingualLayout, setBilingualLayout]);
+
+    useEffect(() => {
+        const activeDef = layoutDefs.find((item) => item.id === bilingualLayout);
+        if (!activeDef) return;
+        const defaults = getDefaultLayoutParams(activeDef.params_schema);
+        const props = activeDef?.params_schema?.properties || {};
+        const current = layoutParams || {};
+
+        // Only trigger update if there are NEW keys from defaults that aren't in current
+        let changed = false;
+        const merged = { ...current };
+
+        Object.keys(props).forEach((key) => {
+            if (!Object.prototype.hasOwnProperty.call(current, key)) {
+                merged[key] = defaults[key];
+                changed = true;
+            }
+        });
+
+        // Ensure we remove keys that are no longer in the schema? 
+        // No, keep them for now to avoid data loss during layout switching, 
+        // but the core issue of "forgetting" checks is the priority.
+
+        if (changed) {
+            setLayoutParams(merged);
+        }
+    }, [bilingualLayout, layoutDefs]); // Removed layoutParams from dependencies to avoid loop, though it's already absent
 
     const toggleSection = (s) => setOpenSections(prev => ({ ...prev, [s]: !prev[s] }));
 
@@ -47,7 +129,7 @@ export function Sidebar({
                         </div>
                         <span className="accordion-indicator">▼</span>
                     </div>
-                    <div className="accordion-content" style={{ maxHeight: openSections.step1 ? "500px" : "0", opacity: openSections.step1 ? 1 : 0 }}>
+                    <div className={`accordion-content accordion-content-step1 ${openSections.step1 ? "is-open" : ""}`}>
                         <div className="form-group py-1"><div className="file-input-container">
                             <label className={`file-input-label ${isFileSelected ? "is-selected" : ""}`}>
                                 <span className="icon">{isFileSelected ? "📄" : "📁"}</span>
@@ -75,10 +157,14 @@ export function Sidebar({
                 <SidebarStep2
                     open={openSections.step2} toggle={() => toggleSection("step2")} isExtracted={isExtracted}
                     mode={mode} setMode={setMode} bilingualLayout={bilingualLayout} setBilingualLayout={setBilingualLayout}
+                    layoutOptions={layoutOptions}
+                    layoutDefinition={layoutDefs.find((item) => item.id === bilingualLayout) || null}
+                    layoutParams={layoutParams}
+                    setLayoutParams={setLayoutParams}
+                    fileType={fileType}
                     languageOptions={languageOptions} sourceLang={sourceLang} setSourceLang={setSourceLang}
                     setSourceLocked={setSourceLocked} targetLang={targetLang} setTargetLang={setTargetLang}
-                    setTargetLocked={setTargetLocked} useTm={useTm} setUseTm={setUseTm} blockCount={blockCount}
-                    onExtract={onExtract}
+                    setTargetLocked={setTargetLocked} useTm={useTm} setUseTm={setUseTm}
                 />
 
                 <div className={`accordion-section ${openSections.step3 ? "is-open" : ""} ${hasTranslation ? "is-done" : ""}`}>
@@ -89,7 +175,7 @@ export function Sidebar({
                         </div>
                         <span className="accordion-indicator">▼</span>
                     </div>
-                    <div className="accordion-content" style={{ maxHeight: openSections.step3 ? "400px" : "0", opacity: openSections.step3 ? 1 : 0 }}>
+                    <div className={`accordion-content accordion-content-step3 ${openSections.step3 ? "is-open" : ""}`}>
                         <div className="py-2 flex flex-col gap-3">
                             <div className="smart-extract-section">
                                 <p className="field-label mb-2">{t("sidebar.preprocess")}</p>
@@ -116,7 +202,7 @@ export function Sidebar({
                         </div>
                         <span className="accordion-indicator">▼</span>
                     </div>
-                    <div className="accordion-content" style={{ maxHeight: openSections.step4 ? "400px" : "0", opacity: openSections.step4 ? 1 : 0 }}>
+                    <div className={`accordion-content accordion-content-step4 ${openSections.step4 ? "is-open" : ""}`}>
                         <div className="py-2 flex flex-col gap-3">
                             <button className="btn success w-full" onClick={onApply} disabled={!canApply} data-testid="apply-button">{t("sidebar.apply.button")}</button>
                             {canApply && (

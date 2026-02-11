@@ -43,3 +43,16 @@
     color: #991b1b;
     border-color: #fca5a5;
 }
+
+.quality-badge-compact.is-help {
+    cursor: help;
+}
+
+.quality-score {
+    font-weight: 700;
+}
+
+.quality-help {
+    cursor: help;
+    opacity: 0.7;
+}

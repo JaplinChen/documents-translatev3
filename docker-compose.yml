@@ -66,7 +66,7 @@ services:
       timeout: 5s
       retries: 3
       start_period: 30s
-    command: uvicorn backend.main:app --host 0.0.0.0 --port 5005
+    command: uvicorn backend.main:app --host 0.0.0.0 --port 5005 --proxy-headers --forwarded-allow-ips '*'
     depends_on:
       postgres:
         condition: service_healthy
@@ -87,11 +87,14 @@ services:
     container_name: documents-translatev3-frontend
     ports:
       - "5195:80"
+      - "5196:443"
     depends_on:
       backend:
         condition: service_healthy
     volumes:
       - ./frontend:/app/frontend
+      - ./frontend/192.168.90.168.pem:/etc/nginx/ssl/server.pem:ro
+      - ./frontend/192.168.90.168-key.pem:/etc/nginx/ssl/server-key.pem:ro
     develop:
       watch:
         - action: rebuild
@@ -112,7 +115,7 @@ services:
     volumes:
       - ./data/postgres:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U app -d appdb"]
+      test: [ "CMD-SHELL", "pg_isready -U app -d appdb" ]
       interval: 10s
       timeout: 5s
       retries: 5

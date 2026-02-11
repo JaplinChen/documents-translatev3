@@ -1,4 +1,4 @@
-import { API_BASE } from '../../constants';
+import { tmApi } from '../../services/api/tm';
 
 export function useGlossaryMemoryBatch({
     isGlossary,
@@ -15,16 +15,13 @@ export function useGlossaryMemoryBatch({
         if (!window.confirm(t('manage.batch.confirm_delete', { count: selectedIds.length }))) return;
 
         try {
-            const endpoint = isGlossary ? 'glossary' : 'memory';
-            const res = await fetch(`${API_BASE}/api/tm/${endpoint}/batch`, {
-                method: 'DELETE',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ ids: selectedIds }),
-            });
-            if (res.ok) {
-                setSelectedIds([]);
-                onSeed();
+            if (isGlossary) {
+                await tmApi.batchDeleteGlossary(selectedIds);
+            } else {
+                await tmApi.batchDeleteMemory(selectedIds);
             }
+            setSelectedIds([]);
+            onSeed();
         } catch (err) {
             console.error(err);
         }

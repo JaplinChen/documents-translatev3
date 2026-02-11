@@ -27,7 +27,7 @@
 - [x] **後端服務拆分**: 將文字處理、字體管理拆分為獨立模組 (`font_manager.py`)。
 - [x] **Regex 優化**: 全域編譯正規表達式，提升處理效能。
 - [x] **前端 Regex 統一**: 建立 `utils/regex.js` 消除重複代碼。
-- [x] **DevOps 清理**: 建立自動化清理腳本 (`scripts/cleanup_project.py`)。
+- [x] **DevOps 清理**: 建立自動化清理腳本 (`scripts/cleanup/cleanup_project.py`)。
 
 ---
 

@@ -4,14 +4,15 @@ import tempfile
 from pathlib import Path
 
 from fastapi import APIRouter, File, Form, HTTPException, UploadFile, Body
-from fastapi.responses import FileResponse, StreamingResponse
 
 from backend.api.error_handler import api_error_handler, validate_json_blocks
+from backend.api.download_utils import build_download_response
 from backend.api.pptx_naming import generate_semantic_filename_with_ext
 from backend.api.pptx_translate import TranslateRequest, pptx_translate_stream
 from backend.api.pptx_utils import validate_file_type
 from backend.contracts import coerce_blocks
 from backend.services.language_detect import detect_document_languages
+from backend.services.layout_registry import resolve_layout_apply_value
 from backend.services.pdf.extract import extract_blocks as extract_pdf_blocks
 from backend.services.document_cache import doc_cache
 from backend.services.pdf.apply import apply_bilingual, apply_translations
@@ -81,6 +82,9 @@ async def pdf_apply(
     file: UploadFile = File(...),
     blocks: str = Form(...),
     mode: str = Form("bilingual"),
+    bilingual_layout: str = Form("inline"),
+    layout_id: str | None = Form(None),
+    layout_params: str | None = Form(None),
 ) -> dict:
     valid, err = validate_file_type(file.filename)
     if not valid:
@@ -95,9 +99,23 @@ async def pdf_apply(
         blocks_data = coerce_blocks(json.loads(blocks))
     except Exception as exc:
         raise HTTPException(status_code=400, detail="資料格式錯誤") from exc
+    parsed_layout_params: dict = {}
+    if layout_params:
+        try:
+            maybe_obj = json.loads(layout_params)
+            if isinstance(maybe_obj, dict):
+                parsed_layout_params = maybe_obj
+        except Exception:
+            parsed_layout_params = {}
 
     if mode not in {"bilingual", "translated"}:
         raise HTTPException(status_code=400, detail="不支援的 mode")
+    apply_layout = resolve_layout_apply_value(
+        layout_id=layout_id,
+        file_type="pdf",
+        mode=mode,
+        fallback_value=bilingual_layout,
+    )
 
     with tempfile.TemporaryDirectory(ignore_cleanup_errors=True) as temp_dir:
         in_p = os.path.join(temp_dir, "in.pdf")
@@ -111,9 +129,21 @@ async def pdf_apply(
             target_lang = blocks_data[0].get("target_lang")
 
         if mode == "bilingual":
-            apply_bilingual(in_p, out_p, blocks_data, target_language=target_lang)
+            apply_bilingual(
+                in_p,
+                out_p,
+                blocks_data,
+                target_language=target_lang,
+                layout_params=parsed_layout_params,
+            )
         else:
-            apply_translations(in_p, out_p, blocks_data, target_language=target_lang)
+            apply_translations(
+                in_p,
+                out_p,
+                blocks_data,
+                target_language=target_lang,
+                layout_params=parsed_layout_params,
+            )
 
         with open(out_p, "rb") as h:
             output_bytes = h.read()
@@ -121,7 +151,7 @@ async def pdf_apply(
     final_filename = generate_semantic_filename_with_ext(
         file.filename,
         mode,
-        "inline",
+        apply_layout,
         ".pdf",
     )
     save_path = Path("data/exports") / final_filename
@@ -141,32 +171,7 @@ async def pdf_apply(
 
 @router.get("/download/{filename:path}")
 async def pdf_download(filename: str):
-    import urllib.parse
-
-    # Resolve the path relative to exports
-    file_path = Path("data/exports") / filename
-    if not file_path.exists():
-        # Fallback to unquoted name if necessary
-        alt_path = Path("data/exports") / urllib.parse.unquote(filename)
-        if alt_path.exists():
-            file_path = alt_path
-        else:
-            raise HTTPException(status_code=404, detail="檔案不存在")
-
-    actual_filename = file_path.name
-    ascii_name = "".join(c if ord(c) < 128 else "_" for c in actual_filename)
-    safe_name = urllib.parse.quote(actual_filename, safe="")
-    disposition = f"attachment; filename=\"{ascii_name}\"; filename*=UTF-8''{safe_name}"
-
-    return FileResponse(
-        path=file_path,
-        media_type="application/pdf",
-        headers={
-            "Content-Disposition": disposition,
-            "Access-Control-Expose-Headers": "Content-Disposition",
-            "Cache-Control": "no-cache",
-        },
-    )
+    return build_download_response(filename, "application/pdf")
 
 
 @router.post("/translate-stream")

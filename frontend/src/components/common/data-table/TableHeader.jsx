@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useLayoutEffect, useRef } from 'react';
 import { ArrowUpDown } from 'lucide-react';
 
 export function TableHeader({
@@ -16,10 +16,17 @@ export function TableHeader({
     startResize,
     t,
 }) {
+    const rowRef = useRef(null);
+
+    useLayoutEffect(() => {
+        if (!rowRef.current) return;
+        rowRef.current.style.gridTemplateColumns = gridTemplateColumns;
+    }, [gridTemplateColumns]);
+
     return (
         <div
+            ref={rowRef}
             className="unified-data-row data-header sticky top-0 z-20 bg-white shadow-sm shrink-0 border-b border-slate-200"
-            style={{ gridTemplateColumns }}
         >
             {onSelectionChange && (
                 <div className="data-cell w-10 shrink-0 flex items-center justify-center border-r border-slate-100">

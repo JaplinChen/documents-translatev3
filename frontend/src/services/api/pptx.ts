@@ -1,4 +1,4 @@
-import { API_BASE_URL, ApiClientError, createFormData, handleResponse, startJsonLineStream } from './core';
+import { API_BASE_URL, createFormData, deleteJson, getBlob, getJson, postFile, postForm, startJsonLineStream } from './core';
 import type {
     PptxApplyParams,
     PptxApplyResponse,
@@ -13,64 +13,33 @@ import type {
 
 export const pptxApi = {
     async extract(file: File): Promise<PptxExtractResponse> {
-        const formData = new FormData();
-        formData.append('file', file);
-        const response = await fetch(`${API_BASE_URL}/api/pptx/extract`, {
-            method: 'POST',
-            body: formData,
-        });
-        return handleResponse<PptxExtractResponse>(response);
+        return postFile<PptxExtractResponse>('/api/pptx/extract', file);
     },
 
     async languages(file: File): Promise<PptxLanguagesResponse> {
-        const formData = new FormData();
-        formData.append('file', file);
-        const response = await fetch(`${API_BASE_URL}/api/pptx/languages`, {
-            method: 'POST',
-            body: formData,
-        });
-        return handleResponse<PptxLanguagesResponse>(response);
+        return postFile<PptxLanguagesResponse>('/api/pptx/languages', file);
     },
 
     async apply(params: PptxApplyParams): Promise<PptxApplyResponse> {
-        const formData = createFormData(params);
-        const response = await fetch(`${API_BASE_URL}/api/pptx/apply`, {
-            method: 'POST',
-            body: formData,
-        });
-        return handleResponse<PptxApplyResponse>(response);
+        return postForm<PptxApplyResponse>('/api/pptx/apply', params);
     },
 
     async download(filename: string): Promise<Blob> {
-        const response = await fetch(
-            `${API_BASE_URL}/api/pptx/download/${encodeURIComponent(filename)}`
-        );
-        if (!response.ok) {
-            throw new ApiClientError('Download failed', response.status);
-        }
-        return response.blob();
+        return getBlob(`/api/pptx/download/${encodeURIComponent(filename)}`);
     },
 
     async history(): Promise<PptxHistoryResponse> {
-        const response = await fetch(`${API_BASE_URL}/api/pptx/history`);
-        return handleResponse<PptxHistoryResponse>(response);
+        return getJson<PptxHistoryResponse>('/api/pptx/history');
     },
 
     async deleteHistory(filename: string): Promise<{ status: string }> {
-        const response = await fetch(
-            `${API_BASE_URL}/api/pptx/history/${encodeURIComponent(filename)}`,
-            { method: 'DELETE' }
+        return deleteJson<{ status: string }>(
+            `/api/pptx/history/${encodeURIComponent(filename)}`
         );
-        return handleResponse<{ status: string }>(response);
     },
 
     async translate(params: PptxTranslateParams): Promise<{ results: TextBlock[] }> {
-        const formData = createFormData(params);
-        const response = await fetch(`${API_BASE_URL}/api/pptx/translate`, {
-            method: 'POST',
-            body: formData,
-        });
-        return handleResponse<{ results: TextBlock[] }>(response);
+        return postForm<{ results: TextBlock[] }>('/api/pptx/translate', params);
     },
 
     translateStream(
@@ -97,15 +66,10 @@ export const pptxApi = {
             base_url?: string;
         }
     ): Promise<PptxExtractGlossaryResponse> {
-        const formData = createFormData({
+        return postForm<PptxExtractGlossaryResponse>('/api/pptx/extract-glossary', {
             blocks,
             target_language: targetLanguage,
             ...options,
         });
-        const response = await fetch(`${API_BASE_URL}/api/pptx/extract-glossary`, {
-            method: 'POST',
-            body: formData,
-        });
-        return handleResponse<PptxExtractGlossaryResponse>(response);
     },
 };

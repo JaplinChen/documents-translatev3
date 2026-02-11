@@ -2,7 +2,7 @@ import React, { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Plus } from "lucide-react";
 
-import { API_BASE } from "../../constants";
+import { tmApi } from "../../services/api/tm";
 import { DataTable } from "../common/DataTable";
 import { CategoryPill } from "./CategoryPill";
 
@@ -61,14 +61,8 @@ export default function TMCategoriesTab({ categories, onRefresh }) {
     const handleCreate = async () => {
         setSaving(true);
         try {
-            const res = await fetch(`${API_BASE}/api/tm/categories`, {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ name: t("manage.categories.new_category"), sort_order: 0 })
-            });
-            if (res.ok) {
-                onRefresh();
-            }
+            await tmApi.createCategory(t("manage.categories.new_category"), 0);
+            onRefresh();
         } catch (err) {
             console.error(err);
         } finally {
@@ -80,16 +74,10 @@ export default function TMCategoriesTab({ categories, onRefresh }) {
         if (!draft?.name?.trim()) return;
         setSaving(true);
         try {
-            const res = await fetch(`${API_BASE}/api/tm/categories/${editingId}`, {
-                method: "PUT",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ name: draft.name.trim(), sort_order: draft.sort_order })
-            });
-            if (res.ok) {
-                setEditingId(null);
-                setDraft(null);
-                onRefresh();
-            }
+            await tmApi.updateCategory(editingId, draft.name.trim(), draft.sort_order);
+            setEditingId(null);
+            setDraft(null);
+            onRefresh();
         } catch (err) {
             console.error(err);
         } finally {
@@ -100,10 +88,8 @@ export default function TMCategoriesTab({ categories, onRefresh }) {
     const handleDelete = async (id) => {
         if (!window.confirm(t("manage.confirm.delete"))) return;
         try {
-            const res = await fetch(`${API_BASE}/api/tm/categories/${id}`, {
-                method: "DELETE"
-            });
-            if (res.ok) onRefresh();
+            await tmApi.deleteCategory(id);
+            onRefresh();
         } catch (err) {
             console.error(err);
         }

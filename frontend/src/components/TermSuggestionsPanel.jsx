@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { useTranslation } from "react-i18next";
-import { API_BASE } from "../constants";
+import { exportApi } from "../services/api/export";
 
 /**
  * Term Suggestions Panel Component
@@ -25,13 +25,7 @@ export function TermSuggestionsPanel({ blocks, onAddTerm, onClose }) {
         setLoading(true);
         setError(null);
         try {
-            const response = await fetch(`${API_BASE}/api/suggest-terms`, {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ blocks }),
-            });
-            if (!response.ok) throw new Error(t("term_suggestions.fetch_failed"));
-            const data = await response.json();
+            const data = await exportApi.suggestTerms(blocks);
             setSuggestions(data.suggestions || []);
         } catch (err) {
             setError(err.message);
@@ -63,81 +57,47 @@ export function TermSuggestionsPanel({ blocks, onAddTerm, onClose }) {
         }
     };
 
-    const getConfidenceStyle = (confidence) => {
-        if (confidence >= 0.9) return { color: "#059669", fontWeight: "600" };
-        if (confidence >= 0.7) return { color: "#d97706" };
-        return { color: "#6b7280" };
+    const getConfidenceClass = (confidence) => {
+        if (confidence >= 0.9) return "confidence-high";
+        if (confidence >= 0.7) return "confidence-medium";
+        return "confidence-low";
     };
 
     return (
-        <div className="term-suggestions-panel" style={{
-            backgroundColor: "#fff",
-            borderRadius: "12px",
-            boxShadow: "0 4px 20px rgba(0,0,0,0.1)",
-            maxWidth: "400px",
-            maxHeight: "500px",
-            overflow: "hidden",
-            display: "flex",
-            flexDirection: "column",
-        }}>
+        <div className="term-suggestions-panel">
             {/* Header */}
-            <div style={{
-                padding: "14px 16px",
-                borderBottom: "1px solid #e5e7eb",
-                display: "flex",
-                justifyContent: "space-between",
-                alignItems: "center",
-            }}>
+            <div className="term-suggestions-header">
                 <div>
-                    <h3 style={{ margin: 0, fontSize: "15px", fontWeight: "600" }}>
+                    <h3 className="term-suggestions-title">
                         {t("term_suggestions.title")}
                     </h3>
-                    <p style={{ margin: "4px 0 0", fontSize: "12px", color: "#6b7280" }}>
+                    <p className="term-suggestions-count">
                         {t("term_suggestions.count", { count: suggestions.length })}
                     </p>
                 </div>
                 {onClose && (
-                    <button
-                        onClick={onClose}
-                        style={{
-                            background: "none",
-                            border: "none",
-                            fontSize: "18px",
-                            cursor: "pointer",
-                            padding: "4px",
-                        }}
-                    >
+                    <button onClick={onClose} className="term-suggestions-close-btn">
                         ×
                     </button>
                 )}
             </div>
 
             {/* Content */}
-            <div style={{
-                flex: 1,
-                overflow: "auto",
-                padding: "12px",
-            }}>
+            <div className="term-suggestions-content">
                 {loading && (
-                    <div style={{ textAlign: "center", padding: "20px", color: "#6b7280" }}>
+                    <div className="term-suggestions-state">
                         {t("term_suggestions.loading")}
                     </div>
                 )}
 
                 {error && (
-                    <div style={{
-                        padding: "12px",
-                        backgroundColor: "#fee2e2",
-                        color: "#991b1b",
-                        borderRadius: "8px",
-                        fontSize: "13px",
-                    }}>
+                    <div className="term-suggestions-error">
                         {error}
                     </div>
                 )}
 
                 {!loading && !error && suggestions.length === 0 && (
-                    <div style={{ textAlign: "center", padding: "20px", color: "#6b7280" }}>
+                    <div className="term-suggestions-state">
                         {t("term_suggestions.empty")}
                     </div>
                 )}
@@ -147,50 +107,23 @@ export function TermSuggestionsPanel({ blocks, onAddTerm, onClose }) {
                     return (
                         <div
                             key={idx}
-                            style={{
-                                padding: "10px 12px",
-                                marginBottom: "8px",
-                                backgroundColor: isAdded ? "#f0fdf4" : "#f9fafb",
-                                borderRadius: "8px",
-                                border: isAdded ? "1px solid #86efac" : "1px solid #e5e7eb",
-                            }}
+                            className={`term-suggestion-item ${isAdded ? "is-added" : ""}`}
                         >
-                            <div style={{
-                                display: "flex",
-                                justifyContent: "space-between",
-                                alignItems: "center",
-                                marginBottom: "4px",
-                            }}>
-                                <span style={{ fontWeight: "600", fontSize: "14px" }}>
+                            <div className="term-suggestion-head">
+                                <span className="term-suggestion-term">
                                     {getCategoryIcon(suggestion.category)} {suggestion.term}
                                 </span>
-                                <span style={{
-                                    fontSize: "11px",
-                                    ...getConfidenceStyle(suggestion.confidence),
-                                }}>
+                                <span className={`term-suggestion-confidence ${getConfidenceClass(suggestion.confidence)}`}>
                                     {Math.round(suggestion.confidence * 100)}%
                                 </span>
                             </div>
-                            <div style={{
-                                fontSize: "11px",
-                                color: "#6b7280",
-                                marginBottom: "8px",
-                                lineHeight: "1.4",
-                            }}>
+                            <div className="term-suggestion-context">
                                 {suggestion.context}
                             </div>
                             <button
                                 onClick={() => handleAddTerm(suggestion)}
                                 disabled={isAdded}
-                                style={{
-                                    padding: "4px 10px",
-                                    fontSize: "11px",
-                                    borderRadius: "4px",
-                                    border: "none",
-                                    cursor: isAdded ? "default" : "pointer",
-                                    backgroundColor: isAdded ? "#86efac" : "#3b82f6",
-                                    color: isAdded ? "#166534" : "#fff",
-                                }}
+                                className={`term-suggestion-add-btn ${isAdded ? "is-added" : ""}`}
                             >
                                 {isAdded ? t("term_suggestions.added") : t("term_suggestions.add")}
                             </button>

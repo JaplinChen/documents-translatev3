@@ -1,4 +1,7 @@
-export const handleExport = (path) => window.open(path, '_blank');
+import { buildApiUrl } from '../../services/api/core';
+import { tmApi } from '../../services/api/tm';
+
+export const handleExport = (path) => window.open(buildApiUrl(path), '_blank');
 
 export const handleImportFile = ({
     event,
@@ -14,6 +17,9 @@ export const handleImportFile = ({
     else setLastMemoryAt(Date.now());
     const formData = new FormData();
     formData.append('file', file);
-    fetch(path, { method: 'POST', body: formData }).then(() => reload());
+    const relativePath = path.startsWith('/api/') ? path : path.replace(/^https?:\/\/[^/]+/, '');
+    const endpoint = relativePath.includes('/glossary/') ? 'glossary' : 'memory';
+    const upload = endpoint === 'glossary' ? tmApi.importGlossary : tmApi.importMemory;
+    upload(file).then(() => reload());
     event.target.value = '';
 };

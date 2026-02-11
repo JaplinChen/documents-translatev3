@@ -126,4 +126,26 @@
         @apply h-full bg-blue-500 transition-all duration-500 ease-out;
         box-shadow: 0 0 8px rgba(59, 130, 246, 0.5);
     }
+
+    .navbar-progress-track {
+        @apply w-full h-full block;
+        appearance: none;
+        background: transparent;
+        border: 0;
+    }
+
+    .navbar-progress-track::-webkit-progress-bar {
+        background: transparent;
+    }
+
+    .navbar-progress-track::-webkit-progress-value {
+        background: #3b82f6;
+        box-shadow: 0 0 8px rgba(59, 130, 246, 0.5);
+        transition: width 0.5s ease-out;
+    }
+
+    .navbar-progress-track::-moz-progress-bar {
+        background: #3b82f6;
+        box-shadow: 0 0 8px rgba(59, 130, 246, 0.5);
+    }
 }

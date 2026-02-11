@@ -1,20 +1,36 @@
 import os
 
-from PIL import Image, ImageDraw
+from PIL import Image, ImageDraw, ImageFont
 from reportlab.pdfgen import canvas
 
 from backend.services.pdf.extract import extract_blocks
 
+def _load_test_font(size: int) -> ImageFont.FreeTypeFont | ImageFont.ImageFont:
+    candidates = [
+        "arial.ttf",
+        "DejaVuSans.ttf",
+        "LiberationSans-Regular.ttf",
+    ]
+    for name in candidates:
+        try:
+            return ImageFont.truetype(name, size)
+        except Exception:
+            continue
+    return ImageFont.load_default()
+
+
 def create_image_pdf(file_path, text="OCR TEST CONTENT"):
     # 1. Create an image with text
-    img = Image.new('RGB', (500, 200), color=(255, 255, 255))
+    img = Image.new('RGB', (900, 300), color=(255, 255, 255))
     d = ImageDraw.Draw(img)
-    d.text((50, 50), text, fill=(0, 0, 0))
+    font = _load_test_font(56)
+    d.text((40, 80), text, fill=(0, 0, 0), font=font)
+    d.text((42, 80), text, fill=(0, 0, 0), font=font)
     img.save("temp_ocr.png")
 
     # 2. Put image in PDF
-    c = canvas.Canvas(file_path)
-    c.drawImage("temp_ocr.png", 0, 0, width=500, height=200)
+    c = canvas.Canvas(file_path, pagesize=img.size)
+    c.drawImage("temp_ocr.png", 0, 0, width=img.size[0], height=img.size[1])
     c.save()
     os.remove("temp_ocr.png")
 

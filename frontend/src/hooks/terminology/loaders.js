@@ -1,5 +1,5 @@
-import { API_BASE } from '../../constants';
 import { useUIStore } from '../../store/useUIStore';
+import { tmApi } from '../../services/api/tm';
 
 const parseCreatedAt = (value) => {
     if (!value) return null;
@@ -18,11 +18,7 @@ export const loadGlossaryItems = async ({
     isLatest,
 }) => {
     try {
-        const response = await fetch(`${API_BASE}/api/tm/glossary?limit=${limit}&offset=${offset || 0}`);
-        if (!response.ok) {
-            throw new Error(`glossary_load_failed:${response.status}`);
-        }
-        const data = await response.json();
+        const data = await tmApi.getGlossary(limit, offset || 0);
         if (isLatest && !isLatest()) return;
         const { lastGlossaryAt: latestGlossaryAt } = useUIStore.getState();
         const parsed = (data.items || []).map((item) => {
@@ -49,11 +45,7 @@ export const loadMemoryItems = async ({
     isLatest,
 }) => {
     try {
-        const response = await fetch(`${API_BASE}/api/tm/memory?limit=${limit}&offset=${offset || 0}`);
-        if (!response.ok) {
-            throw new Error(`memory_load_failed:${response.status}`);
-        }
-        const data = await response.json();
+        const data = await tmApi.getMemory(limit, offset || 0);
         if (isLatest && !isLatest()) return;
         const { lastTranslationAt: latestTranslationAt, lastMemoryAt: latestMemoryAt } = useUIStore.getState();
         const baseStamp = Math.max(latestTranslationAt || 0, latestMemoryAt || 0) || null;

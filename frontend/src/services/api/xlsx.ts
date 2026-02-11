@@ -1,34 +1,17 @@
-import { API_BASE_URL, ApiClientError, createFormData, handleResponse, startJsonLineStream } from './core';
+import { API_BASE_URL, createFormData, getBlob, postFile, postForm, startJsonLineStream } from './core';
 import type { PptxTranslateParams, TranslateProgressEvent, XlsxApplyParams, XlsxApplyResponse, XlsxExtractResponse } from '../api.types';
 
 export const xlsxApi = {
     async extract(file: File): Promise<XlsxExtractResponse> {
-        const formData = new FormData();
-        formData.append('file', file);
-        const response = await fetch(`${API_BASE_URL}/api/xlsx/extract`, {
-            method: 'POST',
-            body: formData,
-        });
-        return handleResponse<XlsxExtractResponse>(response);
+        return postFile<XlsxExtractResponse>('/api/xlsx/extract', file);
     },
 
     async apply(params: XlsxApplyParams): Promise<XlsxApplyResponse> {
-        const formData = createFormData(params);
-        const response = await fetch(`${API_BASE_URL}/api/xlsx/apply`, {
-            method: 'POST',
-            body: formData,
-        });
-        return handleResponse<XlsxApplyResponse>(response);
+        return postForm<XlsxApplyResponse>('/api/xlsx/apply', params);
     },
 
     async download(filename: string): Promise<Blob> {
-        const response = await fetch(
-            `${API_BASE_URL}/api/xlsx/download/${encodeURIComponent(filename)}`
-        );
-        if (!response.ok) {
-            throw new ApiClientError('Download failed', response.status);
-        }
-        return response.blob();
+        return getBlob(`/api/xlsx/download/${encodeURIComponent(filename)}`);
     },
 
     translateStream(

@@ -1,3 +1,4 @@
+import { useTranslation } from "react-i18next";
 import "../css/quality-badge.css";
 
 /**
@@ -26,9 +27,8 @@ export function QualityBadge({ score, issues = [], compact = false }) {
     if (compact) {
         return (
             <span
-                className={`quality-badge-compact ${statusClass}`}
+                className={`quality-badge-compact ${statusClass} ${issues.length > 0 ? "is-help" : ""}`}
                 title={`${t("components.quality_badge.score_label")}: ${score}/10\n${issues.join("\n")}`}
-                style={{ cursor: issues.length > 0 ? "help" : "default" }}
             >
                 {score}
             </span>
@@ -37,10 +37,10 @@ export function QualityBadge({ score, issues = [], compact = false }) {
 
     return (
         <div className={`quality-badge ${statusClass}`}>
-            <span style={{ fontWeight: "700" }}>{score}</span>
+            <span className="quality-score">{score}</span>
             <span>{getLabel(score)}</span>
             {issues.length > 0 && (
-                <span title={issues.join("\n")} style={{ cursor: "help", opacity: 0.7 }}>
+                <span title={issues.join("\n")} className="quality-help">
                     ⚠️
                 </span>
             )}

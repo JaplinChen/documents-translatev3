@@ -1,7 +1,8 @@
 import React, { useEffect, useState, useMemo } from "react";
 import { useTranslation } from "react-i18next";
-import { API_BASE } from "../../constants";
+import { buildApiUrl, deleteJson, postJson } from "../../services/api/core";
 import { DataTable } from "../common/DataTable";
+import { fetchHistoryFile, fetchHistoryItems } from "../../services/api/history";
 
 export default function HistoryTab({ onLoadFile }) {
     const { t } = useTranslation();
@@ -37,11 +38,8 @@ export default function HistoryTab({ onLoadFile }) {
     const fetchHistory = async () => {
         setLoading(true);
         try {
-            const res = await fetch(`${API_BASE}/api/pptx/history`);
-            if (res.ok) {
-                const data = await res.json();
-                setItems(data.items || []);
-            }
+            const data = await fetchHistoryItems();
+            setItems(data.items || []);
         } catch (err) {
             console.error("Failed to fetch history", err);
         } finally {
@@ -53,11 +51,11 @@ export default function HistoryTab({ onLoadFile }) {
         const encoded = encodeURIComponent(filename);
         const fileExt = getFileExt(filename);
         if (fileExt === "json") {
-            window.open(`${API_BASE}/api/pptx/download/${encoded}`, "_blank");
+            window.open(buildApiUrl(`/api/pptx/download/${encoded}`), "_blank");
             return;
         }
         const fileType = fileExt === "docx" ? "docx" : "pptx";
-        window.open(`${API_BASE}/api/${fileType}/download/${encoded}`, "_blank");
+        window.open(buildApiUrl(`/api/${fileType}/download/${encoded}`), "_blank");
     };
 
     const handleLoad = async (item) => {
@@ -71,14 +69,7 @@ export default function HistoryTab({ onLoadFile }) {
             const encoded = encodeURIComponent(item.filename);
             const isDocx = item.filename.toLowerCase().endsWith(".docx");
             const fileType = isDocx ? "docx" : "pptx";
-            const res = await fetch(`${API_BASE}/api/${fileType}/download/${encoded}`);
-            if (!res.ok) throw new Error("Download failed");
-
-            const blob = await res.blob();
-            const mimeType = isDocx ?
-                "application/vnd.openxmlformats-officedocument.wordprocessingml.document" :
-                "application/vnd.openxmlformats-officedocument.presentationml.presentation";
-            const file = new File([blob], item.filename, { type: mimeType });
+            const file = await fetchHistoryFile(item.filename, fileType);
 
             await onLoadFile(file);
         } catch (err) {
@@ -95,8 +86,8 @@ export default function HistoryTab({ onLoadFile }) {
             const encoded = encodeURIComponent(item.filename);
             const fileExt = getFileExt(item.filename);
             const fileType = fileExt === "docx" ? "docx" : "pptx";
-            const res = await fetch(`${API_BASE}/api/${fileType}/history/${encoded}`, { method: "DELETE" });
-            if (res.ok) fetchHistory();
+            await deleteJson(`/api/${fileType}/history/${encoded}`);
+            fetchHistory();
         } catch (e) {
             console.error(e);
         }
@@ -105,12 +96,9 @@ export default function HistoryTab({ onLoadFile }) {
     const handleResetAll = async () => {
         if (!window.confirm(t("history.extra_confirm_msg") || "確定要清理所有歷史快取檔案嗎？\n⚠️ 此操作僅會清除匯出的暫存檔，您的「對照表」與「術語」資料將會被妥善保留。")) return;
         try {
-            const res = await fetch(`${API_BASE}/api/admin/reset-cache`, { method: "POST" });
-            if (res.ok) {
-                const data = await res.json();
-                alert(t("history.reset_success", { count: data.deleted_files }));
-                fetchHistory();
-            }
+            const data = await postJson(`/api/admin/reset-cache`);
+            alert(t("history.reset_success", { count: data.deleted_files }));
+            fetchHistory();
         } catch (e) {
             console.error(e);
         }

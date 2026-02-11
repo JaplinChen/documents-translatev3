@@ -15,6 +15,7 @@
 @import "./css/layout/base.css";
 @import "./css/layout/token-stats.css";
 @import "./css/layout/blocks.css";
+@import "./css/layout/panels.css";
 @import "./css/layout/animations.css";
 @import "./css/modal.css";
 @import "./css/responsive.css";

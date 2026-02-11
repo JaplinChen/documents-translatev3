@@ -1,34 +1,17 @@
-import { API_BASE_URL, ApiClientError, createFormData, handleResponse, startJsonLineStream } from './core';
+import { API_BASE_URL, createFormData, getBlob, postFile, postForm, startJsonLineStream } from './core';
 import type { PdfApplyParams, PdfApplyResponse, PdfExtractResponse, PptxTranslateParams, TranslateProgressEvent } from '../api.types';
 
 export const pdfApi = {
     async extract(file: File): Promise<PdfExtractResponse> {
-        const formData = new FormData();
-        formData.append('file', file);
-        const response = await fetch(`${API_BASE_URL}/api/pdf/extract`, {
-            method: 'POST',
-            body: formData,
-        });
-        return handleResponse<PdfExtractResponse>(response);
+        return postFile<PdfExtractResponse>('/api/pdf/extract', file);
     },
 
     async apply(params: PdfApplyParams): Promise<PdfApplyResponse> {
-        const formData = createFormData(params);
-        const response = await fetch(`${API_BASE_URL}/api/pdf/apply`, {
-            method: 'POST',
-            body: formData,
-        });
-        return handleResponse<PdfApplyResponse>(response);
+        return postForm<PdfApplyResponse>('/api/pdf/apply', params);
     },
 
     async download(filename: string): Promise<Blob> {
-        const response = await fetch(
-            `${API_BASE_URL}/api/pdf/download/${encodeURIComponent(filename)}`
-        );
-        if (!response.ok) {
-            throw new ApiClientError('Download failed', response.status);
-        }
-        return response.blob();
+        return getBlob(`/api/pdf/download/${encodeURIComponent(filename)}`);
     },
 
     translateStream(

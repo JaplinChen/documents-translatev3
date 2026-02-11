@@ -27,7 +27,20 @@ jobs:
           flake8 backend --count --exit-zero --max-complexity=10 --max-line-length=127 --statistics
       - name: Run backend tests
         run: |
-          python -m pytest backend/tests/ -v
+          python -m pytest backend/tests/ tests/ -v
+      - name: Generate layouts API contract report
+        run: |
+          python scripts/dev/generate_layouts_contract_report.py
+      - name: Verify layouts contract report is up to date
+        run: |
+          git diff -- reports/layouts_api_contract_report.md
+          git diff --exit-code -- reports/layouts_api_contract_report.md
+      - name: Upload layouts contract report artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: layouts-api-contract-report
+          path: reports/layouts_api_contract_report.md
+          if-no-files-found: error
 
   frontend-check:
     name: documents-translatev3 frontend-check

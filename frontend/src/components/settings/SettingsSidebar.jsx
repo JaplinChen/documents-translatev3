@@ -10,7 +10,7 @@ export function SettingsSidebar({
         <aside className="settings-sidebar">
             <h4 className="sidebar-title">{t("settings.title")}</h4>
             <div className="sidebar-tabs">
-                {["llm", "ai", "ocr", "fonts", "correction", "prompt"].map((tKey) => (
+                {["llm", "ai", "ocr", "fonts", "layouts", "correction", "prompt"].map((tKey) => (
                     <button key={tKey} className={`sidebar-tab ${tab === tKey ? "active" : ""}`} type="button" onClick={() => setTab(tKey)}>
                         {t(`settings.tabs.${tKey}`)}
                     </button>

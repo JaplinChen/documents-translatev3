@@ -54,9 +54,25 @@ async def pptx_translate_stream(  # noqa: C901
     scope_id = request.scope_id
     domain = request.domain
     category = request.category
+    layout_params = request.layout_params
+
+    # Parse layout_params if it's a string
+    parsed_params = {}
+    if layout_params:
+        if isinstance(layout_params, str):
+            try:
+                parsed_params = json.loads(layout_params)
+            except Exception:
+                parsed_params = {}
+        elif isinstance(layout_params, dict):
+            parsed_params = layout_params
 
     completed_id_set = _resolve_completed_ids(completed_ids)
 
+    LOGGER.info(
+        "[LAYOUT_PARAMS] 接收到: raw=%s, parsed=%s",
+        layout_params, parsed_params,
+    )
     LOGGER.debug(
         "[ENTRY_DEBUG] /translate-stream Blocks type: %s",
         type(blocks),
@@ -76,7 +92,12 @@ async def pptx_translate_stream(  # noqa: C901
     param_overrides = _resolve_param_overrides(provider, refresh, ollama_fast_mode)
 
     effective_blocks, skipped_count = _filter_effective_blocks(
-        blocks_data, completed_id_set, refresh
+        blocks_data, completed_id_set, refresh, layout_params=parsed_params
+    )
+
+    LOGGER.info(
+        "[LAYOUT_PARAMS] 過濾結果: 總區塊=%s, 有效=%s, 跳過=%s",
+        len(blocks_data), len(effective_blocks), skipped_count,
     )
 
     if skipped_count > 0:

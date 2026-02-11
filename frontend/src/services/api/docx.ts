@@ -1,47 +1,27 @@
-import { API_BASE_URL, ApiClientError, createFormData, handleResponse, startJsonLineStream } from './core';
+import { API_BASE_URL, createFormData, deleteJson, getBlob, getJson, postFile, postForm, startJsonLineStream } from './core';
 import type { DocxApplyParams, DocxApplyResponse, DocxExtractResponse, PptxTranslateParams, TranslateProgressEvent } from '../api.types';
 
 export const docxApi = {
     async extract(file: File): Promise<DocxExtractResponse> {
-        const formData = new FormData();
-        formData.append('file', file);
-        const response = await fetch(`${API_BASE_URL}/api/docx/extract`, {
-            method: 'POST',
-            body: formData,
-        });
-        return handleResponse<DocxExtractResponse>(response);
+        return postFile<DocxExtractResponse>('/api/docx/extract', file);
     },
 
     async apply(params: DocxApplyParams): Promise<DocxApplyResponse> {
-        const formData = createFormData(params);
-        const response = await fetch(`${API_BASE_URL}/api/docx/apply`, {
-            method: 'POST',
-            body: formData,
-        });
-        return handleResponse<DocxApplyResponse>(response);
+        return postForm<DocxApplyResponse>('/api/docx/apply', params);
     },
 
     async download(filename: string): Promise<Blob> {
-        const response = await fetch(
-            `${API_BASE_URL}/api/docx/download/${encodeURIComponent(filename)}`
-        );
-        if (!response.ok) {
-            throw new ApiClientError('Download failed', response.status);
-        }
-        return response.blob();
+        return getBlob(`/api/docx/download/${encodeURIComponent(filename)}`);
     },
 
     async history(): Promise<{ items: unknown[] }> {
-        const response = await fetch(`${API_BASE_URL}/api/docx/history`);
-        return handleResponse<{ items: unknown[] }>(response);
+        return getJson<{ items: unknown[] }>('/api/docx/history');
     },
 
     async deleteHistory(filename: string): Promise<{ status: string }> {
-        const response = await fetch(
-            `${API_BASE_URL}/api/docx/history/${encodeURIComponent(filename)}`,
-            { method: 'DELETE' }
+        return deleteJson<{ status: string }>(
+            `/api/docx/history/${encodeURIComponent(filename)}`
         );
-        return handleResponse<{ status: string }>(response);
     },
 
     translateStream(

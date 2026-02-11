@@ -25,3 +25,4 @@ class TranslateRequest(BaseModel):
     scope_id: str | None = "default"
     domain: str | None = None
     category: str | None = None
+    layout_params: str | dict | None = None

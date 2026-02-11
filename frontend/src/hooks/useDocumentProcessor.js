@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
-import { API_BASE, APP_STATUS } from "../constants";
+import { APP_STATUS } from "../constants";
+import { buildApiUrl } from "../services/api/core";
 import { useFileStore } from "../store/useFileStore";
 import { useSettingsStore } from "../store/useSettingsStore";
 import { useUIStore } from "../store/useUIStore";
@@ -15,7 +16,7 @@ export function useDocumentProcessor() {
     const currentProvider = providers[llmProvider] || {};
     const { apiKey: llmApiKey, baseUrl: llmBaseUrl, model: llmModel, fastMode: llmFastMode } = currentProvider;
     const {
-        sourceLang, secondaryLang, targetLang, mode, bilingualLayout,
+        sourceLang, secondaryLang, targetLang, mode, bilingualLayout, layoutParams,
         setStatus, setAppStatus, setBusy, setSlideDimensions, setLastTranslationAt
     } = useUIStore();
 
@@ -41,7 +42,10 @@ export function useDocumentProcessor() {
             if (sourceLang) {
                 formData.append("source_language", sourceLang);
             }
-            const response = await fetch(`${API_BASE}/api/${fileType}/extract?refresh=${refresh}`, { method: "POST", body: formData });
+            if (layoutParams) {
+                formData.append("layout_params", JSON.stringify(layoutParams));
+            }
+            const response = await fetch(buildApiUrl(`/api/${fileType}/extract?refresh=${refresh}`), { method: "POST", body: formData });
             if (!response.ok) throw new Error(await readErrorDetail(response, t("status.extract_failed")));
             const data = await response.json();
             const nextBlocks = (data.blocks || []).map((block, idx) => {
@@ -98,21 +102,21 @@ export function useDocumentProcessor() {
         const finalizeTranslation = (finalBlocks = []) => {
             setBlocks(prev => {
                 const next = prev.map((b) => {
-                const match = finalBlocks.find(f => f.client_id === b.client_id || f._uid === b._uid);
-                if (!match) return b;
-                const hasT = Object.prototype.hasOwnProperty.call(match, "translated_text");
-                const rawTranslated = hasT ? match.translated_text : b.translated_text;
-                const cleanedTranslated = hasT
-                    ? stripBilingualText(b.source_text, rawTranslated, targetLang)
-                    : b.translated_text;
-                return {
-                    ...b,
-                    translated_text: cleanedTranslated,
-                    correction_temp: match.correction_temp ?? b.correction_temp,
-                    temp_translated_text: match.temp_translated_text ?? b.temp_translated_text,
-                    isTranslating: false,
-                    updatedAt: (hasT && cleanedTranslated) ? new Date().toLocaleTimeString("zh-TW", { hour12: false }) : b.updatedAt
-                };
+                    const match = finalBlocks.find(f => f.client_id === b.client_id || f._uid === b._uid);
+                    if (!match) return b;
+                    const hasT = Object.prototype.hasOwnProperty.call(match, "translated_text");
+                    const rawTranslated = hasT ? match.translated_text : b.translated_text;
+                    const cleanedTranslated = hasT
+                        ? stripBilingualText(b.source_text, rawTranslated, targetLang)
+                        : b.translated_text;
+                    return {
+                        ...b,
+                        translated_text: cleanedTranslated,
+                        correction_temp: match.correction_temp ?? b.correction_temp,
+                        temp_translated_text: match.temp_translated_text ?? b.temp_translated_text,
+                        isTranslating: false,
+                        updatedAt: (hasT && cleanedTranslated) ? new Date().toLocaleTimeString("zh-TW", { hour12: false }) : b.updatedAt
+                    };
                 });
                 const translatedCount = next.filter(b => (b.translated_text || "").trim()).length;
                 const total = next.length || blocks.length;
@@ -140,10 +144,11 @@ export function useDocumentProcessor() {
                     vision_context: !!ai.useVision,
                     smart_layout: !!ai.useSmartLayout,
                     similarity_threshold: parseFloat(correction.similarityThreshold?.toString() || "0.75"),
-                    completed_ids: null // 批次請求不需傳入已完成 ID，因為 payload 本身就是分段的
+                    completed_ids: null, // 批次請求不需傳入已完成 ID，因為 payload 本身就是分段的
+                    layout_params: layoutParams || {}
                 };
 
-                const response = await fetch(`${API_BASE}/api/${fileType}/translate-stream`, {
+                const response = await fetch(buildApiUrl(`/api/${fileType}/translate-stream`), {
                     method: "POST",
                     headers: { "Content-Type": "application/json" },
                     body: JSON.stringify(payload)
@@ -228,9 +233,11 @@ export function useDocumentProcessor() {
                 }
             }
             setProgress(100); setStatus(t("sidebar.translate.completed"));
+            setBlocks(prev => prev.map(b => ({ ...b, isTranslating: false })));
             setAppStatus(APP_STATUS.TRANSLATION_COMPLETED); setBusy(false);
         } catch (error) {
             setStatus(`${t("status.translate_failed")}：${error.message}`);
+            setBlocks(prev => prev.map(b => ({ ...b, isTranslating: false })));
             setAppStatus(APP_STATUS.ERROR); setBusy(false);
         }
     };
@@ -256,10 +263,14 @@ export function useDocumentProcessor() {
                 formData.append("fill_color", fillColor); formData.append("text_color", textColor);
                 formData.append("line_color", lineColor); formData.append("line_dash", lineDash);
             }
-            if (mode === "bilingual") formData.append("bilingual_layout", bilingualLayout);
+            if (mode === "bilingual") {
+                formData.append("bilingual_layout", bilingualLayout);
+                formData.append("layout_id", bilingualLayout);
+                formData.append("layout_params", JSON.stringify(layoutParams || {}));
+            }
             if (fontMapping) formData.append("font_mapping", JSON.stringify(fontMapping));
 
-            const res = await fetch(`${API_BASE}/api/${fileType}/apply`, { method: "POST", body: formData });
+            const res = await fetch(buildApiUrl(`/api/${fileType}/apply`), { method: "POST", body: formData });
             if (!res.ok) {
                 const detail = await readErrorDetail(res, t("status.apply_failed"));
                 throw new Error(detail);
@@ -268,7 +279,7 @@ export function useDocumentProcessor() {
             if (result.status !== "success" || !result.download_url) throw new Error(t("status.backend_generate_failed"));
 
             // --- New Selective Download Logic ---
-            const downloadRes = await fetch(`${API_BASE}${result.download_url}`);
+            const downloadRes = await fetch(buildApiUrl(result.download_url));
             if (!downloadRes.ok) throw new Error("Download failed");
 
             // Extract filename from header

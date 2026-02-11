@@ -100,4 +100,8 @@
         border-color: var(--accent);
         background-color: var(--bg-hover);
     }
+
+    .export-mini-btn {
+        @apply px-3 py-1.5 text-xs h-8;
+    }
 }

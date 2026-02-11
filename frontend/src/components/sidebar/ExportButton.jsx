@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { API_BASE } from "../../constants";
+import { exportApi } from "../../services/api/export";
 
 export function ExportButton({ format, label, blocks, originalFilename, mode, layout, disabled }) {
     const [exporting, setExporting] = useState(false);
@@ -7,16 +7,12 @@ export function ExportButton({ format, label, blocks, originalFilename, mode, la
         if (disabled || exporting || !blocks?.length) return;
         setExporting(true);
         try {
-            const response = await fetch(`${API_BASE}/api/export/${format}`, {
-                method: "POST", headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({
-                    blocks,
-                    original_filename: originalFilename,
-                    mode: mode,
-                    layout: layout
-                }),
+            const response = await exportApi.exportByFormatWithHeaders(format, {
+                blocks,
+                original_filename: originalFilename,
+                mode: mode,
+                layout: layout
             });
-            if (!response.ok) throw new Error("Export failed");
 
             // Try to get filename from header
             const disposition = response.headers.get('Content-Disposition');
@@ -41,8 +37,11 @@ export function ExportButton({ format, label, blocks, originalFilename, mode, la
         } finally { setExporting(false); }
     };
     return (
-        <button className="btn secondary btn-sm" onClick={handleExport} disabled={disabled || exporting}
-            style={{ padding: "6px 12px", fontSize: "12px" }}>
+        <button
+            className="btn secondary btn-sm export-mini-btn"
+            onClick={handleExport}
+            disabled={disabled || exporting}
+        >
             {exporting ? "..." : label}
         </button>
     );

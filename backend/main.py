@@ -18,6 +18,7 @@ from fastapi.staticfiles import StaticFiles
 from backend.api import (
     docx_router,
     export_router,
+    layouts_router,
     llm_router,
     ocr_settings_router,
     pdf_router,
@@ -66,6 +67,7 @@ app.include_router(pptx_router)
 app.include_router(pptx_translate_router)
 app.include_router(tm_router)
 app.include_router(llm_router)
+app.include_router(layouts_router)
 app.include_router(prompt_router)
 app.include_router(preserve_terms_router)
 app.include_router(terms_router)
@@ -107,6 +109,17 @@ async def reset_cache():
                     count += 1
                 except Exception:
                     pass
+
+    # 4. Clean SQLite document cache
+    try:
+        import sqlite3
+        cache_db = data_dir / "cache.db"
+        if cache_db.exists():
+            with sqlite3.connect(cache_db) as conn:
+                conn.execute("DELETE FROM document_cache")
+                count += 1
+    except Exception:
+        pass
 
     return {"status": "success", "deleted_files": count}
 
@@ -154,4 +167,5 @@ def health_check():
 if __name__ == "__main__":
     import uvicorn
 
-    uvicorn.run("backend.main:app", host="0.0.0.0", port=5005, reload=True)
+    uvicorn.run("backend.main:app", host="0.0.0.0", port=5005, reload=True, proxy_headers=True, forwarded_allow_ips='*')
+

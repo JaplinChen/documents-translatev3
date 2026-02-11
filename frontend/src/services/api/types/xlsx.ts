@@ -11,6 +11,8 @@ export interface XlsxApplyParams {
   blocks: string;
   mode?: 'bilingual' | 'translated';
   bilingual_layout?: 'inline' | 'new_slide' | 'new_page' | 'new_sheet' | 'auto';
+  layout_id?: string;
+  layout_params?: string;
   target_language?: string;
 }
 

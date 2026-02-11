@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useTranslation } from "react-i18next";
-import { API_BASE } from "../constants";
+import { tokenStatsApi } from "../services/api/token_stats";
 
 /**
  * Token Usage Statistics Display Component
@@ -8,32 +8,61 @@ import { API_BASE } from "../constants";
  */
 export default function TokenStats({ className = "" }) {
     const { t } = useTranslation();
-    const [stats, setStats] = useState(null);
-    const [loading, setLoading] = useState(true);
+    const [stats, setStats] = useState({
+        session: {
+            prompt_tokens: 0,
+            completion_tokens: 0,
+            total_tokens: 0,
+            estimated_cost_usd: 0,
+            request_count: 0,
+            models_used: [],
+        },
+        all_time: {
+            total_tokens: 0,
+            estimated_cost_usd: 0,
+            request_count: 0,
+        },
+    });
+    const [loading, setLoading] = useState(false);
     const [expanded, setExpanded] = useState(false);
+    const [loadedOnce, setLoadedOnce] = useState(false);
 
     const fetchStats = async () => {
+        setLoading(true);
         try {
-            const res = await fetch(`${API_BASE}/api/token-stats`);
-            if (!res.ok) throw new Error("API error");
-            const data = await res.json();
+            const data = await tokenStatsApi.get();
             setStats(data);
+            setLoadedOnce(true);
         } catch (error) {
             // Silently fail to not disrupt UX
-            setStats(null);
+            if (!loadedOnce) {
+                setStats({
+                    session: {
+                        prompt_tokens: 0,
+                        completion_tokens: 0,
+                        total_tokens: 0,
+                        estimated_cost_usd: 0,
+                        request_count: 0,
+                        models_used: [],
+                    },
+                    all_time: {
+                        total_tokens: 0,
+                        estimated_cost_usd: 0,
+                        request_count: 0,
+                    },
+                });
+            }
         } finally {
             setLoading(false);
         }
     };
 
     useEffect(() => {
+        if (!expanded) return undefined;
         fetchStats();
-        // Refresh every 60 seconds
         const interval = setInterval(fetchStats, 60000);
         return () => clearInterval(interval);
-    }, []);
-
-    if (loading || !stats) return null;
+    }, [expanded]);
 
     const { session, all_time } = stats;
     const hasUsage = session.total_tokens > 0;
@@ -69,6 +98,9 @@ export default function TokenStats({ className = "" }) {
                     </div>
 
                     <div className="token-stats-section">
+                        {loading && (
+                            <p className="stat-hint">{t("status.loading", "載入中...")}</p>
+                        )}
                         <h5>📊 {t("components.token_stats.session_title")}</h5>
                         <div className="stats-grid">
                             <div className="stat-item">

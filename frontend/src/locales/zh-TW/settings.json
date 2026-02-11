@@ -12,7 +12,8 @@
       "ocr": "OCR",
       "correction": "校正",
       "prompt": "Prompt",
-      "fonts": "字體"
+      "fonts": "字體",
+      "layouts": "版面管理"
     },
     "ocr": {
       "title": "OCR 參數",

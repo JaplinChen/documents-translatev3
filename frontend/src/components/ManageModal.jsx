@@ -49,6 +49,7 @@ export default function ManageModal({
     onLoadFile,
 }) {
     const { t } = useTranslation();
+    const supportedTabs = ['glossary', 'preserve', 'tm', 'history', 'learning_events', 'learning_stats', 'tm_categories', 'terms'];
     const { modalRef, position, setPosition, onMouseDown } = useDraggableModal(open, 'manage_modal_state');
     const [modalSize, setModalSize] = useState(null);
     const lastSizeRef = useRef({ width: 0, height: 0 });
@@ -58,6 +59,17 @@ export default function ManageModal({
 
     const correctionFillColor = useSettingsStore((state) => state.correction.fillColor);
     const { tmCategories, refreshTmCategories } = useTmCategories(open);
+
+    useLayoutEffect(() => {
+        if (!open || !modalRef.current) return;
+        const el = modalRef.current;
+        el.style.top = `${position.top}px`;
+        el.style.left = `${position.left}px`;
+        if (modalSize?.width) el.style.width = `${modalSize.width}px`;
+        else el.style.removeProperty('width');
+        if (modalSize?.height) el.style.height = `${modalSize.height}px`;
+        else el.style.removeProperty('height');
+    }, [open, modalRef, position.top, position.left, modalSize?.width, modalSize?.height]);
 
     useLayoutEffect(() => {
         if (!open) return;
@@ -112,6 +124,13 @@ export default function ManageModal({
 
     useEffect(() => {
         if (!open) return;
+        if (!supportedTabs.includes(tab)) {
+            setTab('glossary');
+        }
+    }, [open, tab, setTab]);
+
+    useEffect(() => {
+        if (!open) return;
         const handlePointerUp = () => {
             resizingRef.current = false;
         };
@@ -135,12 +154,6 @@ export default function ManageModal({
                     if (nearRight || nearBottom) {
                         resizingRef.current = true;
                     }
-                }}
-                style={{
-                    top: position.top,
-                    left: position.left,
-                    width: modalSize?.width || undefined,
-                    height: modalSize?.height || undefined,
                 }}
             >
                 <div className="modal-header draggable-handle flex justify-between items-center" onMouseDown={onMouseDown}>

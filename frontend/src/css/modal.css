@@ -34,7 +34,34 @@
 
     .modal.is-draggable.is-manage {
         overflow: auto;
-        height: auto;
+        min-width: 760px;
+        width: min(1000px, 96vw);
+        height: min(720px, 85vh);
+        min-height: 400px;
+    }
+
+    .modal.is-draggable.is-settings {
+        @apply p-0 overflow-hidden;
+        min-width: 760px;
+        min-height: 520px;
+        width: min(1200px, 94vw);
+        height: min(820px, 90vh);
+    }
+
+    .modal.is-draggable.is-settings .settings-shell {
+        @apply h-full;
+    }
+
+    .modal.is-draggable.is-settings .settings-main {
+        @apply min-h-0;
+    }
+
+    .modal.is-draggable.is-settings .settings-content {
+        @apply min-h-0;
+    }
+
+    .modal.is-draggable.is-settings .modal-header.draggable-handle {
+        @apply bg-slate-50/90 border border-slate-200/70 rounded-xl px-3 py-2;
     }
 
     .modal.is-draggable.is-manage .modal-body {
@@ -259,6 +286,145 @@
         border-color: var(--accent);
         background-color: var(--bg-card);
         box-shadow: 0 0 0 2px var(--accent-soft);
+    }
+
+    .correction-preview-grid {
+        background-repeat: repeat;
+    }
+
+    .correction-preview-box {
+        border-radius: 12px;
+        transform: rotate(-1deg);
+    }
+
+    .layouts-tab {
+        @apply flex flex-col gap-4;
+    }
+
+    .layouts-overview {
+        @apply rounded-2xl p-4 flex flex-col gap-3 md:flex-row md:items-start md:justify-between;
+        border: 1px solid #dbeafe;
+        background: linear-gradient(135deg, #eff6ff 0%, #f8fafc 55%, #eef2ff 100%);
+    }
+
+    .layouts-overview-title {
+        @apply text-lg font-bold text-slate-800;
+    }
+
+    .layouts-overview-subtitle {
+        @apply text-sm text-slate-600 mt-1;
+    }
+
+    .layouts-overview-stats {
+        @apply flex flex-wrap gap-2;
+    }
+
+    .layouts-stat-chip {
+        @apply rounded-xl px-3 py-2 border border-blue-100 bg-white/80 min-w-[120px];
+    }
+
+    .layouts-stat-label {
+        @apply block text-[11px] font-semibold text-slate-500;
+    }
+
+    .layouts-stat-value {
+        @apply block text-lg font-extrabold text-blue-700 leading-tight;
+    }
+
+    .layouts-toolbar-card {
+        @apply rounded-2xl border border-slate-200 bg-white p-4 flex flex-col gap-2;
+    }
+
+    .layouts-toolbar-grid {
+        @apply grid grid-cols-1 md:grid-cols-2 xl:grid-cols-5 gap-3 items-end;
+    }
+
+    .layouts-action-btn {
+        @apply h-10 w-full;
+    }
+
+    .layouts-main-grid {
+        @apply grid grid-cols-1 xl:grid-cols-12 gap-4;
+    }
+
+    .layouts-panel-card {
+        @apply rounded-2xl border border-slate-200 bg-white p-4 flex flex-col gap-3;
+    }
+
+    .layouts-main-grid>.layouts-panel-card:first-child {
+        @apply xl:col-span-4;
+    }
+
+    .layouts-main-grid>.layouts-panel-card:last-child {
+        @apply xl:col-span-8;
+    }
+
+    .layouts-panel-title {
+        @apply text-sm font-bold text-slate-800;
+    }
+
+    .layouts-form-stack {
+        @apply flex flex-col gap-3;
+    }
+
+    .layouts-create-btn {
+        @apply w-full;
+    }
+
+    .layouts-list-header {
+        @apply flex flex-col gap-2 md:flex-row md:items-center md:justify-between;
+    }
+
+    .layouts-search-input {
+        @apply md:w-72;
+    }
+
+    .layouts-list {
+        @apply flex flex-col gap-2 max-h-[420px] overflow-auto pr-1;
+    }
+
+    .layouts-item-card {
+        @apply rounded-xl border border-slate-200 bg-slate-50/80 p-3 flex flex-col gap-3 md:flex-row md:items-center md:justify-between;
+    }
+
+    .layouts-item-title-row {
+        @apply flex items-center gap-2;
+    }
+
+    .layouts-item-title {
+        @apply text-sm font-semibold text-slate-700 truncate;
+    }
+
+    .layouts-item-id {
+        @apply text-xs text-slate-500 mt-1 truncate;
+    }
+
+    .layouts-item-state {
+        @apply text-[11px] font-bold px-2 py-0.5 rounded-full border;
+    }
+
+    .layouts-item-state.is-on {
+        @apply text-emerald-700 bg-emerald-50 border-emerald-200;
+    }
+
+    .layouts-item-state.is-off {
+        @apply text-slate-600 bg-slate-100 border-slate-200;
+    }
+
+    .layouts-item-actions {
+        @apply flex flex-wrap gap-2;
+    }
+
+    .layouts-message {
+        @apply text-sm font-medium rounded-xl px-3 py-2 border;
+    }
+
+    .layouts-message.is-success {
+        @apply text-emerald-700 bg-emerald-50 border-emerald-200;
+    }
+
+    .layouts-message.is-error {
+        @apply text-rose-700 bg-rose-50 border-rose-200;
     }
 }
 

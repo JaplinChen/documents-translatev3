@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { API_BASE } from "../../constants";
+import { buildApiUrl } from "../../services/api/core";
+import { tmApi } from "../../services/api/tm";
 import { DataTable } from "../common/DataTable";
 
 export default function LearningStatsTab() {
@@ -39,9 +40,16 @@ export default function LearningStatsTab() {
             if (dateTo) params.set("date_to", dateTo);
             if (sortBy) params.set("sort_by", sortBy);
             if (sortDir) params.set("sort_dir", sortDir);
-            const res = await fetch(`${API_BASE}/api/tm/learning-stats?${params.toString()}`);
-            const data = await res.json();
-            if (!res.ok) throw new Error(data?.detail || "load_failed");
+            const data = await tmApi.getLearningStats({
+                limit,
+                offset,
+                scope_type: scopeType,
+                scope_id: scopeId,
+                date_from: dateFrom,
+                date_to: dateTo,
+                sort_by: sortBy,
+                sort_dir: sortDir,
+            });
             setItems(Array.isArray(data.items) ? data.items : []);
             setTotal(Number(data.total || 0));
             setOffset(Number(data.offset || offset));
@@ -82,7 +90,7 @@ export default function LearningStatsTab() {
         if (dateTo) params.set("date_to", dateTo);
         if (sortBy) params.set("sort_by", sortBy);
         if (sortDir) params.set("sort_dir", sortDir);
-        window.open(`${API_BASE}/api/tm/learning-stats/export?${params.toString()}`, "_blank");
+        window.open(buildApiUrl(`/api/tm/learning-stats/export?${params.toString()}`), "_blank");
     };
 
     const columns = useMemo(() => ([

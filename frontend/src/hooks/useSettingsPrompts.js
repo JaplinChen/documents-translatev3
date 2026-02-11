@@ -1,7 +1,8 @@
 import { useState, useEffect } from "react";
 import { useTranslation } from "react-i18next";
+import { promptsApi } from "../services/api/prompts";
 
-export function useSettingsPrompts(open, tab, apiBase) {
+export function useSettingsPrompts(open, tab) {
     const { t } = useTranslation();
     const [promptList, setPromptList] = useState([]);
     const [selectedPrompt, setSelectedPrompt] = useState("");
@@ -18,38 +19,32 @@ export function useSettingsPrompts(open, tab, apiBase) {
     useEffect(() => {
         if (!open || tab !== "prompt") return;
         let active = true;
-        fetch(`${apiBase}/api/prompts`)
-            .then(res => res.json())
-            .then(data => {
+        promptsApi.list()
+            .then((data) => {
                 if (!active) return;
                 setPromptList(data || []);
                 if (data?.length) setSelectedPrompt(prev => prev || data[0]);
             })
             .catch(() => active && setPromptList([]));
         return () => { active = false; };
-    }, [open, tab, apiBase]);
+    }, [open, tab]);
 
     useEffect(() => {
         if (!open || tab !== "prompt" || !selectedPrompt) return;
         let active = true;
         setPromptLoading(true);
-        fetch(`${apiBase}/api/prompts/${selectedPrompt}`)
-            .then(res => res.json())
-            .then(data => active && setPromptContent(data.content || ""))
+        promptsApi.get(selectedPrompt)
+            .then((data) => active && setPromptContent(data.content || ""))
             .catch(() => active && setPromptContent(""))
             .finally(() => active && setPromptLoading(false));
         return () => { active = false; };
-    }, [open, tab, selectedPrompt, apiBase]);
+    }, [open, tab, selectedPrompt]);
 
     const handleSavePrompt = async (onClose) => {
         if (!selectedPrompt) return;
         setPromptStatus(t("settings.status.saving"));
         try {
-            await fetch(`${apiBase}/api/prompts/${selectedPrompt}`, {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ content: promptContent })
-            });
+            await promptsApi.save(selectedPrompt, promptContent);
             setPromptStatus(t("settings.status.saved"));
             setTimeout(() => setPromptStatus(""), 2000);
             onClose();
@@ -62,8 +57,7 @@ export function useSettingsPrompts(open, tab, apiBase) {
         if (!selectedPrompt) return;
         setPromptLoading(true);
         try {
-            const response = await fetch(`${apiBase}/api/prompts/${selectedPrompt}`);
-            const data = await response.json();
+            const data = await promptsApi.get(selectedPrompt);
             setPromptContent(data.content || "");
         } finally {
             setPromptLoading(false);

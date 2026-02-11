@@ -1,5 +1,7 @@
-import { API_BASE } from '../../constants';
+import { buildApiUrl } from '../../services/api/core';
 import { useFileStore } from '../../store/useFileStore';
+import { preserveTermsApi } from '../../services/api/preserve_terms';
+import { termsApi } from '../../services/api/terms';
 
 const CATEGORY_MAP = {
     product: '產品',
@@ -69,7 +71,7 @@ export const extractGlossaryFromBlocks = async ({
             base_url: llmBaseUrl,
         };
 
-        const response = await fetch(`${API_BASE}/api/tm/extract-glossary-stream`, {
+        const response = await fetch(buildApiUrl(`/api/tm/extract-glossary-stream`), {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(payload),
@@ -136,25 +138,17 @@ export const extractGlossaryFromBlocks = async ({
             })),
         };
 
-        await fetch(`${API_BASE}/api/preserve-terms/batch`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(preservePayload),
-        });
+        await preserveTermsApi.batch(preservePayload);
 
         for (const term of termsToUpsert) {
-            await fetch(`${API_BASE}/api/terms/upsert`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    term: term.source_text,
-                    category_name: term.category_name || '翻譯',
-                    source: 'terminology',
-                    filename: currentFilename,
-                    priority: term.priority,
-                    note: term.reason,
-                    languages: [{ lang_code: term.target_lang, value: term.target_text }],
-                }),
+            await termsApi.upsert({
+                term: term.source_text,
+                category_name: term.category_name || '翻譯',
+                source: 'terminology',
+                filename: currentFilename,
+                priority: term.priority,
+                note: term.reason,
+                languages: [{ lang_code: term.target_lang, value: term.target_text }],
             });
         }
 

@@ -49,9 +49,14 @@ class DocumentCache:
         except Exception as err:
             LOGGER.error("DocumentCache init error: %s", err)
 
-    def get_hash(self, file_bytes: bytes) -> str:
-        """計算文件的 SHA-256 雜湊值。"""
-        return hashlib.sha256(file_bytes).hexdigest()
+    def get_hash(self, file_bytes: bytes, extra_data: dict | None = None) -> str:
+        """計算文件的 SHA-256 雜湊值，可選包含額外參數以區分不同抽取條件。"""
+        hasher = hashlib.sha256(file_bytes)
+        if extra_data:
+            # Sort keys to ensure consistent hashing
+            params_str = json.dumps(extra_data, sort_keys=True, ensure_ascii=False)
+            hasher.update(params_str.encode("utf-8"))
+        return hasher.hexdigest()
 
     def get(self, file_hash: str) -> dict | None:
         """根據雜湊值從快取獲取資料。"""

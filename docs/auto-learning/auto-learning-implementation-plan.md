@@ -112,10 +112,10 @@
    - 本機開發：`DATABASE_URL=postgresql+psycopg://app:app@localhost:5432/appdb`
    - Docker：`DATABASE_URL_DOCKER=postgresql+psycopg://app:app@postgres:5432/appdb`
 3. 執行 migration：`alembic upgrade head`
-4. 資料搬移：`python scripts/migrate_sqlite_to_postgres.py`
+4. 資料搬移：`python scripts/migration/migrate_sqlite_to_postgres.py`
 5. 重新啟動後端服務
-6. 驗證一致性：`python scripts/verify_sqlite_postgres.py`
-7. 回滾（必要時）：`python scripts/rollback_postgres_to_sqlite.py`
+6. 驗證一致性：`python scripts/dev/verify_sqlite_postgres.py`
+7. 回滾（必要時）：`python scripts/migration/rollback_postgres_to_sqlite.py`
 
 ## 測試策略
 - 評分、清洗、升級 unit tests

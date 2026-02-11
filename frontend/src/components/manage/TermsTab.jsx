@@ -1,6 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { API_BASE } from '../../constants';
 import { useTerms } from '../../hooks/useTerms';
 import { DataTable } from '../common/DataTable';
 import { buildTermsColumns } from './termsTabColumns.jsx';
@@ -9,6 +8,7 @@ import { TermsImportDialog } from './TermsImportDialog';
 import { TermsBatchActions } from './TermsBatchActions';
 import { TermsVersionsPanel } from './TermsVersionsPanel';
 import { buildMappingFromRows, detectConflict } from './termsTabHelpers.jsx';
+import { termsApi } from '../../services/api/terms';
 
 export default function TermsTab() {
     const { t } = useTranslation();
@@ -222,8 +222,7 @@ export default function TermsTab() {
     };
 
     const loadVersions = async (termId) => {
-        const res = await fetch(`${API_BASE}/api/terms/${termId}/versions`);
-        const data = await res.json();
+        const data = await termsApi.versions(termId);
         setVersions({ termId, items: data.items || [] });
     };
 
@@ -252,11 +251,9 @@ export default function TermsTab() {
         if (!window.confirm(t('manage.terms_tab.sync_confirm'))) return;
         setIsSyncing(true);
         try {
-            const res = await fetch(`${API_BASE}/api/terms/sync-all`, { method: 'POST' });
-            if (res.ok) {
-                alert(t('manage.terms_tab.sync_complete'));
-                setFilters((p) => ({ ...p, _refresh: Date.now() }));
-            }
+            await termsApi.syncAll();
+            alert(t('manage.terms_tab.sync_complete'));
+            setFilters((p) => ({ ...p, _refresh: Date.now() }));
         } catch (err) {
             console.error(err);
         } finally {

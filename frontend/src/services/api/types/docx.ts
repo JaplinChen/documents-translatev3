@@ -9,6 +9,9 @@ export interface DocxApplyParams {
   file: File;
   blocks: string;
   mode?: 'bilingual' | 'translated';
+  bilingual_layout?: 'inline';
+  layout_id?: string;
+  layout_params?: string;
   target_language?: string;
 }
 

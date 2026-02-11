@@ -1,6 +1,6 @@
-import React from "react";
+import React, { useLayoutEffect, useRef } from "react";
 import { useTranslation } from "react-i18next";
-import { Palette, Type, Square, Sliders, CheckCircle2, Bot } from "lucide-react";
+import { Palette, Square, Sliders, Bot } from "lucide-react";
 
 function CorrectionTab({
     fillColor,
@@ -15,6 +15,9 @@ function CorrectionTab({
     setSimilarityThreshold
 }) {
     const { t } = useTranslation();
+    const previewBoxRef = useRef(null);
+    const previewGridRef = useRef(null);
+    const thresholdSelectRef = useRef(null);
     const safeThreshold = Number.isFinite(similarityThreshold) ? similarityThreshold : 0.75;
     const padLabel = (text, maxLen) => {
         const len = (text || "").length;
@@ -40,6 +43,26 @@ function CorrectionTab({
         }
     };
 
+    useLayoutEffect(() => {
+        if (!previewBoxRef.current) return;
+        const el = previewBoxRef.current;
+        el.style.backgroundColor = fillColor || "#fef9c3";
+        el.style.color = textColor || "#b11313";
+        el.style.border = `3px ${getBorderStyle(lineDash)} ${lineColor || "#7e22ce"}`;
+    }, [fillColor, textColor, lineColor, lineDash]);
+
+    useLayoutEffect(() => {
+        if (!previewGridRef.current) return;
+        const el = previewGridRef.current;
+        el.style.backgroundImage = "conic-gradient(#000 0.25turn, transparent 0.25turn 0.5turn, #000 0.5turn 0.75turn, transparent 0.75turn)";
+        el.style.backgroundSize = "20px 20px";
+    }, []);
+
+    useLayoutEffect(() => {
+        if (!thresholdSelectRef.current) return;
+        thresholdSelectRef.current.style.fontFamily = "ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace";
+    }, []);
+
     return (
         <div className="tab-pane animate-in fade-in slide-in-from-top-2 duration-300">
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
@@ -54,23 +77,12 @@ function CorrectionTab({
                     <div className="relative group">
                         <div className="w-full h-48 bg-slate-100/50 border border-slate-200 rounded-3xl flex items-center justify-center overflow-hidden shadow-inner ring-4 ring-slate-50">
                             {/* Grid Backdrop */}
-                            <div className="absolute inset-0 opacity-[0.03]"
-                                style={{
-                                    backgroundImage: "conic-gradient(#000 0.25turn, transparent 0.25turn 0.5turn, #000 0.5turn 0.75turn, transparent 0.75turn)",
-                                    backgroundSize: "20px 20px"
-                                }}
-                            ></div>
+                            <div ref={previewGridRef} className="absolute inset-0 opacity-[0.03] correction-preview-grid"></div>
 
                             {/* Main Preview Box */}
                             <div
-                                className="px-6 py-3 text-base font-bold z-10 transition-all duration-500 shadow-xl"
-                                style={{
-                                    backgroundColor: fillColor,
-                                    color: textColor,
-                                    border: `3px ${getBorderStyle(lineDash)} ${lineColor}`,
-                                    borderRadius: "12px",
-                                    transform: "rotate(-1deg)"
-                                }}
+                                ref={previewBoxRef}
+                                className="px-6 py-3 text-base font-bold z-10 transition-all duration-500 shadow-xl correction-preview-box"
                             >
                                 {t("settings.correction.preview_content")}
                             </div>
@@ -101,8 +113,8 @@ function CorrectionTab({
                         </div>
                         <div className="flex flex-col gap-2">
                             <select
+                                ref={thresholdSelectRef}
                                 className="select-input w-full"
-                                style={{ fontFamily: "ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace" }}
                                 value={safeThreshold}
                                 onChange={(e) => setSimilarityThreshold(parseFloat(e.target.value))}
                             >
@@ -130,8 +142,12 @@ function CorrectionTab({
                             ].map(item => (
                                 <div key={item.id} className="flex flex-col items-center gap-3">
                                     <div className="relative group">
-                                        <div className="w-12 h-12 rounded-2xl border-2 border-white shadow-lg cursor-pointer overflow-hidden ring-1 ring-slate-200 transition-transform hover:scale-110 active:scale-95"
-                                            style={{ backgroundColor: item.val }}>
+                                        <div
+                                            ref={(el) => {
+                                                if (el) el.style.backgroundColor = item.val;
+                                            }}
+                                            className="w-12 h-12 rounded-2xl border-2 border-white shadow-lg cursor-pointer overflow-hidden ring-1 ring-slate-200 transition-transform hover:scale-110 active:scale-95 correction-color-swatch"
+                                        >
                                             <input
                                                 type="color"
                                                 className="absolute inset-0 opacity-0 cursor-pointer w-full h-full"

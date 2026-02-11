@@ -28,9 +28,13 @@ def apply_bilingual(  # noqa: C901
     layout: str = "inline",
     target_language: str | None = None,
     font_mapping: dict[str, list[str]] | None = None,
+    layout_params: dict | None = None,
 ) -> None:
     presentation = Presentation(pptx_in)
     presentation._pptx_path = pptx_in
+    options = layout_params or {}
+    separator_style = str(options.get("separator_style", "blank_line"))
+    source_first = bool(options.get("source_first", True))
 
     if layout == "new_slide":
         _apply_new_slide_layout(
@@ -76,7 +80,17 @@ def apply_bilingual(  # noqa: C901
         slide = presentation.slides[slide_index]
         source_text = block.get("source_text", "")
         target_lang = block.get("target_language") or target_language
-        combined_text = f"{source_text}\n\n{translation}"
+        if separator_style == "linebreak":
+            separator = "\n"
+        elif separator_style == "slash":
+            separator = " / "
+        else:
+            separator = "\n\n"
+        combined_text = (
+            f"{source_text}{separator}{translation}"
+            if source_first
+            else f"{translation}{separator}{source_text}"
+        )
         scale = compute_scale(source_text, translation)
         block_type = block.get("block_type", "textbox")
         if block_type == "notes":

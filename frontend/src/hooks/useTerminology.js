@@ -1,6 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
-import { API_BASE } from '../constants';
 import { useUIStore } from '../store/useUIStore';
 import { useSettingsStore } from '../store/useSettingsStore';
 import { useFileStore } from '../store/useFileStore';
@@ -8,6 +7,8 @@ import { loadGlossaryItems, loadMemoryItems } from './terminology/loaders';
 import { extractGlossaryFromBlocks } from './terminology/extractGlossary';
 import { recordFeedbackWithDebounce } from './terminology/feedback';
 import { buildGlossaryEntry, buildMemoryEntry, PRESERVE_CATEGORY_TRANSLATION } from './terminology/helpers';
+import { tmApi } from '../services/api/tm';
+import { preserveTermsApi } from '../services/api/preserve_terms';
 
 export function useTerminology() {
     const { t } = useTranslation();
@@ -91,29 +92,16 @@ export function useTerminology() {
         }
 
         try {
-            const resp = await fetch(`${API_BASE}/api/tm/glossary`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(entry),
-            });
-            if (!resp.ok) {
-                const err = await resp.text();
-                console.error('Glossary upsert failed server-side:', err);
-                alert(t('manage.alerts.save_glossary_failed', { message: err }));
-            } else {
-                await loadGlossary();
-            }
+            await tmApi.upsertGlossary(entry);
+            await loadGlossary();
         } catch (error) {
             console.error('Fetch error during glossary upsert:', error);
+            alert(t('manage.alerts.save_glossary_failed', { message: error?.detail || error?.message || '' }));
         }
     };
 
     const deleteGlossary = async (entry) => {
-        await fetch(`${API_BASE}/api/tm/glossary`, {
-            method: 'DELETE',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(entry),
-        });
+        await tmApi.deleteGlossary(entry.id);
         await loadGlossary();
     };
 
@@ -127,35 +115,22 @@ export function useTerminology() {
         }
 
         try {
-            const resp = await fetch(`${API_BASE}/api/tm/memory`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(entry),
-            });
-            if (!resp.ok) {
-                const err = await resp.text();
-                console.error('Memory upsert failed server-side:', err);
-                alert(t('manage.alerts.save_memory_failed', { message: err }));
-            } else {
-                await loadMemory();
-            }
+            await tmApi.upsertMemory(entry);
+            await loadMemory();
         } catch (error) {
             console.error('Fetch error during memory upsert:', error);
+            alert(t('manage.alerts.save_memory_failed', { message: error?.detail || error?.message || '' }));
         }
     };
 
     const deleteMemory = async (entry) => {
-        await fetch(`${API_BASE}/api/tm/memory`, {
-            method: 'DELETE',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(entry),
-        });
+        await tmApi.deleteMemory(entry.id);
         await loadMemory();
     };
 
     const clearMemory = async () => {
         if (!window.confirm(t('manage.confirm.clear_memory'))) return;
-        await fetch(`${API_BASE}/api/tm/memory/clear`, { method: 'DELETE' });
+        await tmApi.clearMemory();
         await loadMemory();
     };
 
@@ -177,23 +152,11 @@ export function useTerminology() {
         if (!item?.source_text) return;
         try {
             setLastPreserveAt(Date.now());
-            const params = new URLSearchParams();
-            params.append('source_text', item.source_text);
-            params.append('category', PRESERVE_CATEGORY_TRANSLATION);
-            params.append('case_sensitive', 'true');
-
-            const response = await fetch(`${API_BASE}/api/preserve-terms/convert-from-glossary?${params.toString()}`, {
-                method: 'POST',
-            });
-
-            if (!response.ok) {
-                const error = await response.json();
-                const msg = error.detail || t('manage.alerts.convert_failed');
-                if (!silent) alert(msg);
-                return { ok: false, error: msg };
-            }
-
-            const data = await response.json();
+            const data = await preserveTermsApi.convertFromGlossary(
+                item.source_text,
+                PRESERVE_CATEGORY_TRANSLATION,
+                true
+            );
             if (item.id) {
                 await deleteGlossary({ id: item.id });
             }
@@ -202,7 +165,7 @@ export function useTerminology() {
         } catch (error) {
             console.error('Failed to convert to preserve term:', error);
             if (!silent) {
-                alert(t('manage.alerts.convert_failed_detail', { message: error.message }));
+                alert(t('manage.alerts.convert_failed_detail', { message: error?.detail || error?.message || '' }));
             }
             return { ok: false, error: error.message };
         }
@@ -212,25 +175,21 @@ export function useTerminology() {
         const now = Date.now();
         setLastGlossaryAt(now);
         setLastMemoryAt(now);
-        await fetch(`${API_BASE}/api/tm/seed`, { method: 'POST' });
+        await tmApi.seed();
         await loadGlossary();
         await loadMemory();
     };
 
     const clearGlossary = async () => {
         if (!window.confirm(t('manage.confirm.clear_glossary'))) return;
-        await fetch(`${API_BASE}/api/tm/glossary/clear`, { method: 'DELETE' });
+        await tmApi.clearGlossary();
         await loadGlossary();
     };
 
     const batchUpsertGlossary = async (entries) => {
         if (!entries || entries.length === 0) return;
         setLastGlossaryAt(Date.now());
-        await fetch(`${API_BASE}/api/tm/glossary/batch`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(entries),
-        });
+        await tmApi.batchUpsertGlossary(entries);
         await loadGlossary();
     };
 

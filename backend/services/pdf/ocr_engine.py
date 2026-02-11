@@ -136,17 +136,24 @@ def get_ocr_config() -> dict:
         mapped = map_source_lang_to_tesseract(os.getenv("SOURCE_LANGUAGE", ""))
         env_lang = mapped or "eng"
     dpi_env = os.getenv("PDF_OCR_DPI", "").strip()
-    if dpi_env:
-        dpi_value = int(dpi_env)
-    else:
+    try:
+        dpi_value = int(dpi_env) if dpi_env else (300 if "vie" in env_lang else 200)
+    except ValueError:
         dpi_value = 300 if "vie" in env_lang else 200
+
+    def safe_int(val, default):
+        try:
+            return int(val) if val else default
+        except ValueError:
+            return default
+
     return {
         "dpi": dpi_value,
         "lang": env_lang,
-        "conf_min": int(os.getenv("PDF_OCR_CONF_MIN", "10")),
-        "psm": int(os.getenv("PDF_OCR_PSM", "6")),
-        "oem": int(os.getenv("PDF_OCR_OEM", "1")),
-        "preserve_interword_spaces": int(os.getenv("PDF_OCR_PRESERVE_SPACES", "1")),
+        "conf_min": safe_int(os.getenv("PDF_OCR_CONF_MIN"), 10),
+        "psm": safe_int(os.getenv("PDF_OCR_PSM"), 6),
+        "oem": safe_int(os.getenv("PDF_OCR_OEM"), 1),
+        "preserve_interword_spaces": safe_int(os.getenv("PDF_OCR_PRESERVE_SPACES"), 1),
         "engine": engine,
         "allow_paddle": allow_paddle,
         "paddle_fallback": paddle_fallback,

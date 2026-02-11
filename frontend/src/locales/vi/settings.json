@@ -12,7 +12,8 @@
       "ocr": "OCR",
       "correction": "Hiệu đính",
       "prompt": "Lời nhắc",
-      "fonts": "Phông chữ"
+      "fonts": "Phông chữ",
+      "layouts": "Quản lý bố cục"
     },
     "ocr": {
       "title": "Cai dat OCR",

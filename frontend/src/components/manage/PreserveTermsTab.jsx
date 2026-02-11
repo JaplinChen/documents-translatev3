@@ -1,7 +1,7 @@
 import React, { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { usePreserveTerms } from '../../hooks/usePreserveTerms';
-import { API_BASE } from '../../constants';
+import { preserveTermsApi } from '../../services/api/preserve_terms';
 import { useUIStore } from '../../store/useUIStore';
 import { useSettingsStore } from '../../store/useSettingsStore';
 import { DataTable } from '../common/DataTable';
@@ -80,9 +80,7 @@ export default function PreserveTermsTab({ onClose }) {
         try {
             await Promise.all(
                 selectedIds.map((id) =>
-                    fetch(`${API_BASE}/api/preserve-terms/${id}`, {
-                        method: 'DELETE',
-                    })
+                    preserveTermsApi.delete(String(id))
                 )
             );
             setSelectedIds([]);
@@ -102,14 +100,10 @@ export default function PreserveTermsTab({ onClose }) {
                 selectedIds.map(async (id) => {
                     const term = filteredTerms.find((item) => item.id === id);
                     if (!term) return;
-                    await fetch(`${API_BASE}/api/preserve-terms/convert-to-glossary`, {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({
-                            id: term.id,
-                            target_lang: targetLang || 'zh-TW',
-                            priority: 10,
-                        }),
+                    await preserveTermsApi.convertToGlossary({
+                        id: term.id,
+                        target_lang: targetLang || 'zh-TW',
+                        priority: 10,
                     });
                 })
             );

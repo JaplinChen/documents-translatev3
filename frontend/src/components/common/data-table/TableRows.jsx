@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useLayoutEffect, useRef } from 'react';
 
 export function TableRows({
     data,
@@ -10,6 +10,14 @@ export function TableRows({
     gridTemplateColumns,
     onRowClick,
 }) {
+    const rowRefs = useRef(new Map());
+
+    useLayoutEffect(() => {
+        rowRefs.current.forEach((el) => {
+            if (el) el.style.gridTemplateColumns = gridTemplateColumns;
+        });
+    }, [gridTemplateColumns, data.length]);
+
     return data.map((row) => {
         const rowId = getRowId(row);
         const isSelected = selectedIds.includes(rowId);
@@ -17,8 +25,11 @@ export function TableRows({
         return (
             <div
                 key={rowId}
+                ref={(el) => {
+                    if (el) rowRefs.current.set(rowId, el);
+                    else rowRefs.current.delete(rowId);
+                }}
                 className={`unified-data-row ${isSelected ? 'is-selected' : ''} ${onRowClick ? 'is-editable-row' : ''} hover:bg-slate-50 transition-colors border-b border-slate-100 last:border-0`}
-                style={{ gridTemplateColumns }}
                 title={onRowClick ? '點擊資料列可開始編輯' : undefined}
                 onClick={() => onRowClick && onRowClick(row, null)}
             >

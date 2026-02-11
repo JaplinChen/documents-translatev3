@@ -2,7 +2,7 @@ import React, { useEffect, useRef } from "react";
 import { useTranslation } from "react-i18next";
 
 // Constants & Utils
-import { API_BASE, APP_STATUS, LANGUAGE_OPTIONS } from "./constants";
+import { APP_STATUS, LANGUAGE_OPTIONS } from "./constants";
 import { CJK_REGEX, VI_REGEX } from "./utils/regex";
 import { extractLanguageLines } from "./utils/appHelpers";
 
@@ -136,8 +136,8 @@ function App() {
           file={file} setFile={setFile}
           mode={ui.mode} setMode={ui.setMode}
           bilingualLayout={ui.bilingualLayout} setBilingualLayout={ui.setBilingualLayout}
+          layoutParams={ui.layoutParams} setLayoutParams={ui.setLayoutParams}
           sourceLang={ui.sourceLang} setSourceLang={ui.setSourceLang} setSourceLocked={ui.setSourceLocked}
-          secondaryLang={ui.secondaryLang} setSecondaryLang={ui.setSecondaryLang} setSecondaryLocked={ui.setSecondaryLocked}
           targetLang={ui.targetLang} setTargetLang={ui.setTargetLang} setTargetLocked={ui.setTargetLocked}
           useTm={settings.useTm} setUseTm={settings.setUseTm}
           languageOptions={LANGUAGE_OPTIONS}
@@ -162,10 +162,6 @@ function App() {
           status={ui.status}
           appStatus={ui.appStatus}
           sidebarRef={leftPanelRef}
-          modeDescription={ui.mode === "correction" ? t("sidebar.mode.correction") : t("sidebar.mode.translate")}
-          llmTone={settings.ai.tone} setLlmTone={(v) => settings.setAiOption("tone", v)}
-          useVisionContext={settings.ai.useVision} setUseVisionContext={(v) => settings.setAiOption("useVision", v)}
-          useSmartLayout={settings.ai.useSmartLayout} setUseSmartLayout={(v) => settings.setAiOption("useSmartLayout", v)}
           blocks={blocks}
         />
 
@@ -252,7 +248,6 @@ function App() {
         })}
         busy={ui.busy}
         status={ui.status}
-        apiBase={API_BASE}
         fontMapping={settings.fontMapping}
         setFontMapping={settings.setFontMapping}
         onSaveOcr={settings.saveOcrSettings}

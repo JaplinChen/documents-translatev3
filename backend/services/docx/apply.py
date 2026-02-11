@@ -19,7 +19,14 @@ def _copy_run_format(source_run, target_run):
         target_run.font.color.rgb = source_run.font.color.rgb
 
 
-def _set_paragraph_text(paragraph, text, mode="replace", source_text=None):
+def _set_paragraph_text(
+    paragraph,
+    text,
+    mode="replace",
+    source_text=None,
+    bilingual_separator="\n",
+    colorize_translations=True,
+):
     """
     Set text for a paragraph.
     mode="replace": Replace entire paragraph content.
@@ -33,12 +40,13 @@ def _set_paragraph_text(paragraph, text, mode="replace", source_text=None):
         paragraph.add_run(text)
     elif mode == "bilingual" and source_text:
         # Paragraph already contains source_text
-        paragraph.add_run("\n")
+        paragraph.add_run(bilingual_separator)
         new_run = paragraph.add_run(text)
-        try:
-            new_run.font.color.rgb = RGBColor(0x1F, 0x77, 0xB4)  # Accent color
-        except Exception:
-            pass
+        if colorize_translations:
+            try:
+                new_run.font.color.rgb = RGBColor(0x1F, 0x77, 0xB4)  # Accent color
+            except Exception:
+                pass
 
 
 def apply_translations(  # noqa: C901
@@ -47,8 +55,14 @@ def apply_translations(  # noqa: C901
     blocks: list[dict],
     mode: str = "direct",
     target_language: str | None = None,
+    layout_params: dict | None = None,
 ) -> None:
     """Apply translations to a .docx file."""
+    options = layout_params or {}
+    sep_style = str(options.get("separator_style", "linebreak"))
+    bilingual_separator = "\n\n" if sep_style == "blank_line" else "\n"
+    colorize_translations = bool(options.get("colorize_translations", True))
+
     if isinstance(docx_in, bytes):
         doc = Document(BytesIO(docx_in))
     else:
@@ -76,6 +90,8 @@ def apply_translations(  # noqa: C901
                     translated,
                     mode="bilingual",
                     source_text=block.get("source_text"),
+                    bilingual_separator=bilingual_separator,
+                    colorize_translations=colorize_translations,
                 )
             else:
                 _set_paragraph_text(para, translated, mode="replace")
@@ -94,7 +110,7 @@ def apply_translations(  # noqa: C901
                     if mode == "bilingual":
                         # For cells, we might want to just append or replace
                         source_text = block.get("source_text", "")
-                        cell.text = f"{source_text}\n{translated}"
+                        cell.text = f"{source_text}{bilingual_separator}{translated}"
                     else:
                         cell.text = translated
 
@@ -113,9 +129,9 @@ def apply_translations(  # noqa: C901
 
 
 def apply_bilingual(docx_in, docx_out, blocks, **kwargs):
-    apply_translations(docx_in, docx_out, blocks, mode="bilingual")
+    apply_translations(docx_in, docx_out, blocks, mode="bilingual", **kwargs)
 
 
 def apply_chinese_corrections(docx_in, docx_out, blocks, **kwargs):
     # For now, correction in Word just replaces the text
-    apply_translations(docx_in, docx_out, blocks, mode="direct")
+    apply_translations(docx_in, docx_out, blocks, mode="direct", **kwargs)

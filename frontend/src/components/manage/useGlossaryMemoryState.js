@@ -135,7 +135,7 @@ export function useGlossaryMemoryState({
         compactTable,
         setCompactTable,
         columns,
-        sortedItems: sorting.sortedItems,
+        sortedItems: (editing.editingKey?.startsWith('__clone__') && editing.draft) ? [editing.draft, ...sorting.sortedItems] : sorting.sortedItems,
         sortKey: sorting.sortKey,
         sortDir: sorting.sortDir,
         toggleSort: sorting.toggleSort,

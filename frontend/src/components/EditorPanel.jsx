@@ -4,7 +4,7 @@ import BlockCard from "./BlockCard";
 import { BatchReplaceToolbar } from "./BatchReplaceToolbar";
 import { SlidePreview } from "./SlidePreview";
 import { FileUp, Layers, Layout } from "lucide-react";
-import { API_BASE } from "../constants";
+import { buildApiUrl } from "../services/api/core";
 
 export function EditorPanel({
     blocks,
@@ -59,7 +59,9 @@ export function EditorPanel({
     // Stable thumbnail URL calculation
     const currentThumbPath = slideDimensions?.thumbnails?.[activeSlideIndex];
     // Ensure we handle absolute and relative paths correctly
-    const thumbnailUrl = currentThumbPath ? (currentThumbPath.startsWith('http') ? currentThumbPath : (`${API_BASE}${currentThumbPath}`)) : null;
+    const thumbnailUrl = currentThumbPath
+        ? (currentThumbPath.startsWith('http') ? currentThumbPath : buildApiUrl(currentThumbPath))
+        : null;
 
     return (
         <section className="panel panel-right">
@@ -81,7 +83,7 @@ export function EditorPanel({
             </div>
 
             {blockCount === 0 ? (
-                <div className="empty-state-v2 flex flex-col items-center justify-center text-center p-8 animate-in fade-in zoom-in-95 duration-500" style={{ height: "calc(100% - var(--spacing-xl) * 2.5)" }}>
+                <div className="empty-state-v2 empty-state-editor flex flex-col items-center justify-center text-center p-8 animate-in fade-in zoom-in-95 duration-500">
                     <div className="w-20 h-20 bg-blue-50 text-blue-500 rounded-3xl flex items-center justify-center mb-6 shadow-xl shadow-blue-500/10 ring-1 ring-blue-100 cursor-pointer hover:bg-blue-100 transition-all" onClick={() => onSelectAll && onSelectAll("EXTRACT")}>
                         <FileUp size={40} strokeWidth={1.5} />
                     </div>

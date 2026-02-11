@@ -1,10 +1,9 @@
-import { API_BASE_URL, handleResponse } from './core';
+import { getJson, postJson } from './core';
 import type { TokenEstimateResponse, TokenRecordRequest, TokenStatsResponse } from '../api.types';
 
 export const tokenStatsApi = {
     async get(): Promise<TokenStatsResponse> {
-        const response = await fetch(`${API_BASE_URL}/api/token-stats`);
-        return handleResponse<TokenStatsResponse>(response);
+        return getJson<TokenStatsResponse>('/api/token-stats');
     },
 
     async record(
@@ -19,14 +18,10 @@ export const tokenStatsApi = {
         if (request.operation) {
             params.append('operation', request.operation);
         }
-        const response = await fetch(
-            `${API_BASE_URL}/api/token-stats/record?${params}`,
-            { method: 'POST' }
-        );
-        return handleResponse<{
+        return postJson<{
             recorded: boolean;
             usage: { total_tokens: number; estimated_cost_usd: number };
-        }>(response);
+        }>(`/api/token-stats/record?${params.toString()}`);
     },
 
     async estimate(
@@ -34,10 +29,8 @@ export const tokenStatsApi = {
         provider: string = 'openai'
     ): Promise<TokenEstimateResponse> {
         const params = new URLSearchParams({ text, provider });
-        const response = await fetch(
-            `${API_BASE_URL}/api/token-stats/estimate?${params}`,
-            { method: 'POST' }
+        return postJson<TokenEstimateResponse>(
+            `/api/token-stats/estimate?${params.toString()}`
         );
-        return handleResponse<TokenEstimateResponse>(response);
     },
 };

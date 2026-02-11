@@ -33,10 +33,28 @@ def _get_unicode_font(page, target_lang: str | None) -> str:
 
 
 def apply_pdf_changes(
-    input_path: str, output_path: str, blocks: list[dict], target_lang: str = "zh-TW"
+    input_path: str,
+    output_path: str,
+    blocks: list[dict],
+    target_lang: str = "zh-TW",
+    mode: str = "translated",
+    layout_params: dict | None = None,
 ) -> None:
     """Apply translated blocks to PDF."""
     doc = fitz.open(input_path)
+    options = layout_params or {}
+    show_source = bool(options.get("show_source", True))
+    sep_style = str(options.get("separator_style", "linebreak"))
+    source_first = bool(options.get("source_first", True))
+    font_scale = float(options.get("font_scale", 1.0) or 1.0)
+    font_scale = max(0.5, min(font_scale, 2.0))
+
+    if sep_style == "blank_line":
+        separator = "\n\n"
+    elif sep_style == "slash":
+        separator = " / "
+    else:
+        separator = "\n"
 
     # Group blocks by page
     pages_blocks = {}
@@ -74,13 +92,22 @@ def apply_pdf_changes(
             page.draw_rect(rect, color=(1, 1, 1), fill=(1, 1, 1))
 
             # Insert new text
-            text = block.get("translated_text") or block.get("text", "")
+            source_text = block.get("source_text") or block.get("text", "")
+            translated_text = block.get("translated_text") or block.get("text", "")
+            if mode == "bilingual" and show_source:
+                text = (
+                    f"{source_text}{separator}{translated_text}"
+                    if source_first
+                    else f"{translated_text}{separator}{source_text}"
+                )
+            else:
+                text = translated_text
             if text:
                 try:
                     page.insert_textbox(
                         rect,
                         text,
-                        fontsize=block.get("font_size", 10) or 10.0,
+                        fontsize=(block.get("font_size", 10) or 10.0) * font_scale,
                         fontname=font_name,
                         color=(0, 0, 0),
                         align=fitz.TEXT_ALIGN_LEFT,
@@ -97,9 +124,17 @@ def apply_bilingual(
     output_path: str,
     blocks: list[dict],
     target_language: str | None = "zh-TW",
+    layout_params: dict | None = None,
 ) -> None:
-    """Apply bilingual changes to PDF (currently using the same logic as translated)."""
-    apply_pdf_changes(input_path, output_path, blocks, target_lang=target_language or "zh-TW")
+    """Apply bilingual changes to PDF."""
+    apply_pdf_changes(
+        input_path,
+        output_path,
+        blocks,
+        target_lang=target_language or "zh-TW",
+        mode="bilingual",
+        layout_params=layout_params,
+    )
 
 
 def apply_translations(
@@ -107,6 +142,14 @@ def apply_translations(
     output_path: str,
     blocks: list[dict],
     target_language: str | None = "zh-TW",
+    layout_params: dict | None = None,
 ) -> None:
     """Apply translated changes to PDF."""
-    apply_pdf_changes(input_path, output_path, blocks, target_lang=target_language or "zh-TW")
+    apply_pdf_changes(
+        input_path,
+        output_path,
+        blocks,
+        target_lang=target_language or "zh-TW",
+        mode="translated",
+        layout_params=layout_params,
+    )

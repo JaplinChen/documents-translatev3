@@ -1,6 +1,7 @@
 from backend.api.docx import router as docx_router
 from backend.api.export import router as export_router
 from backend.api.llm import router as llm_router
+from backend.api.layouts import router as layouts_router
 from backend.api.ocr_settings import router as ocr_settings_router
 from backend.api.pdf import router as pdf_router
 from backend.api.pptx import router as pptx_router
@@ -16,6 +17,7 @@ from backend.api.xlsx import router as xlsx_router
 __all__ = [
     "docx_router",
     "llm_router",
+    "layouts_router",
     "pptx_router",
     "pptx_translate_router",
     "tm_router",

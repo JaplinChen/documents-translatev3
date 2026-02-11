@@ -1,7 +1,9 @@
 import { useState, useEffect } from "react";
 import { useTranslation } from "react-i18next";
-import { API_BASE } from "../constants";
+import { buildApiUrl } from "../services/api/core";
 import { useUIStore } from "../store/useUIStore";
+import { tmApi } from "../services/api/tm";
+import { preserveTermsApi } from "../services/api/preserve_terms";
 
 export function usePreserveTerms() {
     const { t } = useTranslation();
@@ -18,24 +20,21 @@ export function usePreserveTerms() {
 
     const fetchCategories = async () => {
         try {
-            const res = await fetch(`${API_BASE}/api/tm/categories`);
-            if (res.ok) {
-                const data = await res.json();
-                const items = Array.isArray(data.items) ? data.items : [];
-                items.sort((a, b) => {
-                    const ao = Number(a?.sort_order ?? 0);
-                    const bo = Number(b?.sort_order ?? 0);
-                    if (ao !== bo) return ao - bo;
-                    const an = String(a?.name ?? "");
-                    const bn = String(b?.name ?? "");
-                    return an.localeCompare(bn, "zh-Hant", { numeric: true, sensitivity: "base" });
-                });
-                const cats = items.map(c => c.name);
-                setCategories(cats);
-                if (cats.length > 0) {
-                    setNewTerm(prev => ({ ...prev, category: cats[0] }));
-                    setEditForm(prev => ({ ...prev, category: cats[0] }));
-                }
+            const data = await tmApi.getCategories();
+            const items = Array.isArray(data.items) ? data.items : [];
+            items.sort((a, b) => {
+                const ao = Number(a?.sort_order ?? 0);
+                const bo = Number(b?.sort_order ?? 0);
+                if (ao !== bo) return ao - bo;
+                const an = String(a?.name ?? "");
+                const bn = String(b?.name ?? "");
+                return an.localeCompare(bn, "zh-Hant", { numeric: true, sensitivity: "base" });
+            });
+            const cats = items.map(c => c.name);
+            setCategories(cats);
+            if (cats.length > 0) {
+                setNewTerm(prev => ({ ...prev, category: cats[0] }));
+                setEditForm(prev => ({ ...prev, category: cats[0] }));
             }
         } catch (err) {
             console.error(err);
@@ -45,17 +44,14 @@ export function usePreserveTerms() {
     const fetchTerms = async () => {
         setLoading(true);
         try {
-            const res = await fetch(`${API_BASE}/api/preserve-terms`);
-            if (res.ok) {
-                const data = await res.json();
-                const { lastPreserveAt: latestPreserveAt } = useUIStore.getState();
-                const parsed = (data.terms || []).map((term) => {
-                    if (!term?.created_at || !latestPreserveAt) return { ...term, is_new: false };
-                    const createdTs = Date.parse(term.created_at);
-                    return { ...term, is_new: !Number.isNaN(createdTs) && createdTs >= latestPreserveAt };
-                });
-                setTerms(parsed);
-            }
+            const data = await preserveTermsApi.list();
+            const { lastPreserveAt: latestPreserveAt } = useUIStore.getState();
+            const parsed = (data.terms || []).map((term) => {
+                if (!term?.created_at || !latestPreserveAt) return { ...term, is_new: false };
+                const createdTs = Date.parse(term.created_at);
+                return { ...term, is_new: !Number.isNaN(createdTs) && createdTs >= latestPreserveAt };
+            });
+            setTerms(parsed);
         } catch (err) {
             console.error(err);
         } finally {
@@ -84,18 +80,9 @@ export function usePreserveTerms() {
         setLoading(true);
         try {
             setLastPreserveAt(Date.now());
-            const res = await fetch(`${API_BASE}/api/preserve-terms`, {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify(payload),
-            });
-            if (res.ok) {
-                if (!proto) setNewTerm({ term: "", category: categories[0] || "產品名稱", case_sensitive: false });
-                fetchTerms();
-            } else {
-                const err = await res.json();
-                alert(err.detail || t("manage.preserve.alerts.add_fail"));
-            }
+            await preserveTermsApi.create(payload);
+            if (!proto) setNewTerm({ term: "", category: categories[0] || "產品名稱", case_sensitive: false });
+            fetchTerms();
         } catch (error) {
             alert(`${t("manage.preserve.alerts.add_fail")}: ${error.message}`);
         } finally {
@@ -106,10 +93,8 @@ export function usePreserveTerms() {
     const handleDelete = async (id) => {
         if (!confirm(t("manage.preserve.alerts.delete_confirm"))) return;
         try {
-            const res = await fetch(`${API_BASE}/api/preserve-terms/${id}`, {
-                method: "DELETE",
-            });
-            if (res.ok) fetchTerms();
+            await preserveTermsApi.delete(String(id));
+            fetchTerms();
         } catch (error) {
             alert(`${t("manage.preserve.alerts.delete_fail")}: ${error.message}`);
         }
@@ -117,22 +102,13 @@ export function usePreserveTerms() {
 
     const handleUpdate = async () => {
         try {
-            const res = await fetch(`${API_BASE}/api/preserve-terms/${editingId}`, {
-                method: "PUT",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({
-                    category: editForm.category,
-                    case_sensitive: editForm.case_sensitive,
-                    term: editForm.term,
-                }),
+            await preserveTermsApi.update(String(editingId), {
+                category: editForm.category,
+                case_sensitive: editForm.case_sensitive,
+                term: editForm.term,
             });
-            if (res.ok) {
-                setEditingId(null);
-                fetchTerms();
-            } else {
-                const err = await res.json();
-                alert(err.detail || t("manage.preserve.alerts.update_fail"));
-            }
+            setEditingId(null);
+            fetchTerms();
         } catch (error) {
             alert(`${t("manage.preserve.alerts.update_fail")}: ${error.message}`);
         }
@@ -140,7 +116,7 @@ export function usePreserveTerms() {
 
     const handleExport = async () => {
         try {
-            window.open(`${API_BASE}/api/preserve-terms/export`, "_blank");
+            window.open(buildApiUrl("/api/preserve-terms/export"), "_blank");
         } catch (error) {
             alert(`${t("manage.preserve.alerts.export_fail")}: ${error.message}`);
         }
@@ -156,21 +132,14 @@ export function usePreserveTerms() {
                 alert(t("manage.preserve.alerts.import_fail"));
                 return;
             }
-            const res = await fetch(`${API_BASE}/api/preserve-terms/import`, {
-                method: "POST",
-                headers: { "Content-Type": "text/plain" },
-                body: csvText,
-            });
-            if (res.ok) {
-                const result = await res.json();
-                alert(
-                    t("manage.preserve.alerts.import_success", {
-                        imported: result.imported || 0,
-                        skipped: result.skipped || 0,
-                    })
-                );
-                fetchTerms();
-            }
+            const result = await preserveTermsApi.import(csvText);
+            alert(
+                t("manage.preserve.alerts.import_success", {
+                    imported: result.imported || 0,
+                    skipped: result.skipped || 0,
+                })
+            );
+            fetchTerms();
         } catch (error) {
             alert(`${t("manage.preserve.alerts.import_fail")}: ${error.message}`);
         }
@@ -181,18 +150,12 @@ export function usePreserveTerms() {
         if (!confirm(t("manage.preserve.alerts.convert_confirm"))) return;
         try {
             setLastGlossaryAt(Date.now());
-            const res = await fetch(`${API_BASE}/api/preserve-terms/convert-to-glossary`, {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({
-                    id: term.id,
-                    target_lang: targetLang || "zh-TW",
-                    priority: 10,
-                })
+            await preserveTermsApi.convertToGlossary({
+                id: term.id,
+                target_lang: targetLang || "zh-TW",
+                priority: 10,
             });
-            if (res.ok) {
-                fetchTerms();
-            }
+            fetchTerms();
         } catch (err) {
             console.error(err);
         }

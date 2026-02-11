@@ -19,4 +19,43 @@
     .select-box {
         @apply flex items-center gap-2;
     }
+
+    .layout-param-toggle {
+        @apply flex items-start gap-3 p-3 rounded-xl border border-slate-200 bg-white cursor-pointer transition-all duration-300;
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.02);
+    }
+
+    .layout-param-toggle:hover {
+        @apply border-blue-300 bg-blue-50/10 shadow-md shadow-blue-500/5;
+    }
+
+    .layout-param-toggle:has(input:checked) {
+        @apply border-blue-500 bg-blue-50/30 ring-1 ring-blue-500/20;
+    }
+
+    .layout-param-toggle input[type="checkbox"] {
+        @apply w-4 h-4 accent-blue-600 mt-1 shrink-0 transition-transform duration-200;
+    }
+
+    .layout-param-toggle:active input[type="checkbox"] {
+        @apply scale-90;
+    }
+
+    .layout-param-toggle-body {
+        @apply flex flex-col gap-1 min-w-0;
+    }
+
+    .layout-param-toggle-title {
+        @apply text-sm font-bold text-slate-800 leading-tight transition-colors duration-200;
+        word-break: break-word;
+    }
+
+    .layout-param-toggle:has(input:checked) .layout-param-toggle-title {
+        @apply text-blue-700;
+    }
+
+    .layout-param-toggle-desc {
+        @apply text-xs text-slate-500 leading-normal;
+        word-break: break-word;
+    }
 }

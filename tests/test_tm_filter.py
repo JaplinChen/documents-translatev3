@@ -1,8 +1,23 @@
-from backend.services.translation_memory import upsert_tm, get_tm_count
 import re
 
+import pytest
 
-def test_tm_filter():
+from backend.services import translation_memory
+from backend.services.translation_memory import get_tm_count, upsert_tm
+from backend.services.translation_memory_sqlite import db as sqlite_db
+
+
+@pytest.fixture
+def tm_db(tmp_path, monkeypatch):
+    db_path = tmp_path / "translation_memory.db"
+    monkeypatch.setattr(translation_memory, "DB_PATH", db_path)
+    monkeypatch.setattr(translation_memory, "_DB_INITIALIZED", False)
+    monkeypatch.setattr(sqlite_db, "DB_PATH", db_path)
+    monkeypatch.setattr(sqlite_db, "_DB_INITIALIZED", False)
+    return db_path
+
+
+def test_tm_filter(tm_db):
     print("測試後端 TM 過濾器...")
 
     initial_count = get_tm_count()

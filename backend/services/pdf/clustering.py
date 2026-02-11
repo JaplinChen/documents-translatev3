@@ -5,8 +5,8 @@ LOGGER = logging.getLogger(__name__)
 
 def cluster_blocks(
     blocks: list[dict],
-    line_spacing_threshold: float = 1.5,
-    x_overlap_threshold: float = 0.5,
+    line_spacing_threshold: float = 1.0,
+    x_overlap_threshold: float = 0.8,
 ) -> list[dict]:
     """Cluster PDF text blocks into paragraphs based on proximity."""
     if not blocks:
@@ -52,7 +52,7 @@ def cluster_blocks(
 
             v_dist = next_top - curr_bottom
 
-            # Alignment check: horizontal overlap or similar starting X
+            # Alignment check: strict horizontal alignment or significant overlap
             curr_x0 = current.get("x", 0.0) or 0.0
             curr_w = current.get("width", 0.0) or 0.0
             next_x0 = next_block.get("x", 0.0) or 0.0
@@ -62,7 +62,8 @@ def cluster_blocks(
             next_x1 = next_x0 + next_w
 
             x_overlap = min(curr_x1, next_x1) - max(curr_x0, next_x0)
-            is_aligned = (abs(curr_x0 - next_x0) < 10) or (x_overlap > 0)
+            # More conservative alignment: closer X0 or larger overlap
+            is_aligned = (abs(curr_x0 - next_x0) < 5) or (x_overlap > (min(curr_w, next_w) * 0.8))
 
             # Font/style separation: different font or size should not merge
             curr_font = current.get("font_name")
@@ -72,7 +73,7 @@ def cluster_blocks(
             font_conflict = False
             if curr_font and next_font and curr_font != next_font:
                 font_conflict = True
-            if curr_size and next_size and abs(float(curr_size) - float(next_size)) > 1.5:
+            if curr_size and next_size and abs(float(curr_size) - float(next_size)) > 1.0:
                 font_conflict = True
 
             # Avoid over-merging table or OCR blocks
@@ -90,19 +91,19 @@ def cluster_blocks(
                     and next_is_ocr
                     and abs(curr_x0 - next_x0) < 5
                     and abs(curr_w - next_w) < 20
-                    and v_dist < (font_size * 0.4)
+                    and v_dist < (font_size * 0.3)
                     and v_dist > -2
                 )
             else:
+                # Conservative paragraph merging: 1.0 instead of 1.5 spacing
                 can_merge = (
-                    v_dist < (font_size * line_spacing_threshold)
-                    and v_dist > -5
+                    v_dist < (font_size * 1.0)
+                    and v_dist > -3
                     and is_aligned
                 )
 
             # Merge if close and aligned
             if can_merge and not font_conflict:
-                # Merge text
                 current["source_text"] += " " + next_block["source_text"]
                 # Update bounding box
                 new_x = min(curr_x0, next_x0)

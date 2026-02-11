@@ -5,12 +5,20 @@ import starlette.formparsers
 # This must happen as early as possible.
 starlette.formparsers.MultiPartParser.max_part_size = 50 * 1024 * 1024
 
+import logging
 import asyncio
 import os
 import time
 from contextlib import asynccontextmanager
 from pathlib import Path
 
+# Configure logging early
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
+    force=True
+)
+LOGGER = logging.getLogger(__name__)
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
@@ -36,9 +44,17 @@ from backend.tools.logging_middleware import StructuredLoggingMiddleware
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    # Ensure exports directory exists
-    Path("data/exports").mkdir(parents=True, exist_ok=True)
-    Path("data/thumbnails").mkdir(parents=True, exist_ok=True)
+    # Ensure exports and thumbnails directory exists with absolute paths
+    data_dir = Path("/app/data") if Path("/app").exists() else Path("data")
+    (data_dir / "exports").mkdir(parents=True, exist_ok=True)
+    thumb_dir = data_dir / "thumbnails"
+    thumb_dir.mkdir(parents=True, exist_ok=True)
+    
+    # Permission fix for Docker volumes
+    try:
+        os.chmod(str(thumb_dir), 0o777)
+    except Exception:
+        pass
 
     cleanup_task = asyncio.create_task(cleanup_exports_task())
     stats_task = asyncio.create_task(learning_stats_task())
@@ -79,7 +95,11 @@ app.include_router(style_router)
 app.include_router(export_router)
 
 # Mount thumbnails as static files
-app.mount("/thumbnails", StaticFiles(directory="data/thumbnails"), name="thumbnails")
+# Use absolute path to ensure correct resolution in Docker
+data_dir = Path("/app/data") if Path("/app").exists() else Path("data")
+thumbnail_dir = (data_dir / "thumbnails").absolute()
+thumbnail_dir.mkdir(parents=True, exist_ok=True)
+app.mount("/thumbnails", StaticFiles(directory=str(thumbnail_dir)), name="thumbnails")
 
 
 @app.post("/api/admin/reset-cache")

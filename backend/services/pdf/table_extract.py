@@ -129,232 +129,105 @@ def extract_table_blocks(  # noqa: C901
     cfg: dict,
     force_cell_ocr: bool,
 ) -> list[dict]:
-    blocks = []
+    """Robust table cell extraction with selectable-text and OCR fallbacks."""
+    blocks: list[dict] = []
     if not plumber_page:
         return blocks
+
     try:
         tables = plumber_page.find_tables(table_settings=get_table_config())
     except Exception as e:
-        LOGGER.warning(
-            "pdf table detect failed page=%s: %s",
-            page_index + 1,
-            e,
-        )
+        LOGGER.warning("Table detection error page %s: %s", page_index + 1, e)
         return blocks
 
-    for table_index, table in enumerate(tables, start=1):
-        cells = getattr(table, "cells", [])
+    if not tables:
+        return blocks
 
-        if not cells:
-            table_cfg = get_table_line_config()
-            rows = table.extract() or []
-            table_bbox = getattr(table, "bbox", None)
-            if not table_bbox:
-                continue
-            table_x0, table_top, table_x1, table_bottom = table_bbox
-            # 優先使用線條偵測切格
-            if table_cfg["line_detect"] and page_image is not None:
-                scale = float(cfg.get("dpi", 200)) / 72.0
-                img = np.array(page_image)
-                x0_px = max(0, int(table_x0 * scale))
-                y0_px = max(0, int(table_top * scale))
-                x1_px = min(img.shape[1], int(table_x1 * scale))
-                y1_px = min(img.shape[0], int(table_bottom * scale))
-                if x1_px > x0_px and y1_px > y0_px:
-                    crop = img[y0_px:y1_px, x0_px:x1_px]
-                    xs, ys = _detect_table_grid_lines(
-                        crop, table_cfg["line_min_len"]
-                    )
-                    xs = [0] + [x for x in xs if 0 < x < crop.shape[1]] + [crop.shape[1]]
-                    ys = [0] + [y for y in ys if 0 < y < crop.shape[0]] + [crop.shape[0]]
-                    xs = sorted(set(xs))
-                    ys = sorted(set(ys))
-                    cell_count = (len(xs) - 1) * (len(ys) - 1)
-                    if len(xs) >= 2 and len(ys) >= 2 and cell_count <= table_cfg["max_cells"]:
-                        cell_index = 0
-                        for r_idx in range(len(ys) - 1):
-                            for c_idx in range(len(xs) - 1):
-                                cell_index += 1
-                                cx0 = x0_px + xs[c_idx]
-                                cx1 = x0_px + xs[c_idx + 1]
-                                cy0 = y0_px + ys[r_idx]
-                                cy1 = y0_px + ys[r_idx + 1]
-                                if cx1 <= cx0 or cy1 <= cy0:
-                                    continue
-                                cropped = enhance_image_for_ocr(
-                                    page_image.crop((cx0, cy0, cx1, cy1))
-                                )
-                                if cfg.get("engine") == "paddle":
-                                    ocr_lines = paddle_ocr_image(
-                                        cropped, cfg.get("lang", "eng")
-                                    )
-                                    text = " ".join(
-                                        line.get("text", "") for line in ocr_lines
-                                    ).strip()
-                                else:
-                                    text = (
-                                        pytesseract.image_to_string(
-                                            cropped,
-                                            lang=cfg.get("lang", "eng"),
-                                            config=f"--psm {cfg.get('psm', 6)}",
-                                        )
-                                        or ""
-                                    ).strip()
-                                if (
-                                    not text
-                                    or is_noisy_text(text)
-                                    or is_numeric_only(text)
-                                    or is_technical_terms_only(text)
-                                    or is_garbage_text(text)
-                                ):
-                                    continue
-                                x0 = cx0 / scale
-                                x1 = cx1 / scale
-                                top = cy0 / scale
-                                bottom = cy1 / scale
-                                block = make_block(
-                                    page_index,
-                                    900000
-                                    + page_index * 100000
-                                    + table_index * 1000
-                                    + cell_index,
-                                    "pdf_text_block",
-                                    text,
-                                    x0,
-                                    top,
-                                    x1 - x0,
-                                    bottom - top,
-                                )
-                                block.update(
-                                    {
-                                        "is_table": True,
-                                        "page_no": page_index + 1,
-                                        "table_no": table_index,
-                                        "row_no": r_idx + 1,
-                                        "col_no": c_idx + 1,
-                                    }
-                                )
-                                blocks.append(block)
-                        continue
+    scale = float(cfg.get("dpi", 200)) / 72.0
 
-            # 線條偵測失敗就回退平均切格
-            if not rows:
-                continue
-            row_count = len(rows)
-            col_count = max((len(r) for r in rows), default=0)
-            if row_count <= 0 or col_count <= 0:
-                continue
-            row_h = (table_bottom - table_top) / row_count
-            col_w = (table_x1 - table_x0) / col_count
-            for r_idx, row in enumerate(rows, start=1):
-                for c_idx, cell_text in enumerate(row, start=1):
-                    text = (cell_text or "").strip()
-                    if (
-                        not text
-                        or is_noisy_text(text)
-                        or is_numeric_only(text)
-                        or is_technical_terms_only(text)
-                        or is_garbage_text(text)
-                    ):
-                        continue
-                    x0 = table_x0 + (c_idx - 1) * col_w
-                    x1 = table_x0 + c_idx * col_w
-                    top = table_top + (r_idx - 1) * row_h
-                    bottom = table_top + r_idx * row_h
-                    block = make_block(
-                        page_index,
-                        900000
-                        + page_index * 100000
-                        + table_index * 1000
-                        + r_idx * 50
-                        + c_idx,
-                        "pdf_text_block",
-                        text,
-                        x0,
-                        top,
-                        x1 - x0,
-                        bottom - top,
-                    )
-                    block.update(
-                        {
-                            "is_table": True,
-                            "page_no": page_index + 1,
-                            "table_no": table_index,
-                            "row_no": r_idx,
-                            "col_no": c_idx,
-                        }
-                    )
-                    blocks.append(block)
+    for table_idx, table in enumerate(tables, start=1):
+        t_bbox = getattr(table, "bbox", None)
+        if not t_bbox:
             continue
+        
+        # In pdfplumber 0.11.x, table.rows is a list of lists of Cell objects
+        # table.extract() gives us the text strings
+        rows_cells = getattr(table, "rows", [])
+        rows_text = table.extract() or []
+        
+        if not rows_cells and not rows_text:
+            continue
+            
+        LOGGER.info("Page %s: Processing table %s (%s rows)", 
+                    page_index + 1, table_idx, len(rows_text))
 
-        scale = float(cfg.get("dpi", 200)) / 72.0
-        for cell_index, cell in enumerate(cells, start=1):
-            x0 = cell.get("x0")
-            top = cell.get("top")
-            x1 = cell.get("x1")
-            bottom = cell.get("bottom")
-            if None in (x0, top, x1, bottom):
-                continue
-            text = (cell.get("text") or "").strip()
+        for r_idx, row in enumerate(rows_text):
+            # Get the corresponding cells for this row if available
+            current_row_cells = rows_cells[r_idx] if r_idx < len(rows_cells) else []
+            
+            for c_idx, text_item in enumerate(row):
+                text = (text_item or "").strip()
+                
+                # 1. Get Coordinates
+                cx0, ctop, cx1, cbottom = None, None, None, None
+                if c_idx < len(current_row_cells):
+                    cell_obj = current_row_cells[c_idx]
+                    if hasattr(cell_obj, "bbox"):
+                        cx0, ctop, cx1, cbottom = cell_obj.bbox
+                    elif isinstance(cell_obj, (list, tuple)) and len(cell_obj) >= 4:
+                        cx0, ctop, cx1, cbottom = cell_obj[:4]
+                
+                # Fallback coordinates if cell_obj missing
+                if None in (cx0, ctop, cx1, cbottom):
+                    # Estimate based on table bbox and grid
+                    col_count = max(len(r) for r in rows_text) or 1
+                    row_count = len(rows_text) or 1
+                    cw, ch = (t_bbox[2] - t_bbox[0]) / col_count, (t_bbox[3] - t_bbox[1]) / row_count
+                    cx0 = t_bbox[0] + c_idx * cw
+                    ctop = t_bbox[1] + r_idx * ch
+                    cx1 = cx0 + cw
+                    cbottom = ctop + ch
 
-            if force_cell_ocr or not text:
-                if page_image:
-                    cropped = enhance_image_for_ocr(
-                        page_image.crop(
-                            (
-                                int(x0 * scale),
-                                int(top * scale),
-                                int(x1 * scale),
-                                int(bottom * scale),
-                            )
-                        )
-                    )
-                    if cfg.get("engine") == "paddle":
-                        ocr_lines = paddle_ocr_image(
-                            cropped,
-                            cfg.get("lang", "eng"),
-                        )
-                        text = " ".join(
-                            line.get("text", "") for line in ocr_lines
-                        ).strip()
-                    else:
-                        text = (
-                            pytesseract.image_to_string(
-                                cropped,
-                                lang=cfg.get("lang", "eng"),
-                                config=f"--psm {cfg.get('psm', 6)}",
-                            )
-                            or ""
-                        ).strip()
+                # 2. OCR Fallback for empty text layer
+                if (not text or force_cell_ocr) and page_image:
+                    try:
+                        x0_px, y0_px = int(cx0 * scale), int(ctop * scale)
+                        x1_px, y1_px = int(cx1 * scale), int(cbottom * scale)
+                        if x1_px > x0_px and y1_px > y0_px:
+                            cropped = enhance_image_for_ocr(page_image.crop((x0_px, y0_px, x1_px, y1_px)))
+                            if cfg.get("engine") == "paddle":
+                                ocr_res = paddle_ocr_image(cropped, cfg.get("lang", "eng"))
+                                text = " ".join(l.get("text", "") for l in ocr_res).strip()
+                            else:
+                                text = pytesseract.image_to_string(
+                                    cropped, 
+                                    lang=cfg.get("lang", "eng"),
+                                    config=f"--psm {cfg.get('psm', 6)} --oem 3"
+                                ).strip()
+                    except Exception as e:
+                        LOGGER.debug("Cell OCR failed: %s", e)
 
-            if (
-                not text
-                or is_noisy_text(text)
-                or is_numeric_only(text)
-                or is_technical_terms_only(text)
-                or is_garbage_text(text)
-            ):
-                continue
-            block = make_block(
-                page_index,
-                900000
-                + page_index * 100000
-                + table_index * 1000
-                + cell_index,
-                "pdf_text_block",
-                text,
-                x0,
-                top,
-                x1 - x0,
-                bottom - top,
-            )
-            block.update(
-                {
+                if not text or is_garbage_text(text):
+                    continue
+
+                # 3. Create block
+                block = make_block(
+                    slide_index=page_index,
+                    shape_id=900000 + page_index * 10000 + table_idx * 1000 + r_idx * 50 + c_idx,
+                    block_type="pdf_text_block",
+                    source_text=text,
+                    x=cx0,
+                    y=ctop,
+                    width=cx1 - cx0,
+                    height=cbottom - ctop,
+                )
+                block.update({
                     "is_table": True,
                     "page_no": page_index + 1,
-                    "table_no": table_index,
-                    "cell_no": cell_index,
-                }
-            )
-            blocks.append(block)
+                    "table_no": table_idx,
+                    "row_no": r_idx + 1,
+                    "col_no": c_idx + 1,
+                })
+                blocks.append(block)
+                
     return blocks

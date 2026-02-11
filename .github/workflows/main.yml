@@ -43,7 +43,7 @@ jobs:
           flake8 backend --count --exit-zero --max-complexity=10 --max-line-length=127 --statistics
       - name: Run backend tests
         run: |
-          alembic upgrade head
+          PYTHONPATH=. alembic upgrade head
           python -m pytest backend/tests/ tests/ -v
       - name: Generate layouts API contract report
         run: |

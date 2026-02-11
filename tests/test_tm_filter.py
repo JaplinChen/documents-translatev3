@@ -5,6 +5,7 @@ import pytest
 from backend.services import translation_memory
 from backend.services.translation_memory import get_tm_count, upsert_tm
 from backend.services.translation_memory_sqlite import db as sqlite_db
+from backend.services.translation_memory_sqlite import tm_query
 
 
 @pytest.fixture
@@ -12,8 +13,10 @@ def tm_db(tmp_path, monkeypatch):
     db_path = tmp_path / "translation_memory.db"
     monkeypatch.setattr(translation_memory, "DB_PATH", db_path)
     monkeypatch.setattr(translation_memory, "_DB_INITIALIZED", False)
+    monkeypatch.setattr(tm_query, "DB_PATH", db_path)
     monkeypatch.setattr(sqlite_db, "DB_PATH", db_path)
     monkeypatch.setattr(sqlite_db, "_DB_INITIALIZED", False)
+    sqlite_db._ensure_db()
     return db_path
 
 

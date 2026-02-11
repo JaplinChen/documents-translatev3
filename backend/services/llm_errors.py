@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from collections.abc import Iterable
 
+
 def _iter_errors(error: BaseException) -> Iterable[BaseException]:
     current: BaseException | None = error
     seen: set[int] = set()

@@ -39,7 +39,7 @@ def extract_blocks(
     params = layout_params or {}
     skip_numbers = params.get("skip_numbers", False)
     skip_dates = params.get("skip_dates", False) # Not implemented yet for Excel
-    skip_code = params.get("skip_code", False)
+    skip_code = params.get("skip_code", True)
     skip_translated = params.get("skip_translated", False) # Not implemented yet for Excel
 
     # Deduplication map: {text: first_block}

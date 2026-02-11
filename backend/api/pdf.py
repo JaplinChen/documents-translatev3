@@ -5,7 +5,7 @@ from pathlib import Path
 
 from fastapi import APIRouter, File, Form, HTTPException, UploadFile, Body
 
-from backend.api.error_handler import api_error_handler, validate_json_blocks
+from backend.api.error_handler import api_error_handler
 from backend.api.download_utils import build_download_response
 from backend.api.pptx_naming import generate_semantic_filename_with_ext
 from backend.api.pptx_translate import TranslateRequest, pptx_translate_stream

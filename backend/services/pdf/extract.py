@@ -105,7 +105,13 @@ def perform_ocr_on_page(pdf_path: str, page_index: int, config: dict | None = No
 def extract_blocks(pdf_path: str, preferred_lang: str | None = None) -> dict:  # noqa: C901
     """Extract text blocks from PDF using PyMuPDF and OCR/table extraction."""
     doc = fitz.open(pdf_path)
-    plumber_doc = pdfplumber.open(pdf_path) if pdfplumber else None
+    if pdfplumber:
+        try:
+            plumber_doc = pdfplumber.open(pdf_path)
+        except Exception:
+            plumber_doc = None
+    else:
+        plumber_doc = None
     blocks, cfg = [], get_ocr_config()
     sw, sh = 0, 0
     doc_primary_lang = preferred_lang or None

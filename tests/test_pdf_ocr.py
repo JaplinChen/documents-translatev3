@@ -1,9 +1,13 @@
 import os
+import shutil
+
+import pytest
 
 from PIL import Image, ImageDraw, ImageFont
 from reportlab.pdfgen import canvas
 
 from backend.services.pdf.extract import extract_blocks
+from backend.services.pdf.ocr_engine import get_poppler_path
 
 def _load_test_font(size: int) -> ImageFont.FreeTypeFont | ImageFont.ImageFont:
     candidates = [
@@ -35,6 +39,10 @@ def create_image_pdf(file_path, text="OCR TEST CONTENT"):
     os.remove("temp_ocr.png")
 
 def test_pdf_ocr_extraction():
+    if shutil.which("tesseract") is None:
+        pytest.skip("tesseract not available")
+    if get_poppler_path() is None and shutil.which("pdftoppm") is None:
+        pytest.skip("poppler not available")
     file_path = "ocr_test.pdf"
     create_image_pdf(file_path, "HELLO OCR WORLD")
 

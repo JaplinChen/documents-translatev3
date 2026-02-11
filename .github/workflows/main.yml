@@ -10,6 +10,22 @@ jobs:
   backend-check:
     name: documents-translatev3 backend-check
     runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:15
+        env:
+          POSTGRES_USER: app
+          POSTGRES_PASSWORD: app
+          POSTGRES_DB: appdb
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U app -d appdb"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    env:
+      DATABASE_URL: postgresql+psycopg://app:app@localhost:5432/appdb
     steps:
       - uses: actions/checkout@v4
       - name: Set up Python
@@ -27,6 +43,7 @@ jobs:
           flake8 backend --count --exit-zero --max-complexity=10 --max-line-length=127 --statistics
       - name: Run backend tests
         run: |
+          alembic upgrade head
           python -m pytest backend/tests/ tests/ -v
       - name: Generate layouts API contract report
         run: |
